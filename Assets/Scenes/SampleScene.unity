@@ -205,13 +205,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.11608794, y: 0.0071633337, z: 0.00083725934, w: 0.99321276}
-  m_LocalPosition: {x: 0.72, y: 6.74, z: -11.9}
+  m_LocalRotation: {x: 0.3122929, y: 0.0071861157, z: -0.0006116265, w: 0.9499585}
+  m_LocalPosition: {x: 60.31, y: 19.1, z: -27.52}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 13.332, y: 0.849, z: 0.196}
+  m_LocalEulerAnglesHint: {x: 36.394, y: 0.945, z: 0.237}
 --- !u!114 &330585547
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -876,7 +876,7 @@ Transform:
   m_GameObject: {fileID: 943316907}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.71267, z: -0, w: 0.7014995}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 60.7, y: 0, z: -1}
   m_LocalScale: {x: 5, y: 5, z: 5}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -935,6 +935,7 @@ GameObject:
   - component: {fileID: 1284202511}
   - component: {fileID: 1284202510}
   - component: {fileID: 1284202512}
+  - component: {fileID: 1284202513}
   m_Layer: 10
   m_Name: Seeker
   m_TagString: Untagged
@@ -1053,7 +1054,7 @@ MonoBehaviour:
     maxStep: 0
   hasUpgradedFromAgentParameters: 1
   MaxStep: 500
-  agent: {fileID: 0}
+  rb: {fileID: 1284202513}
   moveSpeed: 2
   rotateSpeed: 2
   target: {fileID: 1658261437}
@@ -1080,9 +1081,9 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 1
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 5022602860645237092, guid: b8bc2c3098ade324988bceef46167d36, type: 3}
+  m_Model: {fileID: 0}
   m_InferenceDevice: 0
-  m_BehaviorType: 2
+  m_BehaviorType: 0
   m_BehaviorName: Seeker
   TeamId: 0
   m_UseChildSensors: 1
@@ -1102,6 +1103,33 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
   DecisionPeriod: 1
   TakeActionsBetweenDecisions: 1
+--- !u!54 &1284202513
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1284202504}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 84
+  m_CollisionDetection: 0
 --- !u!1 &1658261432
 GameObject:
   m_ObjectHideFlags: 0
@@ -1113,9 +1141,10 @@ GameObject:
   - component: {fileID: 1658261437}
   - component: {fileID: 1658261436}
   - component: {fileID: 1658261435}
+  - component: {fileID: 1658261438}
   m_Layer: 10
   m_Name: Hider
-  m_TagString: Untagged
+  m_TagString: Hider
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1192,6 +1221,29 @@ Transform:
   m_Children: []
   m_Father: {fileID: 943316911}
   m_LocalEulerAnglesHint: {x: 0, y: 90.905, z: 0}
+--- !u!136 &1658261438
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1658261432}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5000002
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0.0000019073486, y: 0, z: -0.0000047683716}
 --- !u!1 &1750266670
 GameObject:
   m_ObjectHideFlags: 0
