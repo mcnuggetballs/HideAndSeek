@@ -1,8 +1,8 @@
-using UnityEngine;
-
 using Unity.MLAgents;
-using Unity.MLAgents.Sensors; // for collect observation
 using Unity.MLAgents.Actuators;
+using Unity.MLAgents.Integrations.Match3;
+using Unity.MLAgents.Sensors; // for collect observation
+using UnityEngine;
 using UnityEngine.AI;
 
 
@@ -12,8 +12,8 @@ public class SeekerAgent : Agent
 {
     //public NavMeshAgent agent;
     public Rigidbody rb;
-    public float moveSpeed;
-    public float rotateSpeed;
+    public float moveSpeed = 4;
+    public float rotateSpeed = 200;
     private float prevDistance = 0;
 
     //public Rigidbody rb;
@@ -45,13 +45,29 @@ public class SeekerAgent : Agent
     {
         // know where is target
         Vector3 dir = target.position - transform.position; // direction from seeker to target
-        sensor.AddObservation(dir.normalized); 
-        sensor.AddObservation(dir.magnitude);
+        sensor.AddObservation(dir.normalized); // which direction is target
+
+        float maxDistance = 20.0f;
+        sensor.AddObservation(dir.magnitude/maxDistance); // how far is target
 
         // need to know if walking/turning
         sensor.AddObservation(transform.forward);
         sensor.AddObservation(rb.linearVelocity);
     }
+
+    //private void Update()
+    //{
+    //    if (Input.GetKey(KeyCode.LeftArrow))
+    //    {
+    //        Quaternion delta = Quaternion.Euler(0, rotateSpeed * Time.deltaTime, 0);
+    //        rb.MoveRotation(rb.rotation * delta);
+
+    //        if (Input.GetKey(KeyCode.UpArrow))
+    //        {
+    //            rb.MovePosition(rb.position + transform.forward * moveSpeed * Time.deltaTime); // move forward in current direction
+    //        }
+    //    }
+    //}
 
     // make decision
     public override void OnActionReceived(ActionBuffers actions)
@@ -71,16 +87,17 @@ public class SeekerAgent : Agent
         float distanceDiff = prevDistance - currentdistance;
 
         // small reward if moved closer, penalise if further
-        AddReward(distanceDiff * 0.1f);
+        AddReward(distanceDiff * 0.3f);
         prevDistance = currentdistance;
 
         // small penalty if wasting time every step to encourage faster decisions
         AddReward(-0.001f);
+        Vector3 direction = (target.position - transform.position).normalized; // direction from seeker to target
+        float angle = Vector3.Angle(transform.forward, direction);
 
-        // if not better than previous attempt penalty
-        if(distanceDiff < 0)
+        if (angle < 30f)
         {
-            AddReward(distanceDiff * 0.05f);
+            AddReward(0.01f);
         }
     }
 
@@ -90,7 +107,7 @@ public class SeekerAgent : Agent
         if(collision.gameObject.CompareTag("Hider"))
         {
             // large reward
-            AddReward(1.0f);
+            AddReward(3.0f);
             EndEpisode();
         }
 
