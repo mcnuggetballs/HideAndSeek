@@ -1,0 +1,42 @@
+{
+    "name": "root",
+    "metadata": {
+        "timer_format_version": "0.1.0",
+        "start_time_seconds": "1778578736",
+        "python_version": "3.10.11 (tags/v3.10.11:7d4cc5a, Apr  5 2023, 00:38:17) [MSC v.1929 64 bit (AMD64)]",
+        "command_line_arguments": "C:\\Users\\Duality1\\Documents\\Unity Projects\\HideAndSeek\\mlagents_env\\lib\\site-packages\\mlagents\\trainers\\learn.py config/config.yaml --run-id=hide_seek_v8",
+        "mlagents_version": "1.1.0",
+        "mlagents_envs_version": "1.1.0",
+        "communication_protocol_version": "1.5.0",
+        "pytorch_version": "2.1.1+cpu",
+        "numpy_version": "1.23.5",
+        "end_time_seconds": "1778578802"
+    },
+    "total": 66.72156299999915,
+    "count": 1,
+    "self": 0.0031239999952958897,
+    "children": {
+        "run_training.setup": {
+            "total": 0.03988050000043586,
+            "count": 1,
+            "self": 0.03988050000043586
+        },
+        "TrainerController.start_learning": {
+            "total": 66.67855850000342,
+            "count": 1,
+            "self": 7.019999611657113e-05,
+            "children": {
+                "TrainerController._reset_env": {
+                    "total": 66.67847349999647,
+                    "count": 1,
+                    "self": 66.67847349999647
+                },
+                "TrainerController._save_models": {
+                    "total": 1.4800010831095278e-05,
+                    "count": 1,
+                    "self": 1.4800010831095278e-05
+                }
+            }
+        }
+    }
+}

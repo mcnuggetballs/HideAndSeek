@@ -1,9 +1,7 @@
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
-using Unity.MLAgents.Integrations.Match3;
 using Unity.MLAgents.Sensors; // for collect observation
 using UnityEngine;
-using UnityEngine.AI;
 
 
 
@@ -12,8 +10,8 @@ public class SeekerAgent : Agent
 {
     //public NavMeshAgent agent;
     public Rigidbody rb;
-    public float moveSpeed = 4;
-    public float rotateSpeed = 200;
+    public float moveSpeed;
+    public float rotateSpeed;
     private float prevDistance = 0;
 
     //public Rigidbody rb;
@@ -23,36 +21,58 @@ public class SeekerAgent : Agent
     public Transform test;
 
     //reset seeker environmemt
-    public override void OnEpisodeBegin() 
+    public override void OnEpisodeBegin()
     {
-        transform.position = test.position + Random.insideUnitSphere * 10;
-        target.position = test.position + Random.insideUnitSphere * 10;
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        transform.rotation = Quaternion.identity;
+        float minDistance=5f;
 
-        //Set y to  default y
+        float spawnRadius = 10f;
+        //transform.position = test.position + Random.insideUnitSphere * spawnRadius;
+        //target.position = test.position + Random.insideUnitSphere * spawnRadius;
+        float groundY = 0.929f;
+
+
+        //Set y to  default yk
         Vector3 pos = transform.position;
-        pos.y = 0.929f;
+        pos.y = groundY;
         transform.position = pos;
 
         Vector3 pos1 = target.position;
-        pos1.y = 0.929f;
+        pos1.y = groundY;
         target.position = pos1;
 
-        prevDistance = (target.position - transform.position).magnitude; // to encourage agent to keep moving closer to target
+
+        // random position for agent
+        transform.position = new Vector3(
+            test.position.x + Random.Range(-spawnRadius, spawnRadius), // randomise x value from -10 to 10
+            groundY, // keep y grounded
+            test.position.z + Random.Range(-spawnRadius, spawnRadius));
+
+        //// random position for target
+        target.position = new Vector3(
+            test.position.x + Random.Range(-spawnRadius, spawnRadius), // randomise x value from -10 to 10
+            groundY, // keep y grounded
+            test.position.z + Random.Range(-spawnRadius, spawnRadius));
+       
+        while(Vector3.Distance(transform.position,target.position) < minDistance)
+        prevDistance = Vector3.Distance(target.position, transform.position); // to encourage agent to keep moving closer to target
     }
 
     // just putting information in his brain
     public override void CollectObservations(VectorSensor sensor)
     {
         // know where is target
-        Vector3 dir = target.position - transform.position; // direction from seeker to target
-        sensor.AddObservation(dir.normalized); // which direction is target
+        Vector3 dir = target.position - transform.position; // direction towards target
+        sensor.AddObservation(dir.normalized);
 
         float maxDistance = 20.0f;
-        sensor.AddObservation(dir.magnitude/maxDistance); // how far is target
+        sensor.AddObservation(dir.magnitude / maxDistance); // distance to target
 
         // need to know if walking/turning
-        sensor.AddObservation(transform.forward);
-        sensor.AddObservation(rb.linearVelocity);
+        sensor.AddObservation(transform.forward); // direction im facing now
+        //sensor.AddObservation(rb.linearVelocity / moveSpeed); // speed 
     }
 
     //private void Update()
@@ -75,41 +95,33 @@ public class SeekerAgent : Agent
 
         // either rotate
         float rotate = actions.ContinuousActions[0]; // telling him he can control this
-        Quaternion delta = Quaternion.Euler(0,rotate * rotateSpeed * Time.deltaTime,0);
+        Quaternion delta = Quaternion.Euler(0, rotate * rotateSpeed * Time.deltaTime, 0);
         rb.MoveRotation(rb.rotation * delta);
 
         // or rotate      
         float move = actions.ContinuousActions[1];
-        rb.MovePosition(rb.position + transform.forward * moveSpeed * move *Time.deltaTime); // move forward in current direction
+        rb.MovePosition(rb.position + transform.forward * moveSpeed * move * Time.deltaTime); // move forward in current direction
 
         // keep track of movement
         float currentdistance = Vector3.Distance(transform.position, target.position);
-        float distanceDiff = prevDistance - currentdistance;
 
         // small reward if moved closer, penalise if further
-        AddReward(distanceDiff * 0.3f);
+        AddReward((prevDistance - currentdistance) * 0.2f);
         prevDistance = currentdistance;
 
-        // small penalty if wasting time every step to encourage faster decisions
+        // small time penalty to encourage faster decisions
         AddReward(-0.001f);
-        Vector3 direction = (target.position - transform.position).normalized; // direction from seeker to target
-        float angle = Vector3.Angle(transform.forward, direction);
-
-        if (angle < 30f)
-        {
-            AddReward(0.01f);
-        }
     }
 
     // what happens after collision
     public void OnCollisionEnter(Collision collision)
     {
-        if(collision.gameObject.CompareTag("Hider"))
+        if (collision.gameObject.CompareTag("Hider"))
         {
             // large reward
-            AddReward(3.0f);
+            AddReward(10.0f);
             EndEpisode();
         }
-
+        EndEpisode();
     }
 }
