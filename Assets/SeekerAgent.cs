@@ -3,16 +3,14 @@ using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors; // for collect observation
 using UnityEngine;
 
-
-
 // think of it like how to reward my agent into doing patrol/chase
 public class SeekerAgent : Agent
 {
+    public Collider[] spawnAreas;
     //public NavMeshAgent agent;
     public Rigidbody rb;
     public float moveSpeed;
     public float rotateSpeed;
-    private float prevDistance = 0;
 
     //public Rigidbody rb;
 
@@ -20,57 +18,45 @@ public class SeekerAgent : Agent
 
     public Transform test;
 
+    float theDistance = 0;
+
     //reset seeker environmemt
     public override void OnEpisodeBegin()
     {
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
 
-        transform.rotation = Quaternion.identity;
-        float minDistance=5f;
-        float spawnRadius = 10f;
-        float groundY = 0.929f;
+        // random seeker spawn
+        Collider seekerArea = spawnAreas[Random.Range(0, spawnAreas.Length)];
+        Bounds seekerBounds = seekerArea.bounds;
 
-
-        //Set y to  default yk
-        Vector3 pos = transform.position;
-        pos.y = groundY;
-        transform.position = pos;
-
-        Vector3 pos1 = target.position;
-        pos1.y = groundY;
-        target.position = pos1;
-
-        do 
-{
-        // random position for agent
         transform.position = new Vector3(
-            test.position.x + Random.Range(-spawnRadius, spawnRadius), // randomise x value from -10 to 10
-            groundY, // keep y grounded
-            test.position.z + Random.Range(-spawnRadius, spawnRadius));
+            Random.Range(seekerBounds.min.x, seekerBounds.max.x),
+            2.0f,
+            Random.Range(seekerBounds.min.z, seekerBounds.max.z)
+        );
 
-            //// random position for target
-            target.position = new Vector3(
-                test.position.x + Random.Range(-spawnRadius, spawnRadius), // randomise x value from -10 to 10
-                groundY, // keep y grounded
-                test.position.z + Random.Range(-spawnRadius, spawnRadius));
-}
-        while (Vector3.Distance(transform.position, target.position) < minDistance); // keep randominising if too near
+        // random target spawn
+        Collider targetArea = spawnAreas[Random.Range(0, spawnAreas.Length)];
+        Bounds targetBounds = targetArea.bounds;
 
-        prevDistance = Vector3.Distance(target.position, transform.position); // to encourage agent to keep moving closer to target
+        target.position = new Vector3(
+            Random.Range(targetBounds.min.x, targetBounds.max.x),
+            2.0f,
+            Random.Range(targetBounds.min.z, targetBounds.max.z)
+        );
+
+        transform.rotation = Quaternion.identity;
+        theDistance = Vector3.Distance(transform.position, target.transform.position);
     }
 
     // just putting information in his brain
     public override void CollectObservations(VectorSensor sensor)
     {
-        // know where is target
-        Vector3 dir = target.position - transform.position; // direction towards target
-        sensor.AddObservation(dir.normalized);
+        Vector3 dirToTarget = transform.InverseTransformDirection((target.position - transform.position).normalized);
+        sensor.AddObservation(dirToTarget);
 
-        float maxDistance = 20.0f;
-        sensor.AddObservation(dir.magnitude / maxDistance); // distance to target
-
-        sensor.AddObservation(transform.forward); // direction im facing now
+        sensor.AddObservation(Vector3.Distance(transform.position,target.transform.position)); // distance to target
     }
 
     // make decision
@@ -89,12 +75,13 @@ public class SeekerAgent : Agent
         // keep track of movement
         float currentdistance = Vector3.Distance(transform.position, target.position);
 
-        // small reward if moved closer, penalise if further
-        AddReward((prevDistance - currentdistance) * 0.05f);
-        prevDistance = currentdistance;
+        // small reward if moved closer
+        float distanceReward = Mathf.Clamp(theDistance - currentdistance, -1f, 1f);
+        AddReward(distanceReward * 0.01f);
+        theDistance = currentdistance;
 
         // small time penalty to encourage faster decisions
-        AddReward(-0.0002f);
+        AddReward(-0.001f);
     }
 
     // what happens after collision
@@ -103,10 +90,8 @@ public class SeekerAgent : Agent
         if (collision.gameObject.CompareTag("Hider"))
         {
             // large reward
-            AddReward(10.0f);
+            AddReward(1.0f);
             EndEpisode();
         }
     }
-
-    // 1 fixed update = 1 step/ 1 decision from agent
 }
