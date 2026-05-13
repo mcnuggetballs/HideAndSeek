@@ -25,12 +25,10 @@ public class SeekerAgent : Agent
     {
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
+
         transform.rotation = Quaternion.identity;
         float minDistance=5f;
-
         float spawnRadius = 10f;
-        //transform.position = test.position + Random.insideUnitSphere * spawnRadius;
-        //target.position = test.position + Random.insideUnitSphere * spawnRadius;
         float groundY = 0.929f;
 
 
@@ -43,20 +41,22 @@ public class SeekerAgent : Agent
         pos1.y = groundY;
         target.position = pos1;
 
-
+        do 
+{
         // random position for agent
         transform.position = new Vector3(
             test.position.x + Random.Range(-spawnRadius, spawnRadius), // randomise x value from -10 to 10
             groundY, // keep y grounded
             test.position.z + Random.Range(-spawnRadius, spawnRadius));
 
-        //// random position for target
-        target.position = new Vector3(
-            test.position.x + Random.Range(-spawnRadius, spawnRadius), // randomise x value from -10 to 10
-            groundY, // keep y grounded
-            test.position.z + Random.Range(-spawnRadius, spawnRadius));
-       
-        while(Vector3.Distance(transform.position,target.position) < minDistance)
+            //// random position for target
+            target.position = new Vector3(
+                test.position.x + Random.Range(-spawnRadius, spawnRadius), // randomise x value from -10 to 10
+                groundY, // keep y grounded
+                test.position.z + Random.Range(-spawnRadius, spawnRadius));
+}
+        while (Vector3.Distance(transform.position, target.position) < minDistance); // keep randominising if too near
+
         prevDistance = Vector3.Distance(target.position, transform.position); // to encourage agent to keep moving closer to target
     }
 
@@ -70,24 +70,8 @@ public class SeekerAgent : Agent
         float maxDistance = 20.0f;
         sensor.AddObservation(dir.magnitude / maxDistance); // distance to target
 
-        // need to know if walking/turning
         sensor.AddObservation(transform.forward); // direction im facing now
-        //sensor.AddObservation(rb.linearVelocity / moveSpeed); // speed 
     }
-
-    //private void Update()
-    //{
-    //    if (Input.GetKey(KeyCode.LeftArrow))
-    //    {
-    //        Quaternion delta = Quaternion.Euler(0, rotateSpeed * Time.deltaTime, 0);
-    //        rb.MoveRotation(rb.rotation * delta);
-
-    //        if (Input.GetKey(KeyCode.UpArrow))
-    //        {
-    //            rb.MovePosition(rb.position + transform.forward * moveSpeed * Time.deltaTime); // move forward in current direction
-    //        }
-    //    }
-    //}
 
     // make decision
     public override void OnActionReceived(ActionBuffers actions)
@@ -106,11 +90,11 @@ public class SeekerAgent : Agent
         float currentdistance = Vector3.Distance(transform.position, target.position);
 
         // small reward if moved closer, penalise if further
-        AddReward((prevDistance - currentdistance) * 0.2f);
+        AddReward((prevDistance - currentdistance) * 0.05f);
         prevDistance = currentdistance;
 
         // small time penalty to encourage faster decisions
-        AddReward(-0.001f);
+        AddReward(-0.0002f);
     }
 
     // what happens after collision
@@ -122,6 +106,7 @@ public class SeekerAgent : Agent
             AddReward(10.0f);
             EndEpisode();
         }
-        EndEpisode();
     }
+
+    // 1 fixed update = 1 step/ 1 decision from agent
 }
