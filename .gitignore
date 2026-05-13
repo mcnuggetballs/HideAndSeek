@@ -80,3 +80,9 @@ crashlytics-build.properties
 # ML-Agents training results
 /[Aa]ssets/results/
 /results/
+
+*.pt
+*.onnx
+
+/tensorboard/
+/summaries/
