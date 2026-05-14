@@ -8,16 +8,18 @@ using UnityEngine;
 // think of it like how to reward my agent into doing patrol/chase
 public class SeekerAgent : Agent
 {
-    //public NavMeshAgent agent;
-    public Rigidbody rb;
+    // agent set up
+    public Rigidbody rb; // for collision purposes
     public float moveSpeed;
     public float rotateSpeed;
+
+    // visibility conditions
+    public float viewDistance = 10f;
+    public float viewAngle = 90f;
+
     private float prevDistance = 0;
 
-    //public Rigidbody rb;
-
     public Transform target;
-
     public Transform test;
 
     //reset seeker environmemt
@@ -26,20 +28,12 @@ public class SeekerAgent : Agent
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
 
-        transform.rotation = Quaternion.identity;
+        transform.rotation = Quaternion.Euler(0, Random.Range(0f, 360f),0);
+
+        // environment set up
         float minDistance=5f;
         float spawnRadius = 10f;
         float groundY = 0.929f;
-
-
-        //Set y to  default yk
-        Vector3 pos = transform.position;
-        pos.y = groundY;
-        transform.position = pos;
-
-        Vector3 pos1 = target.position;
-        pos1.y = groundY;
-        target.position = pos1;
 
         do 
 {
@@ -57,20 +51,27 @@ public class SeekerAgent : Agent
 }
         while (Vector3.Distance(transform.position, target.position) < minDistance); // keep randominising if too near
 
-        prevDistance = Vector3.Distance(target.position, transform.position); // to encourage agent to keep moving closer to target
+        prevDistance = Vector3.Distance(
+            target.position, 
+            transform.position
+            ); // to encourage agent to keep moving closer to target
     }
 
     // just putting information in his brain
     public override void CollectObservations(VectorSensor sensor)
     {
-        // know where is target
-        Vector3 dir = target.position - transform.position; // direction towards target
-        sensor.AddObservation(dir.normalized);
+        /* agent knows hider exact direction and distance */ 
+        Vector3 localDir = transform.InverseTransformDirection(target.position - transform.position); // direction towards target
+        sensor.AddObservation(localDir.normalized);
 
         float maxDistance = 20.0f;
-        sensor.AddObservation(dir.magnitude / maxDistance); // distance to target
+        sensor.AddObservation(localDir.magnitude / maxDistance); // distance to target
 
-        sensor.AddObservation(transform.forward); // direction im facing now
+        /* agent only knows target direction if target is visible */
+
+        Vector3 direction = target.position - transform.position; // get vector to target from seeker
+        float distance = direction.magnitude; 
+
     }
 
     // make decision
@@ -82,13 +83,12 @@ public class SeekerAgent : Agent
         Quaternion delta = Quaternion.Euler(0, rotate * rotateSpeed * Time.deltaTime, 0);
         rb.MoveRotation(rb.rotation * delta);
 
-        // or rotate      
-        float move = actions.ContinuousActions[1];
+        // no backward movement      
+        float move = Mathf.Clamp01(actions.ContinuousActions[1]);
         rb.MovePosition(rb.position + transform.forward * moveSpeed * move * Time.deltaTime); // move forward in current direction
 
         // keep track of movement
         float currentdistance = Vector3.Distance(transform.position, target.position);
-
         // small reward if moved closer, penalise if further
         AddReward((prevDistance - currentdistance) * 0.05f);
         prevDistance = currentdistance;
@@ -108,5 +108,4 @@ public class SeekerAgent : Agent
         }
     }
 
-    // 1 fixed update = 1 step/ 1 decision from agent
 }
