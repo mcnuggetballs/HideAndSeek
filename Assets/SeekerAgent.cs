@@ -2,6 +2,7 @@ using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors; // for collect observation
 using UnityEngine;
+using UnityEngine.UIElements;
 
 
 
@@ -18,6 +19,8 @@ public class SeekerAgent : Agent
     public float viewAngle = 90f;
 
     private float prevDistance = 0;
+    private bool canSeeTarget = false; // inside viewing frustum
+
 
     public Transform target;
     public Transform test;
@@ -60,17 +63,34 @@ public class SeekerAgent : Agent
     // just putting information in his brain
     public override void CollectObservations(VectorSensor sensor)
     {
-        /* agent knows hider exact direction and distance */ 
-        Vector3 localDir = transform.InverseTransformDirection(target.position - transform.position); // direction towards target
-        sensor.AddObservation(localDir.normalized);
-
-        float maxDistance = 20.0f;
-        sensor.AddObservation(localDir.magnitude / maxDistance); // distance to target
-
         /* agent only knows target direction if target is visible */
+        Vector3 dir = target.position - transform.position; // get vector to target from seeker
+        float distance = dir.magnitude;
+        float angle = Vector3.Angle(transform.forward, dir);
 
-        Vector3 direction = target.position - transform.position; // get vector to target from seeker
-        float distance = direction.magnitude; 
+        canSeeTarget = (distance <= viewDistance) && (angle <= viewAngle * 0.5f); // everytime observing if can see target
+
+        if (canSeeTarget) // chase
+        {
+            // visibility state flag
+            Vector3 localDir = transform.InverseTransformDirection(target.position - transform.position); 
+            sensor.AddObservation(1f); // visibility flag, 1 = visible & 0 == !visible
+
+            //direction IF visible
+            sensor.AddObservation(localDir.normalized); // direction towards target
+
+            // distance IF visible
+            sensor.AddObservation(distance / viewDistance); // distance to target
+
+        }
+        else 
+        { // if not visible search
+            // seeker cannot see hider
+            // if target not visible must provide same number of observations
+            sensor.AddObservation(0f); // visibility state flag
+            sensor.AddObservation(Vector3.zero); // no valid direction infromation
+            sensor.AddObservation(1f); // distance unknown
+        }
 
     }
 
@@ -87,12 +107,15 @@ public class SeekerAgent : Agent
         float move = Mathf.Clamp01(actions.ContinuousActions[1]);
         rb.MovePosition(rb.position + transform.forward * moveSpeed * move * Time.deltaTime); // move forward in current direction
 
-        // keep track of movement
         float currentdistance = Vector3.Distance(transform.position, target.position);
-        // small reward if moved closer, penalise if further
-        AddReward((prevDistance - currentdistance) * 0.05f);
-        prevDistance = currentdistance;
 
+        // reward system
+        // only reward if can see target
+        if (canSeeTarget)
+        { // reward based on how near
+            AddReward((prevDistance - currentdistance) * 0.05f);
+        }
+        prevDistance = currentdistance;
         // small time penalty to encourage faster decisions
         AddReward(-0.0002f);
     }
