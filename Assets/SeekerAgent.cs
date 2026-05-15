@@ -4,8 +4,6 @@ using Unity.MLAgents.Sensors; // for collect observation
 using UnityEngine;
 using UnityEngine.UIElements;
 
-
-
 // think of it like how to reward my agent into doing patrol/chase
 public class SeekerAgent : Agent
 {
@@ -13,17 +11,18 @@ public class SeekerAgent : Agent
     public Rigidbody rb; // for collision purposes
     public float moveSpeed;
     public float rotateSpeed;
+    public Transform target;
+    public Transform test;
 
     // visibility conditions
     public float viewDistance = 10f;
     public float viewAngle = 90f;
 
+    // private variables
     private float prevDistance = 0;
     private bool canSeeTarget = false; // inside viewing frustum
-
-
-    public Transform target;
-    public Transform test;
+    private bool previousCanSeeTarget = false; // to encourage them to find target again and again
+    private Vector3 previousPosition; // to encourage movement
 
     //reset seeker environmemt
     public override void OnEpisodeBegin()
@@ -31,49 +30,98 @@ public class SeekerAgent : Agent
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
 
-        transform.rotation = Quaternion.Euler(0, Random.Range(0f, 360f),0);
+        transform.rotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
 
         // environment set up
-        float minDistance=5f;
+        float minDistance = 5f;
         float spawnRadius = 10f;
         float groundY = 0.929f;
 
-        do 
-{
-        // random position for agent
-        transform.position = new Vector3(
-            test.position.x + Random.Range(-spawnRadius, spawnRadius), // randomise x value from -10 to 10
-            groundY, // keep y grounded
-            test.position.z + Random.Range(-spawnRadius, spawnRadius));
+        do
+        {
+            // random position for agent
+            transform.position = new Vector3(
+                test.position.x + Random.Range(-spawnRadius, spawnRadius), // randomise x value from -10 to 10
+                groundY, // keep y grounded
+                test.position.z + Random.Range(-spawnRadius, spawnRadius));
 
             //// random position for target
             target.position = new Vector3(
                 test.position.x + Random.Range(-spawnRadius, spawnRadius), // randomise x value from -10 to 10
                 groundY, // keep y grounded
                 test.position.z + Random.Range(-spawnRadius, spawnRadius));
-}
+        }
         while (Vector3.Distance(transform.position, target.position) < minDistance); // keep randominising if too near
 
         prevDistance = Vector3.Distance(
-            target.position, 
+            target.position,
             transform.position
             ); // to encourage agent to keep moving closer to target
+        previousPosition = transform.position; 
     }
 
     // just putting information in his brain
     public override void CollectObservations(VectorSensor sensor)
     {
-        /* agent only knows target direction if target is visible */
+        // visual info about target 
         Vector3 dir = target.position - transform.position; // get vector to target from seeker
-        float distance = dir.magnitude;
         float angle = Vector3.Angle(transform.forward, dir);
+        float distance = dir.magnitude;
 
-        canSeeTarget = (distance <= viewDistance) && (angle <= viewAngle * 0.5f); // everytime observing if can see target
+        // separate distance and fov
+        bool insideFOV = angle <= viewAngle * 0.5f;
+        bool insideDist = distance <= viewDistance;
 
+
+        Vector3 leftBoundary =
+            Quaternion.Euler(0, -viewAngle * 0.5f, 0) *
+            transform.forward;
+
+        Vector3 rightBoundary =
+            Quaternion.Euler(0, viewAngle * 0.5f, 0) *
+            transform.forward;
+
+        Debug.DrawRay(
+            transform.position,
+            leftBoundary * viewDistance,
+            Color.yellow
+        );
+
+        Debug.DrawRay(
+            transform.position,
+            rightBoundary * viewDistance,
+            Color.yellow
+        );
+
+        Debug.DrawRay(
+            transform.position,
+            transform.forward * viewDistance,
+            Color.red
+        );
+
+        // line of sight logic
+        if (insideFOV && insideDist)
+        {
+            RaycastHit hit;
+
+            if (Physics.Raycast(transform.position, dir.normalized, out hit, viewDistance))
+            {
+
+                canSeeTarget = hit.transform == target;
+            }
+            else
+            {
+                canSeeTarget = false;
+            }
+        }
+
+        else { canSeeTarget = false; }
+
+        // if can see target, feed these info
         if (canSeeTarget) // chase
         {
             // visibility state flag
-            Vector3 localDir = transform.InverseTransformDirection(target.position - transform.position); 
+            Vector3 localDir = transform.InverseTransformDirection(target.position - transform.position);
             sensor.AddObservation(1f); // visibility flag, 1 = visible & 0 == !visible
 
             //direction IF visible
@@ -83,9 +131,8 @@ public class SeekerAgent : Agent
             sensor.AddObservation(distance / viewDistance); // distance to target
 
         }
-        else 
-        { // if not visible search
-            // seeker cannot see hider
+        else
+        { // if cannot see target, limited info
             // if target not visible must provide same number of observations
             sensor.AddObservation(0f); // visibility state flag
             sensor.AddObservation(Vector3.zero); // no valid direction infromation
@@ -109,15 +156,30 @@ public class SeekerAgent : Agent
 
         float currentdistance = Vector3.Distance(transform.position, target.position);
 
-        // reward system
-        // only reward if can see target
+        // chase reward
         if (canSeeTarget)
         { // reward based on how near
             AddReward((prevDistance - currentdistance) * 0.05f);
         }
+        else // move reward
+        {
+            float movedDistance = Vector3.Distance(transform.position, previousPosition);
+            AddReward(movedDistance * 0.002f);
+            previousPosition = transform.position;
+        }
+
         prevDistance = currentdistance;
-        // small time penalty to encourage faster decisions
+
+        // time penalty
         AddReward(-0.0002f);
+
+        // reacquire target reward
+        if (canSeeTarget && !previousCanSeeTarget)
+        {
+            AddReward(0.2f);
+        }
+
+        previousCanSeeTarget = canSeeTarget;
     }
 
     // what happens after collision
