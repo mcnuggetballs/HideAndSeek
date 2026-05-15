@@ -22,7 +22,7 @@ public class SeekerAgent : Agent
     private float prevDistance = 0;
     private bool canSeeTarget = false; // inside viewing frustum
     private bool previousCanSeeTarget = false; // to encourage them to find target again and again
-    private Vector3 previousPosition; // to encourage movement
+    private Vector3 searchAnchor;
 
     //reset seeker environmemt
     public override void OnEpisodeBegin()
@@ -57,7 +57,7 @@ public class SeekerAgent : Agent
             target.position,
             transform.position
             ); // to encourage agent to keep moving closer to target
-        previousPosition = transform.position; 
+        searchAnchor = transform.position; // remember spawn position
     }
 
     // just putting information in his brain
