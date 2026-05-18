@@ -163,9 +163,9 @@ public class SeekerAgent : Agent
         }
         else // move reward
         {
-            float movedDistance = Vector3.Distance(transform.position, previousPosition);
+            float movedDistance = Vector3.Distance(transform.position, searchAnchor);
             AddReward(movedDistance * 0.002f);
-            previousPosition = transform.position;
+            searchAnchor = transform.position;
         }
 
         prevDistance = currentdistance;
