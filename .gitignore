@@ -86,3 +86,6 @@ crashlytics-build.properties
 
 /tensorboard/
 /summaries/
+
+# Common venv names
+.venv

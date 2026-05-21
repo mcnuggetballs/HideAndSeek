@@ -9,7 +9,7 @@ pip -m pip install --upgrade pip
 pip install mlagents==1.1.0 torch==2.1.1
 
 pip install packaging==21.3
-pip installsetuptools==65.5.0
+pip install setuptools==65.5.0
 
 
 for installing mlagents
