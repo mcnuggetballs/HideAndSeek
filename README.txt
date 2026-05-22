@@ -13,7 +13,7 @@ pip install setuptools==65.5.0
 
 
 for installing mlagents
-mlagents-env\Scripts\activate
+mlagents_env\Scripts\activate
 pip install mlagents
 
 to train mlagents:

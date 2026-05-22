@@ -5,20 +5,25 @@ public class SimulationManager : MonoBehaviour
     public GameObject simulationPrefab;
 
     //public string simulationMode;
-    public int NoOfSimulations = 0; 
+    //public int NoOfSimulations = 0; 
     public float spaceBetween = 0;
     public int rowCount = 0;
+    public bool startTraining = false;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        //SpawnTraining(simulationPrefab);
-        SpawnTesting(simulationPrefab);
+        if(startTraining)
+        {
+            SpawnTraining(simulationPrefab);
+        }
+        else
+        {
+            SpawnTesting(simulationPrefab);
+        }
     }
-    /*
-        
-     
-     */
+
+    /**/
     void SpawnTraining(GameObject simulationPrefab)
     {
         //GameObject spawnedObject = Object.Instantiate(simulationPrefab);
