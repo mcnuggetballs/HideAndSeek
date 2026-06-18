@@ -12,7 +12,6 @@ public class TestingScenarioEditor : MonoBehaviour
 {
     // assign in inspector
     public Camera sceneCamera;
-    public GameObject seekerPrefab;
 
     public float placementYOffset = 0.02f;
     public float seekerPreviewScale = 1f;
@@ -21,10 +20,12 @@ public class TestingScenarioEditor : MonoBehaviour
     private GameObject currentSeeker;
     [SerializeField]
     private Transform environment;
+    [SerializeField]
+    private GameObject emptySeekerPrefab;
 
     // when this script becomes active, subscribe BeginPlaceSeeker to SpawnSeeker requested
     // += and -= are what actually connect/disconnect the event listener.
-    private void OnEnable() 
+    private void OnEnable()
     {
         // testinscenarioeditor listens for spawn seeker requests
         GameEvents.SpawnSeekerRequested += BeginPlaceSeeker; // i want to listen for SpawnAeekerRequested
@@ -32,31 +33,23 @@ public class TestingScenarioEditor : MonoBehaviour
     }
 
     // when this script becomes inactive, unsub BeginPlaceSeeker to SpawnSeeker requested
-    private void OnDisable() 
+    private void OnDisable()
     {
         GameEvents.SpawnSeekerRequested -= BeginPlaceSeeker;
     }
 
-    //EDITOR FEATURES
+    // enter placement mode
     public void BeginPlaceSeeker()
     {
-        if (seekerPrefab == null)
-        {
-            Debug.LogWarning("Cannot place seeker because no seeker prefab is assigned.");
-            return;
-        }
-
         placingSeeker = true;
-        // wtf is this
-        currentSeeker = currentSeeker != null ? currentSeeker : GameObject.Find("Editable Seeker Prefab");
-
+        //currentSeeker = currentSeeker != null ? currentSeeker : GameObject.Find("Editable Seeker Prefab"); // try to reuse
         Debug.Log("Spawn Seeker mode active. Click on the map to place the seeker prefab.");
     }
 
     void Update()
     {
         // if not placing seeker or no mouse click = dont do anything
-        if (!placingSeeker || !TryGetMouseClick(out Vector2 mousePosition))
+        if ( !TryGetMouseClick(out Vector2 mousePosition))
         {
             return;
         }
@@ -71,7 +64,6 @@ public class TestingScenarioEditor : MonoBehaviour
         PlaceSeekerAtMousePosition(mousePosition);
     }
 
-    // HELPER
     private bool TryGetMouseClick(out Vector2 mousePosition)
     {
         mousePosition = Vector2.zero;
@@ -85,6 +77,7 @@ public class TestingScenarioEditor : MonoBehaviour
         return true;
     }
 
+    // actually place the object
     private void PlaceSeekerAtMousePosition(Vector2 mousePosition)
     {
         Camera cameraToUse = sceneCamera != null ? sceneCamera : Camera.main;
@@ -96,14 +89,13 @@ public class TestingScenarioEditor : MonoBehaviour
 
         Vector3 surfacePosition = GetMouseSurfacePosition(cameraToUse, mousePosition);
 
-        if (currentSeeker == null)
-        {
-            Debug.Log("Creating seeker prefab.");
-            currentSeeker = Instantiate(seekerPrefab,environment); // seeker created here
-            currentSeeker.name = "Editable Seeker Prefab";
-            currentSeeker.transform.localScale = Vector3.one * seekerPreviewScale;
-            GameEvents.NotifyAgentSpawned(currentSeeker); // tells simulation manager that agent exist
-        }
+        Debug.Log("Creating seeker prefab.");
+        GameObject currentSeeker = Instantiate(emptySeekerPrefab, environment); // now creates new seeker every click
+
+        currentSeeker.name = "Editable Seeker Prefab";
+
+        GameEvents.NotifyAgentSpawned(currentSeeker); // tells simulation manager that agent exist
+
 
         currentSeeker.transform.rotation = Quaternion.identity;
         PlaceObjectOnSurface(currentSeeker, surfacePosition);
@@ -114,8 +106,13 @@ public class TestingScenarioEditor : MonoBehaviour
 
         placingSeeker = false;
         Debug.Log($"Seeker placed on surface at {currentSeeker.transform.position}.");
-   
-        
+
+
+    }
+
+    private void PlaceHiderAtMousePosition(Vector2 mousePosition)
+    {
+
     }
 
     private Vector3 GetMouseSurfacePosition(Camera cameraToUse, Vector2 mousePosition)

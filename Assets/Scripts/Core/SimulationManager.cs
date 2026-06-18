@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Collections.Generic;
 using Unity.MLAgents;
 using Unity.MLAgents.Policies;
@@ -24,7 +25,10 @@ public class SimulationManager : MonoBehaviour
     [SerializeField] private StartupSpawnMode startupSpawnMode = StartupSpawnMode.None;
     [SerializeField] private int rowCount = 4;
     public float spaceBetween = 80;
-    
+    public GameObject seekerPrefab;
+    [SerializeField]
+    private Transform environment;
+
     // keep track of agents and environments
     private readonly List<GameObject> spawnedAgents = new List<GameObject>();
     private readonly List<GameObject> spawnedEnvironments = new List<GameObject>();
@@ -66,10 +70,14 @@ public class SimulationManager : MonoBehaviour
         Debug.Log("Play Simulation.");
         isPlaying = true;
 
-        foreach (GameObject agent in spawnedAgents)
+        for (int i = 0; i < spawnedAgents.Count; ++i)
         {
-            EnableAgentControl(agent);
+            GameObject agent = spawnedAgents[i];
+            Instantiate(seekerPrefab, agent.transform.position, Quaternion.identity, environment);
+            Destroy(agent);
+            //EnableAgentControl(agent);
         }
+        spawnedAgents.Clear();
     }
 
     private void PauseSimulation()

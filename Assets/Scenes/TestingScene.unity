@@ -1120,10 +1120,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TestingScenarioEditor
   sceneCamera: {fileID: 330585545}
-  seekerPrefab: {fileID: 4382439110685233668, guid: 59799930b7016594399014949c3ff5c7, type: 3}
   placementYOffset: 0.02
   seekerPreviewScale: 1
   environment: {fileID: 792336986}
+  emptySeekerPrefab: {fileID: 5859768715447269574, guid: 8f0865199dc043742bfe7d94b91dc947, type: 3}
 --- !u!114 &1022320178
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1140,6 +1140,8 @@ MonoBehaviour:
   startupSpawnMode: 0
   rowCount: 4
   spaceBetween: 0
+  seekerPrefab: {fileID: 4382439110685233668, guid: 59799930b7016594399014949c3ff5c7, type: 3}
+  environment: {fileID: 792336986}
 --- !u!1 &1386116912
 GameObject:
   m_ObjectHideFlags: 0
@@ -1918,118 +1920,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1740789610}
   m_CullTransparentMesh: 1
---- !u!1 &1852517630
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1852517631}
-  - component: {fileID: 1852517634}
-  - component: {fileID: 1852517633}
-  - component: {fileID: 1852517632}
-  m_Layer: 0
-  m_Name: ScuffedTest
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1852517631
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1852517630}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1852517632
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1852517630}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 1
-  TakeActionsBetweenDecisions: 1
---- !u!114 &1852517633
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1852517630}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f9d590d581e18f3448919fb64a9a8752, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SeekerAgent
-  agentParameters:
-    maxStep: 0
-  hasUpgradedFromAgentParameters: 1
-  MaxStep: 500
-  seekerAgent: {fileID: 0}
-  moveSpeed: 5
-  rotateSpeed: 200
-  targetAgent: {fileID: 0}
-  viewDistance: 10
-  viewAngle: 90
-  eyeHeight: 0.5
-  minSpawnDistance: 5
-  spawnRadius: 10
-  groundY: 0.929
-  visibleDistanceRewardScale: 0.04
-  generalDistanceRewardScale: 0.005
-  maintainSightReward: 0.001
-  unseenPenalty: -0.0001
-  searchMoveReward: 0.0001
-  rotationPenaltyScale: 0.00005
-  timePenalty: -0.0002
-  catchReward: 10
---- !u!114 &1852517634
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1852517630}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5d1c4e0b1822b495aa52bc52839ecb30, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.Policies.BehaviorParameters
-  m_BrainParameters:
-    VectorObservationSize: 0
-    NumStackedVectorObservations: 1
-    m_ActionSpec:
-      m_NumContinuousActions: 2
-      BranchSizes: 
-    VectorActionSize: 02000000
-    VectorActionDescriptions: []
-    VectorActionSpaceType: 1
-    hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 0}
-  m_InferenceDevice: 0
-  m_BehaviorType: 0
-  m_BehaviorName: Seeker
-  TeamId: 0
-  m_UseChildSensors: 1
-  m_UseChildActuators: 1
-  m_ObservableAttributeHandling: 0
 --- !u!1 &1981676573
 GameObject:
   m_ObjectHideFlags: 0
@@ -2381,4 +2271,3 @@ SceneRoots:
   - {fileID: 2200000300}
   - {fileID: 1386116915}
   - {fileID: 1981676578}
-  - {fileID: 1852517631}
