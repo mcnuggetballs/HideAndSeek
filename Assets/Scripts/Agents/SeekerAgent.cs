@@ -2,23 +2,26 @@ using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class SeekerAgent : Agent
 {
     [Header("Agent Setup")]
-    public Rigidbody rb;
+    //public Rigidbody rb;
+    public NavMeshAgent seekerAgent;
+
     public float moveSpeed = 5f;
     public float rotateSpeed = 180f;
-    public Transform target;
-    public Transform test;
+    public NavMeshAgent targetAgent; // hider, does not have to be a navmeshnangent
 
-    [Header("Visibility Settings")]
+    //[Header("Visibility Settings")]
     public float viewDistance = 50f;
     public float viewAngle = 90f;
     public float eyeHeight = 0.5f;
 
+    // simulation manager spawns in world, seeker agent spawn inside own world
     [Header("Spawn Settings")]
-    public float minSpawnDistance = 5f;
+    public float minSpawnDistance = 10f;
     public float spawnRadius = 10f;
     public float groundY = 0.929f;
 
@@ -34,22 +37,43 @@ public class SeekerAgent : Agent
 
     private float prevDistance = 0f;
 
+    private void Awake()
+    {
+        if (seekerAgent == null)
+        {
+            seekerAgent = GetComponent<NavMeshAgent>();
+        }
+    }
+
     public override void OnEpisodeBegin()
     {
+        if (!HasTargetAndNavAgent())
+        {
+            return;
+        }
+
         ResetMovement();
         RandomizeSpawn();
 
-        prevDistance = Vector3.Distance(rb.position, target.position);
+        prevDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);
     }
 
     public override void CollectObservations(VectorSensor sensor)
     {
+        if (targetAgent == null)
+        {
+            sensor.AddObservation(0);
+            sensor.AddObservation(Vector3.zero);
+            sensor.AddObservation(1f);
+            return;
+        }
+
         Vector3 localDir;
         float normalisedDistance;
 
         bool visible = GetTargetInfo(out localDir, out normalisedDistance);
-        sensor.AddObservation(visible? 1 : 0); // target visible?
-        
+        sensor.AddObservation(visible ? 1 : 0); // target visible?
+
         if (visible)
         {
             sensor.AddObservation(localDir);
@@ -64,18 +88,30 @@ public class SeekerAgent : Agent
 
     public override void OnActionReceived(ActionBuffers actions)
     {
+        if (!HasTargetAndNavAgent())
+        {
+            return;
+        }
+
         float rotate = actions.ContinuousActions[0];
         float move = Mathf.Clamp01(actions.ContinuousActions[1]);
 
-        Quaternion targetRotation = ApplyMovement(rotate, move);
+        MoveTowardsTarget();
 
-        ApplyVisibilityBasedRewards(targetRotation, rotate, move);
+        ApplyVisibilityBasedRewards(rotate, move);
     }
 
     private bool GetTargetInfo(out Vector3 localDir, out float normalisedDistance)
     {
+        if (targetAgent == null)
+        {   
+            localDir = Vector3.zero;
+            normalisedDistance = 1f;
+            return false;
+        }
+
         // calculate for distance check
-        Vector3 dir = target.position - transform.position; // get the dir vector from current position to target position
+        Vector3 dir = targetAgent.transform.position - transform.position; // get the dir vector from current position to target position
         float distance = dir.magnitude;
 
         localDir = transform.InverseTransformDirection(dir).normalized; // localised dir
@@ -92,89 +128,126 @@ public class SeekerAgent : Agent
         if (!insideFOV || !insideDist) { return false; }
 
         // 
-        Vector3 rayOrigin = transform.position + Vector3.up * 0.5f; // shoot ray from seeker's eye level
+        Vector3 rayOrigin = transform.position + Vector3.up * eyeHeight; // shoot ray from seeker's eye level
 
         if (Physics.Raycast(rayOrigin, dir.normalized, out RaycastHit hit, viewDistance))
         {
-            return hit.transform == target || hit.transform.IsChildOf(target); // if ray hits target OR child of target first, means can see
+            return hit.transform == targetAgent || hit.transform.IsChildOf(targetAgent.transform); // if ray hits target OR child of target first, means can see
         }
 
         return false;
     }
     private void ResetMovement()
     {
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
+        if (seekerAgent == null)
+        {
+            return;
+        }
 
-        rb.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+        seekerAgent.ResetPath();
+        seekerAgent.velocity = Vector3.zero;
+        transform.rotation = Quaternion.Euler(0f, 0f, 0f);
     }
 
     private void RandomizeSpawn()
     {
+        if (!HasTargetAndNavAgent())
+        {
+            return;
+        }
+
         int attempts = 0;
         int maxAttempts = 100;
 
-        Vector3 seekerSpawn;
-        Vector3 targetSpawn;
+        Vector3 rootPosition = transform.parent != null ? transform.parent.position : Vector3.zero; // root position of simulation prefab
+        Vector3 seekerSpawn = Vector3.zero;
+        Vector3 targetSpawn = Vector3.zero;
+        bool foundValidSpawn = false;
 
+        // randomise the seeker/hider position based on the simulation prefab root position
         do
         {
             attempts++;
-
-            seekerSpawn = new Vector3(
-                test.position.x + Random.Range(-spawnRadius, spawnRadius),
+            Vector3 seekerCandidate = new Vector3(
+                rootPosition.x + Random.Range(-spawnRadius, spawnRadius),
                 groundY,
-                test.position.z + Random.Range(-spawnRadius, spawnRadius)
+                rootPosition.z + Random.Range(-spawnRadius, spawnRadius)
             );
 
-            targetSpawn = new Vector3(
-                test.position.x + Random.Range(-spawnRadius, spawnRadius),
+            Vector3 targetCandidate = new Vector3(
+                rootPosition.x + Random.Range(-spawnRadius, spawnRadius),
                 groundY,
-                test.position.z + Random.Range(-spawnRadius, spawnRadius)
+                rootPosition.z + Random.Range(-spawnRadius, spawnRadius)
             );
+
+            bool seekerFound = NavMesh.SamplePosition(
+                seekerCandidate,
+                out NavMeshHit seekerHit,
+                5f,
+                NavMesh.AllAreas);
+
+            bool targetFound = NavMesh.SamplePosition(
+                targetCandidate,
+                out NavMeshHit targetHit,
+                5f,
+                NavMesh.AllAreas);
+
+            if(!seekerFound || !targetFound)
+            {
+                continue;
+            }
+
+            seekerSpawn = seekerHit.position; 
+            targetSpawn = targetHit.position;
+
+            foundValidSpawn = Vector3.Distance(seekerSpawn, targetSpawn) >= minSpawnDistance;
+            
         }
         while (
-            Vector3.Distance(seekerSpawn, targetSpawn) < minSpawnDistance &&
-            attempts < maxAttempts
+            foundValidSpawn && attempts < maxAttempts
         );
 
-        rb.position = seekerSpawn;
-        target.position = targetSpawn;
+        if (!foundValidSpawn)
+        {
+            Debug.LogWarning("Could not ifnd valid spawn positions on the NavMesh");
+            return;
+        }
+
+        seekerAgent.Warp(seekerSpawn);
+
+        targetAgent.Warp(targetSpawn);
     }
 
-    private Quaternion ApplyMovement(float rotate, float move)
+    // method for nav mesh agent to move towards target
+    private void MoveTowardsTarget()
     {
-        Quaternion delta = Quaternion.Euler(
-            0f,
-            rotate * rotateSpeed * Time.deltaTime,
-            0f
-        );
+        if (!HasTargetAndNavAgent())
+        {
+            return;
+        }
 
-        Quaternion targetRotation = rb.rotation * delta;
-
-        rb.MoveRotation(targetRotation);
-
-        Vector3 moveDirection = targetRotation * Vector3.forward;
-
-        rb.MovePosition(
-            rb.position + moveDirection * moveSpeed * move * Time.deltaTime
-        );
-
-        return targetRotation;
+        seekerAgent.SetDestination(targetAgent.transform.position);
     }
+
+
+
 
     private void ApplyVisibilityBasedRewards(
-        Quaternion targetRotation,
         float rotate,
         float move
     )
     {
+        if (targetAgent == null || seekerAgent == null)
+        {
+            return;
+        }
+
         Vector3 localDir;
         float normalisedDist;
 
         bool currentlyCanSeeTarget = GetTargetInfo(out localDir, out normalisedDist);
 
-        float currentDistance = Vector3.Distance(rb.position, target.position);
+        float currentDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);
 
         // Positive if seeker got closer.
         // Negative if seeker moved farther away.
@@ -230,35 +303,6 @@ public class SeekerAgent : Agent
         AddReward(-Mathf.Abs(rotate) * rotationPenaltyScale);
     }
 
-    private void DebugRenderer()
-    {
-        Vector3 leftBoundary =
-            Quaternion.Euler(0, -viewAngle * 0.5f, 0) *
-            transform.forward;
-
-        Vector3 rightBoundary =
-            Quaternion.Euler(0, viewAngle * 0.5f, 0) *
-            transform.forward;
-
-        Debug.DrawRay(
-            transform.position,
-            leftBoundary * viewDistance,
-            Color.yellow
-        );
-
-        Debug.DrawRay(
-            transform.position,
-            rightBoundary * viewDistance,
-            Color.yellow
-        );
-
-        Debug.DrawRay(
-            transform.position,
-            transform.forward * viewDistance,
-            Color.red
-        );
-    }
-
     private void OnCollisionEnter(Collision collision)
     {
         if (collision.gameObject.CompareTag("Hider"))
@@ -266,5 +310,10 @@ public class SeekerAgent : Agent
             AddReward(catchReward);
             EndEpisode();
         }
+    }
+
+    private bool HasTargetAndNavAgent()
+    {
+        return targetAgent != null && seekerAgent != null && seekerAgent.isOnNavMesh; // maybe exclude isOnNavMesh
     }
 }

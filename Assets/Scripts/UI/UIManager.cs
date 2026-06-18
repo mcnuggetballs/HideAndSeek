@@ -18,7 +18,7 @@ public class UIManager : MonoBehaviour
 
     }
 
-    // subscribe buttons to methods
+    // runs when UI manager is active
     private void OnEnable()
     {
         AddButtonListener(playButton, OnPlayClicked, nameof(playButton));
@@ -60,7 +60,7 @@ public class UIManager : MonoBehaviour
     private void OnSpawnHiderClicked()
     {
         GameEvents.RequestSpawnHider();
-        Debug.Log("SPawn Hiider Button clicked");
+        Debug.Log("Spawn Hider Button clicked");
     }
 
     private void AddButtonListener(Button button, UnityEngine.Events.UnityAction action, string fieldName)

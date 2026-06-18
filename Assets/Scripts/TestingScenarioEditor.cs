@@ -1,14 +1,8 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using Unity.MLAgents;
-using Unity.MLAgents.Policies;
-using Unity.VisualScripting;
-using System.Collections.Generic;
 
-// this file only listens for spawn seeker/hider/obstacle, as the name suggests "TestingScenarioEditor"
-
-// why using +=? essentially it is like keeping track howm nay times it is being called
+// this file handles spawn seeker/hider/obstacle, raycast mouseclick onto map, edit scenario. spawning related stuff is all handled here
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -16,21 +10,25 @@ using UnityEditor;
 
 public class TestingScenarioEditor : MonoBehaviour
 {
+    // assign in inspector
     public Camera sceneCamera;
     public GameObject seekerPrefab;
+
     public float placementYOffset = 0.02f;
     public float seekerPreviewScale = 1f;
-    public bool disableSpawnedAgentControl = true;
 
     private bool placingSeeker;
     private GameObject currentSeeker;
-
+    [SerializeField]
+    private Transform environment;
 
     // when this script becomes active, subscribe BeginPlaceSeeker to SpawnSeeker requested
     // += and -= are what actually connect/disconnect the event listener.
     private void OnEnable() 
     {
+        // testinscenarioeditor listens for spawn seeker requests
         GameEvents.SpawnSeekerRequested += BeginPlaceSeeker; // i want to listen for SpawnAeekerRequested
+        Debug.Log("TestingScenarioEditor is listening for spawn seeker requests.");
     }
 
     // when this script becomes inactive, unsub BeginPlaceSeeker to SpawnSeeker requested
@@ -49,22 +47,24 @@ public class TestingScenarioEditor : MonoBehaviour
         }
 
         placingSeeker = true;
-        currentSeeker = currentSeeker != null
-            ? currentSeeker
-            : GameObject.Find("Editable Seeker Prefab");
+        // wtf is this
+        currentSeeker = currentSeeker != null ? currentSeeker : GameObject.Find("Editable Seeker Prefab");
 
         Debug.Log("Spawn Seeker mode active. Click on the map to place the seeker prefab.");
     }
 
     void Update()
     {
+        // if not placing seeker or no mouse click = dont do anything
         if (!placingSeeker || !TryGetMouseClick(out Vector2 mousePosition))
         {
             return;
         }
 
+        // check if u click UI instead of world
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
         {
+            Debug.Log("Seeker placement click ignored because the pointer is over UI.");
             return;
         }
 
@@ -98,15 +98,11 @@ public class TestingScenarioEditor : MonoBehaviour
 
         if (currentSeeker == null)
         {
-            currentSeeker = Instantiate(seekerPrefab);
+            Debug.Log("Creating seeker prefab.");
+            currentSeeker = Instantiate(seekerPrefab,environment); // seeker created here
             currentSeeker.name = "Editable Seeker Prefab";
             currentSeeker.transform.localScale = Vector3.one * seekerPreviewScale;
-            GameEvents.NotifyAgentSpawned(currentSeeker);
-
-            //if (disableSpawnedAgentControl)
-            //{
-            //    DisableAgentControl(currentSeeker);
-            //}
+            GameEvents.NotifyAgentSpawned(currentSeeker); // tells simulation manager that agent exist
         }
 
         currentSeeker.transform.rotation = Quaternion.identity;
@@ -187,11 +183,5 @@ public class TestingScenarioEditor : MonoBehaviour
         return hasBounds;
     }
 
-    // be able to drag seeker around
 
-    // delete seeker
-
-    // undo
-
-    // reset
 }

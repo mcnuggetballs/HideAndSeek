@@ -8,6 +8,7 @@ using UnityEngine;
 
 public static class GameEvents 
 {
+    // use case : GameEvents.PlayRequested += PlaySimulation;
     public static event Action SpawnSeekerRequested;
     public static event Action SpawnHiderRequested;
     public static event Action PlayRequested;
@@ -17,6 +18,7 @@ public static class GameEvents
 
     public static void RequestSpawnSeeker()
     {
+        Debug.Log("GameEvents: Spawn seeker requested.");
         SpawnSeekerRequested?.Invoke(); // Run all methods subscribed to this event
     }
     public static void RequestSpawnHider()

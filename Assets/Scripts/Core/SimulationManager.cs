@@ -3,7 +3,7 @@ using Unity.MLAgents;
 using Unity.MLAgents.Policies;
 using UnityEngine;
 
-// Listens to simulation-level events (play pause reset) and controls the active runtime agents.
+// Listens to simulation-level events (play pause reset) and controls the active runtime agents (enable disable) and track simulation state
 
 /*
     TrainingScene - set startupSpawnMode to TrainingGrid, assign simulationPrefab, spawns 16 environments.
@@ -24,12 +24,16 @@ public class SimulationManager : MonoBehaviour
     [SerializeField] private StartupSpawnMode startupSpawnMode = StartupSpawnMode.None;
     [SerializeField] private int rowCount = 4;
     public float spaceBetween = 80;
-
+    
+    // keep track of agents and environments
     private readonly List<GameObject> spawnedAgents = new List<GameObject>();
     private readonly List<GameObject> spawnedEnvironments = new List<GameObject>();
 
+    private bool isPlaying; // false = edit/setup mode, true = simulation is running
+
     private void OnEnable()
     {
+        // simulation maanger listens to play/pause.reset and agent spawning
         GameEvents.PlayRequested += PlaySimulation;
         GameEvents.PauseRequested += PauseSimulation;
         GameEvents.ResetRequested += ResetSimulation;
@@ -60,6 +64,7 @@ public class SimulationManager : MonoBehaviour
     private void PlaySimulation()
     {
         Debug.Log("Play Simulation.");
+        isPlaying = true;
 
         foreach (GameObject agent in spawnedAgents)
         {
@@ -70,6 +75,7 @@ public class SimulationManager : MonoBehaviour
     private void PauseSimulation()
     {
         Debug.Log("Pause Simulation.");
+        isPlaying = false;
 
         foreach (GameObject agent in spawnedAgents)
         {
@@ -80,6 +86,7 @@ public class SimulationManager : MonoBehaviour
     private void ResetSimulation()
     {
         Debug.Log("Reset Simulation.");
+        isPlaying = false;
 
         foreach (GameObject agent in spawnedAgents)
         {
@@ -91,7 +98,7 @@ public class SimulationManager : MonoBehaviour
 
         spawnedAgents.Clear();
     }
-
+    // remembers seeks/hiders/agents
     private void RegisterSpawnedAgent(GameObject agent)
     {
         if (agent == null || spawnedAgents.Contains(agent))
@@ -100,6 +107,12 @@ public class SimulationManager : MonoBehaviour
         }
 
         spawnedAgents.Add(agent);
+
+        if (!isPlaying)
+        {
+            // if i spawn an agent while not playing, freeze agent (prevents seeker from running if hider not setup yet)
+            DisableAgentControl(agent);
+        }
     }
 
     private void SpawnTraining(GameObject simulationPrefab)
@@ -137,7 +150,9 @@ public class SimulationManager : MonoBehaviour
         spawnedEnvironments.Add(environment);
     }
 
-    // for play
+    /*
+        for controlling if agent is active for ai or frozen for editing
+     */
     private void EnableAgentControl(GameObject agentObject)
     {
         foreach (var behaviour in agentObject.GetComponentsInChildren<BehaviorParameters>())
@@ -159,7 +174,6 @@ public class SimulationManager : MonoBehaviour
         }
     }
 
-    // for pause
     private void DisableAgentControl(GameObject agentObject)
     {
         foreach (DecisionRequester decisionRequester in agentObject.GetComponentsInChildren<DecisionRequester>())
