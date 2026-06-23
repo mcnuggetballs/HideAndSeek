@@ -10,7 +10,7 @@ public class UIManager : MonoBehaviour
     public Button resetButton;
     public Button spawnSeekerButton;
     public Button spawnHiderButton;
-
+    public Button spawnObstacleButton;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -26,6 +26,8 @@ public class UIManager : MonoBehaviour
         AddButtonListener(resetButton, OnResetClicked, nameof(resetButton));
         AddButtonListener(spawnSeekerButton, OnSpawnSeekerClicked, nameof(spawnSeekerButton));
         AddButtonListener(spawnHiderButton, OnSpawnHiderClicked, nameof(spawnHiderButton));
+        AddButtonListener(spawnObstacleButton, OnSpawnObstacleClicked, nameof(spawnObstacleButton));
+
     }
 
     //unsubscribe
@@ -36,7 +38,8 @@ public class UIManager : MonoBehaviour
         RemoveButtonListener(resetButton, OnResetClicked);
         RemoveButtonListener(spawnSeekerButton, OnSpawnSeekerClicked);
         RemoveButtonListener(spawnHiderButton, OnSpawnHiderClicked);
-    } 
+        RemoveButtonListener(spawnObstacleButton, OnSpawnObstacleClicked);
+    }
     private void OnPlayClicked()
     {
         GameEvents.RequestPlay();
@@ -61,6 +64,11 @@ public class UIManager : MonoBehaviour
     {
         GameEvents.RequestSpawnHider();
         Debug.Log("Spawn Hider Button clicked");
+    }
+    private void OnSpawnObstacleClicked()
+    {
+        GameEvents.RequestSpawnObstacle();
+        Debug.Log("Spawn Obstacle Button clicked");
     }
 
     private void AddButtonListener(Button button, UnityEngine.Events.UnityAction action, string fieldName)

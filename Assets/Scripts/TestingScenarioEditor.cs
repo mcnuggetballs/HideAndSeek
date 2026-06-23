@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using NUnit.Framework.Constraints;
+
 
 // this file handles spawn seeker/hider/obstacle, raycast mouseclick onto map, edit scenario. spawning related stuff is all handled here
 
@@ -10,46 +12,86 @@ using UnityEditor;
 
 public class TestingScenarioEditor : MonoBehaviour
 {
+    private enum PlacementMode
+    {
+        None,
+        Seeker,
+        Hider,
+        Obstacle
+    }
+    private PlacementMode currentPlacementMode = PlacementMode.None;
+
     // assign in inspector
     public Camera sceneCamera;
 
     public float placementYOffset = 0.02f;
     public float seekerPreviewScale = 1f;
 
-    private bool placingSeeker;
-    private GameObject currentSeeker;
+    //private bool inPlacementMode;
+    //private GameObject currentSeeker;
+
     [SerializeField]
     private Transform environment;
     [SerializeField]
     private GameObject emptySeekerPrefab;
+    [SerializeField]
+    private GameObject emptyHiderPrefab;
+    [SerializeField]
+    private GameObject ObstaclePrefab;
 
     // when this script becomes active, subscribe BeginPlaceSeeker to SpawnSeeker requested
     // += and -= are what actually connect/disconnect the event listener.
     private void OnEnable()
     {
         // testinscenarioeditor listens for spawn seeker requests
-        GameEvents.SpawnSeekerRequested += BeginPlaceSeeker; // i want to listen for SpawnAeekerRequested
-        Debug.Log("TestingScenarioEditor is listening for spawn seeker requests.");
+        GameEvents.SpawnSeekerRequested += BeginPlaceSeeker;
+        GameEvents.SpawnHiderRequested += BeginPlaceHider;
+        GameEvents.SpawnObstacleRequested += BeginPlaceObstacle;
+
+
+        Debug.Log("TestingScenarioEditor is listening for object placement requests.");
     }
 
     // when this script becomes inactive, unsub BeginPlaceSeeker to SpawnSeeker requested
     private void OnDisable()
     {
         GameEvents.SpawnSeekerRequested -= BeginPlaceSeeker;
+        GameEvents.SpawnHiderRequested -= BeginPlaceHider;
+        GameEvents.SpawnObstacleRequested -= BeginPlaceObstacle;
     }
 
-    // enter placement mode
     public void BeginPlaceSeeker()
     {
-        placingSeeker = true;
-        //currentSeeker = currentSeeker != null ? currentSeeker : GameObject.Find("Editable Seeker Prefab"); // try to reuse
-        Debug.Log("Spawn Seeker mode active. Click on the map to place the seeker prefab.");
+        BeginPlacementMode(PlacementMode.Seeker);
+    }
+
+    public void BeginPlaceHider()
+    {
+        BeginPlacementMode(PlacementMode.Hider);
+    }
+
+    public void BeginPlaceObstacle()
+    {
+        BeginPlacementMode(PlacementMode.Obstacle);
+    }
+
+    private void BeginPlacementMode(PlacementMode placementMode)
+    {
+        currentPlacementMode = placementMode;
+        Debug.Log($"{currentPlacementMode} placement mode is active. Click on the map to place.");
     }
 
     void Update()
     {
-        // if not placing seeker or no mouse click = dont do anything
-        if ( !TryGetMouseClick(out Vector2 mousePosition))
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            currentPlacementMode = PlacementMode.None; // stop placing anything
+            Debug.Log("Stopped placing anything.");
+            return;
+        }
+
+        // if not placing seeker or no mouse click = dont do anything 
+        if (currentPlacementMode == PlacementMode.None || !TryGetMouseClick(out Vector2 mousePosition)) // if in placement mode 
         {
             return;
         }
@@ -57,11 +99,12 @@ public class TestingScenarioEditor : MonoBehaviour
         // check if u click UI instead of world
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
         {
-            Debug.Log("Seeker placement click ignored because the pointer is over UI.");
+            Debug.Log("Object placement click ignored because the pointer is over UI.");
             return;
         }
 
-        PlaceSeekerAtMousePosition(mousePosition);
+
+        PlaceCurrentObjecttAtMousePosition(mousePosition);
     }
 
     private bool TryGetMouseClick(out Vector2 mousePosition)
@@ -78,42 +121,66 @@ public class TestingScenarioEditor : MonoBehaviour
     }
 
     // actually place the object
-    private void PlaceSeekerAtMousePosition(Vector2 mousePosition)
+    private void PlaceCurrentObjecttAtMousePosition(Vector2 mousePosition)
     {
+        GameObject prefabToPlace = GetPrefabForCurrentMode();
+
+        if (prefabToPlace == null)
+        {
+            Debug.LogWarning($"No Prefab assigned for {currentPlacementMode}");
+            return;
+        }
+
         Camera cameraToUse = sceneCamera != null ? sceneCamera : Camera.main;
         if (cameraToUse == null)
         {
-            Debug.LogWarning("Cannot place seeker because no camera is assigned.");
+            Debug.LogWarning("Cannot place object because no camera is assigned.");
             return;
         }
 
         Vector3 surfacePosition = GetMouseSurfacePosition(cameraToUse, mousePosition);
+        GameObject spawnedObject = Instantiate(prefabToPlace, environment); // now creates new seeker every click
+        spawnedObject.name = $"Editable {currentPlacementMode}";
 
-        Debug.Log("Creating seeker prefab.");
-        GameObject currentSeeker = Instantiate(emptySeekerPrefab, environment); // now creates new seeker every click
+        spawnedObject.transform.rotation = Quaternion.identity;
+        PlaceObjectOnSurface(spawnedObject, surfacePosition);
 
-        currentSeeker.name = "Editable Seeker Prefab";
-
-        GameEvents.NotifyAgentSpawned(currentSeeker); // tells simulation manager that agent exist
-
-
-        currentSeeker.transform.rotation = Quaternion.identity;
-        PlaceObjectOnSurface(currentSeeker, surfacePosition);
+        NotifyObjectPlaced(spawnedObject);
 
 #if UNITY_EDITOR
-        Selection.activeGameObject = currentSeeker;
+        Selection.activeGameObject = spawnedObject;
 #endif
-
-        placingSeeker = false;
-        Debug.Log($"Seeker placed on surface at {currentSeeker.transform.position}.");
-
+        Debug.Log($"{currentPlacementMode} placed at {spawnedObject.transform.position}.");
+        currentPlacementMode = PlacementMode.None;
 
     }
 
-    private void PlaceHiderAtMousePosition(Vector2 mousePosition)
+    private GameObject GetPrefabForCurrentMode()
     {
+        switch (currentPlacementMode)
+        {
+            case PlacementMode.Seeker:
+                return emptySeekerPrefab;
+
+            case PlacementMode.Hider:
+                return emptyHiderPrefab;
+
+            case PlacementMode.Obstacle:
+                return ObstaclePrefab;
+            default:
+                return null;
+        }
 
     }
+
+    private void NotifyObjectPlaced(GameObject spawnedObject)
+    {
+        if (currentPlacementMode == PlacementMode.Seeker)
+        {
+            GameEvents.NotifyAgentSpawned(spawnedObject);
+        }
+    }
+
 
     private Vector3 GetMouseSurfacePosition(Camera cameraToUse, Vector2 mousePosition)
     {
@@ -123,10 +190,6 @@ public class TestingScenarioEditor : MonoBehaviour
 
         foreach (RaycastHit hit in hits)
         {
-            if (currentSeeker != null && hit.transform.IsChildOf(currentSeeker.transform))
-            {
-                continue;
-            }
 
             return hit.point;
         }

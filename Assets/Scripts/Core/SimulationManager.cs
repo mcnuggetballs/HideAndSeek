@@ -75,7 +75,6 @@ public class SimulationManager : MonoBehaviour
             GameObject agent = spawnedAgents[i];
             Instantiate(seekerPrefab, agent.transform.position, Quaternion.identity, environment);
             Destroy(agent);
-            //EnableAgentControl(agent);
         }
         spawnedAgents.Clear();
     }
