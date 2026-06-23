@@ -2,6 +2,10 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using NUnit.Framework.Constraints;
+using Unity.VisualScripting;
+using UnityEditor.Experimental.GraphView;
+
+
 
 
 // this file handles spawn seeker/hider/obstacle, raycast mouseclick onto map, edit scenario. spawning related stuff is all handled here
@@ -27,11 +31,11 @@ public class TestingScenarioEditor : MonoBehaviour
     public float placementYOffset = 0.02f;
     public float seekerPreviewScale = 1f;
 
-    //private bool inPlacementMode;
-    //private GameObject currentSeeker;
+    // refine placement logic
+    [SerializeField] private Collider placementArea;
+    [SerializeField] private LayerMask placementBlockerLayers; // for overlap check
+    [SerializeField] private Transform environment;
 
-    [SerializeField]
-    private Transform environment;
     [SerializeField]
     private GameObject emptySeekerPrefab;
     [SerializeField]
@@ -104,7 +108,7 @@ public class TestingScenarioEditor : MonoBehaviour
         }
 
 
-        PlaceCurrentObjecttAtMousePosition(mousePosition);
+        PlaceCurrentObjectAtMousePosition(mousePosition);
     }
 
     private bool TryGetMouseClick(out Vector2 mousePosition)
@@ -121,7 +125,7 @@ public class TestingScenarioEditor : MonoBehaviour
     }
 
     // actually place the object
-    private void PlaceCurrentObjecttAtMousePosition(Vector2 mousePosition)
+    private void PlaceCurrentObjectAtMousePosition(Vector2 mousePosition)
     {
         GameObject prefabToPlace = GetPrefabForCurrentMode();
 
@@ -139,11 +143,26 @@ public class TestingScenarioEditor : MonoBehaviour
         }
 
         Vector3 surfacePosition = GetMouseSurfacePosition(cameraToUse, mousePosition);
+
+        // check if in environment && inside another object
+        if (!IsInsideEnvironment(surfacePosition))
+        {
+            Debug.LogWarning("Cannot place object outside of environment");
+            return;
+        }
+
         GameObject spawnedObject = Instantiate(prefabToPlace, environment); // now creates new seeker every click
         spawnedObject.name = $"Editable {currentPlacementMode}";
-
         spawnedObject.transform.rotation = Quaternion.identity;
+
         PlaceObjectOnSurface(spawnedObject, surfacePosition);
+
+        if (IsOverlappingOtherObject(spawnedObject))
+        {
+            Debug.LogWarning("Cannot place object because it overlaps another object.");
+            Destroy(spawnedObject);
+            return;
+        }
 
         NotifyObjectPlaced(spawnedObject);
 
@@ -151,8 +170,48 @@ public class TestingScenarioEditor : MonoBehaviour
         Selection.activeGameObject = spawnedObject;
 #endif
         Debug.Log($"{currentPlacementMode} placed at {spawnedObject.transform.position}.");
-        currentPlacementMode = PlacementMode.None;
 
+        // only after successful placement so that users dont need to keep clicking buttonto spawn
+        currentPlacementMode = PlacementMode.None; 
+
+
+    }
+
+    private bool IsInsideEnvironment(Vector3 position)
+    {
+        if (placementArea == null)
+        {
+            Debug.LogWarning("No placement area assigned.");
+            return true;
+        }
+        return placementArea.bounds.Contains(position);
+    }
+
+    private bool IsOverlappingOtherObject(GameObject placedObject)
+    {
+        Bounds bounds;
+        if (!TryGetColliderBounds(placedObject, out bounds)) {
+            return false;
+        }
+
+        // find all hits that touch given box
+        Collider[] hits = Physics.OverlapBox(
+            bounds.center, // center of box
+            bounds.extents, // half the size
+            placedObject.transform.rotation,
+            placementBlockerLayers,
+            QueryTriggerInteraction.Ignore
+            );
+        foreach (Collider hit in hits)
+        {
+            // object will detect own collider
+            if (hit.transform.IsChildOf(placedObject.transform))
+            {
+                // 
+                return true;
+            }
+        }
+        return false;
     }
 
     private GameObject GetPrefabForCurrentMode()
@@ -180,7 +239,6 @@ public class TestingScenarioEditor : MonoBehaviour
             GameEvents.NotifyAgentSpawned(spawnedObject);
         }
     }
-
 
     private Vector3 GetMouseSurfacePosition(Camera cameraToUse, Vector2 mousePosition)
     {
