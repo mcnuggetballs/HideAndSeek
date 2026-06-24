@@ -47,7 +47,7 @@ public class TestingScenarioEditor : MonoBehaviour
     // += and -= are what actually connect/disconnect the event listener.
     private void OnEnable()
     {
-        // testinscenarioeditor listens for spawn seeker requests
+        // testinscenarioeditor listens for placement requests
         GameEvents.SpawnSeekerRequested += BeginPlaceSeeker;
         GameEvents.SpawnHiderRequested += BeginPlaceHider;
         GameEvents.SpawnObstacleRequested += BeginPlaceObstacle;
@@ -56,7 +56,7 @@ public class TestingScenarioEditor : MonoBehaviour
         Debug.Log("TestingScenarioEditor is listening for object placement requests.");
     }
 
-    // when this script becomes inactive, unsub BeginPlaceSeeker to SpawnSeeker requested
+    // when this script becomes inactive, stop listening for placement requests
     private void OnDisable()
     {
         GameEvents.SpawnSeekerRequested -= BeginPlaceSeeker;
@@ -87,6 +87,7 @@ public class TestingScenarioEditor : MonoBehaviour
 
     void Update()
     {
+        // was escape key pressed? 
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             currentPlacementMode = PlacementMode.None; // stop placing anything
@@ -111,6 +112,7 @@ public class TestingScenarioEditor : MonoBehaviour
         PlaceCurrentObjectAtMousePosition(mousePosition);
     }
 
+    // check if left mouse button was click this frame, return the mouse screen position
     private bool TryGetMouseClick(out Vector2 mousePosition)
     {
         mousePosition = Vector2.zero;
@@ -124,7 +126,7 @@ public class TestingScenarioEditor : MonoBehaviour
         return true;
     }
 
-    // actually place the object
+    // main placement logic
     private void PlaceCurrentObjectAtMousePosition(Vector2 mousePosition)
     {
         GameObject prefabToPlace = GetPrefabForCurrentMode();
@@ -150,8 +152,7 @@ public class TestingScenarioEditor : MonoBehaviour
             Debug.LogWarning("Cannot place object outside of environment");
             return;
         }
-
-        GameObject spawnedObject = Instantiate(prefabToPlace, environment); // now creates new seeker every click
+        GameObject spawnedObject = Instantiate(prefabToPlace, surfacePosition,Quaternion.identity, environment); // now creates new seeker every click
         spawnedObject.name = $"Editable {currentPlacementMode}";
         spawnedObject.transform.rotation = Quaternion.identity;
 
@@ -177,6 +178,7 @@ public class TestingScenarioEditor : MonoBehaviour
 
     }
 
+    // check if clicked point is inside placementArea
     private bool IsInsideEnvironment(Vector3 position)
     {
         if (placementArea == null)
@@ -185,6 +187,9 @@ public class TestingScenarioEditor : MonoBehaviour
             return true;
         }
         return placementArea.bounds.Contains(position);
+
+        // this should become bounds based
+        // check if whole object bounds fit insde placement area
     }
 
     private bool IsOverlappingOtherObject(GameObject placedObject)
@@ -195,6 +200,7 @@ public class TestingScenarioEditor : MonoBehaviour
         }
 
         // find all hits that touch given box
+
         Collider[] hits = Physics.OverlapBox(
             bounds.center, // center of box
             bounds.extents, // half the size
@@ -207,9 +213,9 @@ public class TestingScenarioEditor : MonoBehaviour
             // object will detect own collider
             if (hit.transform.IsChildOf(placedObject.transform))
             {
-                // 
-                return true;
+                continue;
             }
+                return true;
         }
         return false;
     }
@@ -261,10 +267,9 @@ public class TestingScenarioEditor : MonoBehaviour
         return Vector3.zero;
     }
 
+    // purely to lift the agent up
     private void PlaceObjectOnSurface(GameObject objectToPlace, Vector3 surfacePosition)
     {
-        objectToPlace.transform.position = surfacePosition;
-
         if (!TryGetColliderBounds(objectToPlace, out Bounds bounds))
         {
             objectToPlace.transform.position = surfacePosition + Vector3.up * placementYOffset;
@@ -275,10 +280,12 @@ public class TestingScenarioEditor : MonoBehaviour
         objectToPlace.transform.position += Vector3.up * liftAmount;
     }
 
+    // this function collects all non-trigger colliders in object and children. combines them into one big world space "bounds"
     private bool TryGetColliderBounds(GameObject targetObject, out Bounds combinedBounds)
     {
         Collider[] colliders = targetObject.GetComponentsInChildren<Collider>();
         combinedBounds = new Bounds(targetObject.transform.position, Vector3.zero);
+        //combinedBounds = new Bounds();
         bool hasBounds = false;
 
         foreach (Collider collider in colliders)
