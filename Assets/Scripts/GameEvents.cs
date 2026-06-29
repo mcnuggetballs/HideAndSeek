@@ -11,7 +11,8 @@ public static class GameEvents
     // use case : GameEvents.PlayRequested += PlaySimulation;
     public static event Action SpawnSeekerRequested;
     public static event Action SpawnHiderRequested;
-    public static event Action SpawnObstacleRequested;
+    public static event Action SpawnWallRequested;
+    public static event Action EraseRequested;
     public static event Action PlayRequested;
     public static event Action PauseRequested;
     public static event Action ResetRequested;
@@ -28,7 +29,11 @@ public static class GameEvents
     }
     public static void RequestSpawnObstacle()
     {
-        SpawnObstacleRequested?.Invoke();
+        SpawnWallRequested?.Invoke();
+    }
+    public static void RequestErase()
+    {
+        EraseRequested?.Invoke();
     }
     public static void RequestPlay()
     {

@@ -1,14 +1,15 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using System.Collections.Generic;
 using NUnit.Framework.Constraints;
 using Unity.VisualScripting;
 using UnityEditor.Experimental.GraphView;
 
-
-
-
-// this file handles spawn seeker/hider/obstacle, raycast mouseclick onto map, edit scenario. spawning related stuff is all handled here
+// this file handles mouse clicks,
+//           brush selection,
+//           asks scenariogrid what cell was clicked and
+//           tells scenariogrid to paint the cell
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -16,14 +17,19 @@ using UnityEditor;
 
 public class TestingScenarioEditor : MonoBehaviour
 {
-    private enum PlacementMode
+    private enum PaintBrush
     {
         None,
+        Wall,
+        Erase,
         Seeker,
-        Hider,
-        Obstacle
+        Hider
     }
-    private PlacementMode currentPlacementMode = PlacementMode.None;
+
+    private PaintBrush currentBrush = PaintBrush.None;
+
+    // why dictionary?  when erase can find and destroy exact object
+    private readonly Dictionary<Vector2Int, GameObject> paintedVisuals = new Dictionary<Vector2Int, GameObject>();
 
     // assign in inspector
     public Camera sceneCamera;
@@ -36,53 +42,58 @@ public class TestingScenarioEditor : MonoBehaviour
     [SerializeField] private LayerMask placementBlockerLayers; // for overlap check
     [SerializeField] private Transform environment;
 
-    [SerializeField]
-    private GameObject emptySeekerPrefab;
-    [SerializeField]
-    private GameObject emptyHiderPrefab;
-    [SerializeField]
-    private GameObject ObstaclePrefab;
+    [SerializeField] private GameObject emptySeekerPrefab;
+    [SerializeField] private GameObject emptyHiderPrefab;
+    [SerializeField] private GameObject ObstaclePrefab;
 
-    // when this script becomes active, subscribe BeginPlaceSeeker to SpawnSeeker requested
+    [SerializeField] private ScenarioGrid grid; // add scenariogrid reference 
+
+    // when this script becomes active, subscribe SelectSeekerBrush to SpawnSeeker requested
     // += and -= are what actually connect/disconnect the event listener.
+
+    // when this script becomes inactive, stop listening for placement requests
     private void OnEnable()
     {
         // testinscenarioeditor listens for placement requests
-        GameEvents.SpawnSeekerRequested += BeginPlaceSeeker;
-        GameEvents.SpawnHiderRequested += BeginPlaceHider;
-        GameEvents.SpawnObstacleRequested += BeginPlaceObstacle;
-
+        GameEvents.SpawnSeekerRequested += SelectSeekerBrush;
+        GameEvents.SpawnHiderRequested += SelectHiderBrush;
+        GameEvents.SpawnWallRequested += SelectWallBrush;
+        GameEvents.EraseRequested += SelectEraseBrush;
 
         Debug.Log("TestingScenarioEditor is listening for object placement requests.");
     }
-
-    // when this script becomes inactive, stop listening for placement requests
     private void OnDisable()
     {
-        GameEvents.SpawnSeekerRequested -= BeginPlaceSeeker;
-        GameEvents.SpawnHiderRequested -= BeginPlaceHider;
-        GameEvents.SpawnObstacleRequested -= BeginPlaceObstacle;
+        GameEvents.SpawnSeekerRequested -= SelectSeekerBrush;
+        GameEvents.SpawnHiderRequested -= SelectHiderBrush;
+        GameEvents.SpawnWallRequested -= SelectWallBrush;
+        GameEvents.EraseRequested -= SelectEraseBrush;
     }
 
-    public void BeginPlaceSeeker()
+    public void SelectSeekerBrush()
     {
-        BeginPlacementMode(PlacementMode.Seeker);
+        SelectBrush(PaintBrush.Seeker);
     }
 
-    public void BeginPlaceHider()
+    public void SelectHiderBrush()
     {
-        BeginPlacementMode(PlacementMode.Hider);
+        SelectBrush(PaintBrush.Hider);
     }
 
-    public void BeginPlaceObstacle()
+    public void SelectWallBrush()
     {
-        BeginPlacementMode(PlacementMode.Obstacle);
+        SelectBrush(PaintBrush.Wall);
     }
 
-    private void BeginPlacementMode(PlacementMode placementMode)
+    public void SelectEraseBrush()
     {
-        currentPlacementMode = placementMode;
-        Debug.Log($"{currentPlacementMode} placement mode is active. Click on the map to place.");
+        SelectBrush(PaintBrush.Erase);
+    }
+
+    private void SelectBrush(PaintBrush brushMode)
+    {
+        currentBrush = brushMode;
+        Debug.Log($"{currentBrush} placement mode is active. Click on the map to place.");
     }
 
     void Update()
@@ -90,13 +101,13 @@ public class TestingScenarioEditor : MonoBehaviour
         // was escape key pressed? 
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
-            currentPlacementMode = PlacementMode.None; // stop placing anything
+            currentBrush = PaintBrush.None; // stop placing anything
             Debug.Log("Stopped placing anything.");
             return;
         }
 
         // if not placing seeker or no mouse click = dont do anything 
-        if (currentPlacementMode == PlacementMode.None || !TryGetMouseClick(out Vector2 mousePosition)) // if in placement mode 
+        if (currentBrush == PaintBrush.None || !TryGetMouseClick(out Vector2 mousePosition)) // if in placement mode 
         {
             return;
         }
@@ -108,8 +119,7 @@ public class TestingScenarioEditor : MonoBehaviour
             return;
         }
 
-
-        PlaceCurrentObjectAtMousePosition(mousePosition);
+        PaintAtMousePosition(mousePosition);
     }
 
     // check if left mouse button was click this frame, return the mouse screen position
@@ -117,7 +127,8 @@ public class TestingScenarioEditor : MonoBehaviour
     {
         mousePosition = Vector2.zero;
 
-        if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame)
+        // instead of wasPressedThisFrame
+        if (Mouse.current == null || !Mouse.current.leftButton.isPressed)
         {
             return false;
         }
@@ -127,125 +138,92 @@ public class TestingScenarioEditor : MonoBehaviour
     }
 
     // main placement logic
-    private void PlaceCurrentObjectAtMousePosition(Vector2 mousePosition)
+    private void PaintAtMousePosition(Vector2 mousePosition)
     {
-        GameObject prefabToPlace = GetPrefabForCurrentMode();
-
-        if (prefabToPlace == null)
+        if (grid == null)
         {
-            Debug.LogWarning($"No Prefab assigned for {currentPlacementMode}");
+            Debug.LogWarning($"Cannot paint because no scenarioGrid assigned.");
             return;
         }
 
         Camera cameraToUse = sceneCamera != null ? sceneCamera : Camera.main;
         if (cameraToUse == null)
         {
-            Debug.LogWarning("Cannot place object because no camera is assigned.");
+            Debug.LogWarning("Cannot paint because no camera is assigned.");
             return;
         }
 
+        // get mouse position based on mouse click
         Vector3 surfacePosition = GetMouseSurfacePosition(cameraToUse, mousePosition);
+        // convert mouse position to grid position
+        Vector2Int cell = grid.WorldToCell(surfacePosition);
 
-        // check if in environment && inside another object
-        if (!IsInsideEnvironment(surfacePosition))
-        {
-            Debug.LogWarning("Cannot place object outside of environment");
-            return;
-        }
-        GameObject spawnedObject = Instantiate(prefabToPlace, surfacePosition,Quaternion.identity, environment); // now creates new seeker every click
-        spawnedObject.name = $"Editable {currentPlacementMode}";
-        spawnedObject.transform.rotation = Quaternion.identity;
-
-        PlaceObjectOnSurface(spawnedObject, surfacePosition);
-
-        if (IsOverlappingOtherObject(spawnedObject))
-        {
-            Debug.LogWarning("Cannot place object because it overlaps another object.");
-            Destroy(spawnedObject);
+        // if cell not inside grid, skip
+        if (!grid.IsInsideGrid(cell)){
+            Debug.LogWarning("Cannot paint outside grid!");
             return;
         }
 
-        NotifyObjectPlaced(spawnedObject);
-
-#if UNITY_EDITOR
-        Selection.activeGameObject = spawnedObject;
-#endif
-        Debug.Log($"{currentPlacementMode} placed at {spawnedObject.transform.position}.");
-
-        // only after successful placement so that users dont need to keep clicking buttonto spawn
-        currentPlacementMode = PlacementMode.None; 
-
-
+        ApplyBrushToCell(cell);
     }
 
-    // check if clicked point is inside placementArea
-    private bool IsInsideEnvironment(Vector3 position)
+    private void ApplyBrushToCell(Vector2Int cell)
     {
-        if (placementArea == null)
+        switch (currentBrush)
         {
-            Debug.LogWarning("No placement area assigned.");
-            return true;
-        }
-        return placementArea.bounds.Contains(position);
-
-        // this should become bounds based
-        // check if whole object bounds fit insde placement area
-    }
-
-    private bool IsOverlappingOtherObject(GameObject placedObject)
-    {
-        Bounds bounds;
-        if (!TryGetColliderBounds(placedObject, out bounds)) {
-            return false;
-        }
-
-        // find all hits that touch given box
-
-        Collider[] hits = Physics.OverlapBox(
-            bounds.center, // center of box
-            bounds.extents, // half the size
-            placedObject.transform.rotation,
-            placementBlockerLayers,
-            QueryTriggerInteraction.Ignore
-            );
-        foreach (Collider hit in hits)
-        {
-            // object will detect own collider
-            if (hit.transform.IsChildOf(placedObject.transform))
-            {
-                continue;
-            }
-                return true;
-        }
-        return false;
-    }
-
-    private GameObject GetPrefabForCurrentMode()
-    {
-        switch (currentPlacementMode)
-        {
-            case PlacementMode.Seeker:
-                return emptySeekerPrefab;
-
-            case PlacementMode.Hider:
-                return emptyHiderPrefab;
-
-            case PlacementMode.Obstacle:
-                return ObstaclePrefab;
+            case PaintBrush.Wall:
+                PaintCell(cell,ScenarioGrid.WallCell,ObstaclePrefab);
+                break;
+            case PaintBrush.Seeker:
+                PaintCell(cell,ScenarioGrid.SeekerCell,emptySeekerPrefab);
+                break;
+            case PaintBrush.Hider:
+                PaintCell(cell,ScenarioGrid.HiderCell,emptyHiderPrefab);
+                break;
+            case PaintBrush.Erase:
+                EraseCell(cell);
+                break;
             default:
-                return null;
+                break;
         }
-
     }
 
-    private void NotifyObjectPlaced(GameObject spawnedObject)
+    private void PaintCell(Vector2Int cell, char cellValue, GameObject prefab)
     {
-        if (currentPlacementMode == PlacementMode.Seeker)
+        if (prefab == null)
         {
-            GameEvents.NotifyAgentSpawned(spawnedObject);
+            Debug.LogWarning($"No prefab assigned for {currentBrush}.");
+            return;
         }
+
+        EraseCell(cell); // if painting over "seeker", removes seeker visual first so one cell = one thing
+
+        // updates data layer, change map data
+        grid.SetCell(cell, cellValue);
+
+        // updates visual layer
+        Vector3 worldPosition = grid.CellToWorld(cell); // need world position to place object
+        GameObject visual = Instantiate(prefab, worldPosition,Quaternion.identity, environment);
+        PlaceObjectOnSurface(visual,worldPosition);
+
+        paintedVisuals[cell] = visual; // store spawned gameObject based on grid cell
     }
 
+    private void EraseCell(Vector2Int cell)
+    {
+        // update data layer first
+        grid.SetCell(cell, ScenarioGrid.EmptyCell);
+        // then update visual layer, which is to literally remove
+        if (paintedVisuals.TryGetValue(cell, out GameObject visual))
+        {
+            Destroy(visual);
+            paintedVisuals.Remove(cell);
+        }
+
+        Debug.Log($"Erased cell from row {cell.y}, col {cell.x}");
+    }
+
+    // using camera to get mouse click position
     private Vector3 GetMouseSurfacePosition(Camera cameraToUse, Vector2 mousePosition)
     {
         Ray ray = cameraToUse.ScreenPointToRay(mousePosition);
@@ -267,7 +245,7 @@ public class TestingScenarioEditor : MonoBehaviour
         return Vector3.zero;
     }
 
-    // purely to lift the agent up
+    // purely to lift the agent on top of plane
     private void PlaceObjectOnSurface(GameObject objectToPlace, Vector3 surfacePosition)
     {
         if (!TryGetColliderBounds(objectToPlace, out Bounds bounds))
