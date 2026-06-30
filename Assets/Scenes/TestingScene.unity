@@ -531,6 +531,8 @@ MonoBehaviour:
   zoomSpeed: 5
   minZoom: 5
   maxZoom: 60
+  panSpeed: 0.005
+  environmentCollider: {fileID: 653016010}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1162,6 +1164,11 @@ PrefabInstance:
 --- !u!4 &653016009 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1868930073092234607, guid: 7e7f3643adc7cb641a64b249d6c79d35, type: 3}
+  m_PrefabInstance: {fileID: 653016008}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &653016010 stripped
+MeshCollider:
+  m_CorrespondingSourceObject: {fileID: 8109397116275600537, guid: 7e7f3643adc7cb641a64b249d6c79d35, type: 3}
   m_PrefabInstance: {fileID: 653016008}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &739433842
