@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Runtime.CompilerServices;
+using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering.UI;
 using UnityEngine.UIElements;
@@ -14,9 +15,11 @@ public class TopDownCameraController : MonoBehaviour
     public float maxZoom = 60f;
 
     // pan around
-    public float panSpeed = 0.005f;
-
+    public float panSpeed = 0.01f;
     public Collider environmentCollider;
+    private Vector3 dragStartWorldPoint;
+    private bool isDraggingMap;
+
 
     private void Awake()
     {
@@ -40,7 +43,6 @@ public class TopDownCameraController : MonoBehaviour
 
     private void HandleZoom()
     {
-
         // for zoom in/out scroll
         float scroll = Mouse.current.scroll.ReadValue().y;
         if ((Mathf.Abs(scroll) < 0.01f))
@@ -59,19 +61,57 @@ public class TopDownCameraController : MonoBehaviour
     //      move the camera in opposite direction
     private void HandlePan()
     {
-        // for pan around
-        if (Mouse.current.rightButton.isPressed)
+        if (Mouse.current.rightButton.wasPressedThisFrame)
         {
-            Vector2 mouseDelta = Mouse.current.delta.ReadValue();
-
-            Vector3 panMovement = new Vector3(
-                    -mouseDelta.y, // swapped with x
-                    0f,
-                    -mouseDelta.x // swapped with y
-                ) * panSpeed * targetCamera.orthographicSize;
-
-            transform.position += panMovement;
+            if (TryGetMouseWorldPoint(out dragStartWorldPoint))
+            {
+                isDraggingMap = true;
+            }
         }
+
+        if (Mouse.current.rightButton.isPressed && isDraggingMap)
+        {
+            if (TryGetMouseWorldPoint(out Vector3 currentWorldPoint))
+            {
+                Vector3 difference = dragStartWorldPoint - currentWorldPoint;
+                transform.position += difference;
+            }
+        }
+
+        if (Mouse.current.rightButton.wasReleasedThisFrame)
+        {
+            isDraggingMap = false;
+        }
+
+        //Vector2 mouseDelta = Mouse.current.delta.ReadValue();
+
+        //Vector3 cameraRight = targetCamera.transform.right;
+        //Vector3 cameraUp = targetCamera.transform.up;
+
+        //cameraRight.y = 0f;
+        //cameraUp.y = 0f;
+
+        //// swap y and x worked
+        //Vector3 panMovement = (-cameraRight * mouseDelta.x - cameraUp * mouseDelta.y)
+        //* panSpeed
+        //* targetCamera.orthographicSize;
+
+        //transform.position += panMovement;
+
+    }
+
+    private bool TryGetMouseWorldPoint(out Vector3 worldPoint)
+    {
+        Ray ray = targetCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
+
+        if (environmentCollider.Raycast(ray, out RaycastHit hit, 500f))
+        {
+            worldPoint = hit.point;
+            return true;
+        }
+
+        worldPoint = Vector3.zero;
+        return false;
     }
 
     // ensure camera does not go out of view
