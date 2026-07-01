@@ -22,6 +22,9 @@ public class ScenarioGrid : MonoBehaviour
 
     private char[,] cells; // 2d array 
 
+    public int Width => gridWidth;
+    public int Height => gridHeight;
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Awake()
     {
@@ -60,12 +63,22 @@ public class ScenarioGrid : MonoBehaviour
     // what is currently in this cell?
     public char GetCell(Vector2Int cell) // but vector2int is x,y
     {
+        if (!IsInsideGrid(cell))
+        {
+            return EmptyCell;
+        }
+
         return cells[cell.y, cell.x]; // arrays usually stored as row,col
     }
 
     // change cell to either seeker/hider/wall
     public void SetCell(Vector2Int cell, char value)
     {
+        if (!IsInsideGrid(cell))
+        {
+            return;
+        }
+
         cells[cell.y, cell.x] = value;
     }
 

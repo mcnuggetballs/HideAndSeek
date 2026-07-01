@@ -5,6 +5,7 @@ using Unity.MLAgents.Policies;
 using UnityEngine;
 
 // Listens to simulation-level events (play pause reset) and controls the active runtime agents (enable disable) and track simulation state
+// Builds runtime scene from truth when "play" clicked
 
 /*
     TrainingScene - set startupSpawnMode to TrainingGrid, assign simulationPrefab, spawns 16 environments.
@@ -23,17 +24,21 @@ public class SimulationManager : MonoBehaviour
 
     public GameObject simulationPrefab;
     [SerializeField] private StartupSpawnMode startupSpawnMode = StartupSpawnMode.None;
+
     [SerializeField] private int rowCount = 4;
     public float spaceBetween = 80;
+
     public GameObject seekerPrefab;
-    [SerializeField]
-    private Transform environment;
+    public GameObject hiderPrefab;
+    public GameObject obstaclePrefab;
+
+    [SerializeField] private Transform environment;
+    [SerializeField] private ScenarioGrid grid;
+    [SerializeField] private float placementYOffset = 0.02f;
 
     // keep track of agents and environments
-    private readonly List<GameObject> spawnedAgents = new List<GameObject>();
+    private readonly List<GameObject> runtimeObjects = new List<GameObject>();
     private readonly List<GameObject> spawnedEnvironments = new List<GameObject>();
-
-    private bool isPlaying; // false = edit/setup mode, true = simulation is running
 
     private void OnEnable()
     {
@@ -41,7 +46,6 @@ public class SimulationManager : MonoBehaviour
         GameEvents.PlayRequested += PlaySimulation;
         GameEvents.PauseRequested += PauseSimulation;
         GameEvents.ResetRequested += ResetSimulation;
-        GameEvents.AgentSpawned += RegisterSpawnedAgent;
     }
 
     private void OnDisable()
@@ -49,7 +53,6 @@ public class SimulationManager : MonoBehaviour
         GameEvents.PlayRequested -= PlaySimulation;
         GameEvents.PauseRequested -= PauseSimulation;
         GameEvents.ResetRequested -= ResetSimulation;
-        GameEvents.AgentSpawned -= RegisterSpawnedAgent;
     }
 
     private void Start()
@@ -68,58 +71,80 @@ public class SimulationManager : MonoBehaviour
     private void PlaySimulation()
     {
         Debug.Log("Play Simulation.");
-        isPlaying = true;
 
-        for (int i = 0; i < spawnedAgents.Count; ++i)
-        {
-            GameObject agent = spawnedAgents[i];
-            Instantiate(seekerPrefab, agent.transform.position, Quaternion.identity, environment);
-            Destroy(agent);
-        }
-        spawnedAgents.Clear();
+        ClearRuntimeObjects();
+        BuildRuntimeObjectsFromGrid();
     }
 
     private void PauseSimulation()
     {
         Debug.Log("Pause Simulation.");
-        isPlaying = false;
 
-        foreach (GameObject agent in spawnedAgents)
-        {
-            DisableAgentControl(agent);
-        }
+        ClearRuntimeObjects();
     }
 
     private void ResetSimulation()
     {
         Debug.Log("Reset Simulation.");
-        isPlaying = false;
 
-        foreach (GameObject agent in spawnedAgents)
-        {
-            if (agent != null)
-            {
-                Destroy(agent);
-            }
-        }
-
-        spawnedAgents.Clear();
+        ClearRuntimeObjects();
     }
-    // remembers seeks/hiders/agents
-    private void RegisterSpawnedAgent(GameObject agent)
+
+    private void BuildRuntimeObjectsFromGrid()
     {
-        if (agent == null || spawnedAgents.Contains(agent))
+        if (grid == null)
         {
+            Debug.LogWarning("Cannot build simulation because no ScenarioGrid is assigned.");
             return;
         }
 
-        spawnedAgents.Add(agent);
-
-        if (!isPlaying)
+        for (int row = 0; row < grid.Height; row++)
         {
-            // if i spawn an agent while not playing, freeze agent (prevents seeker from running if hider not setup yet)
-            DisableAgentControl(agent);
+            for (int col = 0; col < grid.Width; col++)
+            {
+                Vector2Int cell = new Vector2Int(col, row);
+                char cellValue = grid.GetCell(cell);
+                GameObject prefab = GetRuntimePrefabForCell(cellValue);
+
+                if (prefab == null)
+                {
+                    continue;
+                }
+
+                Vector3 worldPosition = grid.CellToWorld(cell);
+                GameObject runtimeObject = Instantiate(prefab, worldPosition, Quaternion.identity, environment);
+                PlaceObjectOnSurface(runtimeObject, worldPosition);
+                runtimeObjects.Add(runtimeObject);
+            }
         }
+    }
+
+    private GameObject GetRuntimePrefabForCell(char cellValue)
+    {
+        switch (cellValue)
+        {
+            case ScenarioGrid.SeekerCell:
+                return seekerPrefab;
+            case ScenarioGrid.HiderCell:
+                return hiderPrefab;
+            case ScenarioGrid.WallCell:
+                return obstaclePrefab;
+            default:
+                return null;
+        }
+    }
+
+    private void ClearRuntimeObjects()
+    {
+        foreach (GameObject runtimeObject in runtimeObjects)
+        {
+            if (runtimeObject != null)
+            {
+                Destroy(runtimeObject);
+            }
+        }
+
+        runtimeObjects.Clear();
     }
 
     private void SpawnTraining(GameObject simulationPrefab)
@@ -204,5 +229,43 @@ public class SimulationManager : MonoBehaviour
             rb.angularVelocity = Vector3.zero;
             rb.isKinematic = true;
         }
+    }
+
+    private void PlaceObjectOnSurface(GameObject objectToPlace, Vector3 surfacePosition)
+    {
+        if (!TryGetColliderBounds(objectToPlace, out Bounds bounds))
+        {
+            objectToPlace.transform.position = surfacePosition + Vector3.up * placementYOffset;
+            return;
+        }
+
+        float liftAmount = surfacePosition.y - bounds.min.y + placementYOffset;
+        objectToPlace.transform.position += Vector3.up * liftAmount;
+    }
+
+    private bool TryGetColliderBounds(GameObject targetObject, out Bounds combinedBounds)
+    {
+        Collider[] colliders = targetObject.GetComponentsInChildren<Collider>();
+        combinedBounds = new Bounds(targetObject.transform.position, Vector3.zero);
+        bool hasBounds = false;
+
+        foreach (Collider collider in colliders)
+        {
+            if (collider.isTrigger)
+            {
+                continue;
+            }
+
+            if (!hasBounds)
+            {
+                combinedBounds = collider.bounds;
+                hasBounds = true;
+                continue;
+            }
+
+            combinedBounds.Encapsulate(collider.bounds);
+        }
+
+        return hasBounds;
     }
 }

@@ -6,6 +6,7 @@ using NUnit.Framework.Constraints;
 using Unity.VisualScripting;
 using UnityEditor.Experimental.GraphView;
 
+// edits paint scenario data                                                                                                                                                           
 // this file handles mouse clicks,
 //           brush selection,
 //           asks scenariogrid what cell was clicked and
@@ -27,6 +28,7 @@ public class TestingScenarioEditor : MonoBehaviour
     }
 
     private PaintBrush currentBrush = PaintBrush.None;
+    private bool canPaint = true;
 
     // why dictionary?  when erase can find and destroy exact object
     private readonly Dictionary<Vector2Int, GameObject> paintedVisuals = new Dictionary<Vector2Int, GameObject>();
@@ -59,6 +61,9 @@ public class TestingScenarioEditor : MonoBehaviour
         GameEvents.SpawnHiderRequested += SelectHiderBrush;
         GameEvents.SpawnWallRequested += SelectWallBrush;
         GameEvents.EraseRequested += SelectEraseBrush;
+        GameEvents.PlayRequested += HidePaintedVisuals;
+        GameEvents.PauseRequested += ShowPaintedVisuals;
+        GameEvents.ResetRequested += ShowPaintedVisuals;
 
         Debug.Log("TestingScenarioEditor is listening for object placement requests.");
     }
@@ -68,6 +73,9 @@ public class TestingScenarioEditor : MonoBehaviour
         GameEvents.SpawnHiderRequested -= SelectHiderBrush;
         GameEvents.SpawnWallRequested -= SelectWallBrush;
         GameEvents.EraseRequested -= SelectEraseBrush;
+        GameEvents.PlayRequested -= HidePaintedVisuals;
+        GameEvents.PauseRequested -= ShowPaintedVisuals;
+        GameEvents.ResetRequested -= ShowPaintedVisuals;
     }
 
     public void SelectSeekerBrush()
@@ -107,7 +115,7 @@ public class TestingScenarioEditor : MonoBehaviour
         }
 
         // if not placing seeker or no mouse click = dont do anything 
-        if (currentBrush == PaintBrush.None || !TryGetMouseClick(out Vector2 mousePosition)) // if in placement mode 
+        if (!canPaint || currentBrush == PaintBrush.None || !TryGetMouseClick(out Vector2 mousePosition)) // if in placement mode 
         {
             return;
         }
@@ -207,6 +215,8 @@ public class TestingScenarioEditor : MonoBehaviour
         PlaceObjectOnSurface(visual,worldPosition);
 
         paintedVisuals[cell] = visual; // store spawned gameObject based on grid cell
+        
+
     }
 
     private void EraseCell(Vector2Int cell)
@@ -284,6 +294,30 @@ public class TestingScenarioEditor : MonoBehaviour
         }
 
         return hasBounds;
+    }
+
+    private void HidePaintedVisuals()
+    {
+        canPaint = false;
+        currentBrush = PaintBrush.None;
+        SetPaintedVisualsActive(false);
+    }
+
+    private void ShowPaintedVisuals()
+    {
+        canPaint = true;
+        SetPaintedVisualsActive(true);
+    }
+
+    private void SetPaintedVisualsActive(bool isActive)
+    {
+        foreach (GameObject visual in paintedVisuals.Values)
+        {
+            if (visual != null)
+            {
+                visual.SetActive(isActive);
+            }
+        }
     }
 
 

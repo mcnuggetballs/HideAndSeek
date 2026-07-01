@@ -1552,7 +1552,11 @@ MonoBehaviour:
   rowCount: 4
   spaceBetween: 0
   seekerPrefab: {fileID: 4382439110685233668, guid: 59799930b7016594399014949c3ff5c7, type: 3}
+  hiderPrefab: {fileID: 8698921351780613049, guid: d6cb008445346c34ab861c9ebd502ba1, type: 3}
+  obstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
   environment: {fileID: 1509366156}
+  grid: {fileID: 2084373550}
+  placementYOffset: 0.02
 --- !u!1 &1386116912
 GameObject:
   m_ObjectHideFlags: 0

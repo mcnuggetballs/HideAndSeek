@@ -56,9 +56,6 @@ public class TopDownCameraController : MonoBehaviour
             maxZoom);
     }
 
-    // if right mouse button is held:
-    //      read how much mouse moved
-    //      move the camera in opposite direction
     private void HandlePan()
     {
         if (Mouse.current.rightButton.wasPressedThisFrame)
@@ -82,21 +79,6 @@ public class TopDownCameraController : MonoBehaviour
         {
             isDraggingMap = false;
         }
-
-        //Vector2 mouseDelta = Mouse.current.delta.ReadValue();
-
-        //Vector3 cameraRight = targetCamera.transform.right;
-        //Vector3 cameraUp = targetCamera.transform.up;
-
-        //cameraRight.y = 0f;
-        //cameraUp.y = 0f;
-
-        //// swap y and x worked
-        //Vector3 panMovement = (-cameraRight * mouseDelta.x - cameraUp * mouseDelta.y)
-        //* panSpeed
-        //* targetCamera.orthographicSize;
-
-        //transform.position += panMovement;
 
     }
 
