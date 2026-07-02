@@ -1,8 +1,6 @@
-using JetBrains.Annotations;
 using System.Collections.Generic;
-using Unity.MLAgents;
-using Unity.MLAgents.Policies;
 using UnityEngine;
+using UnityEngine.AI;
 
 // Listens to simulation-level events (play pause reset) and controls the active runtime agents (enable disable) and track simulation state
 // Builds runtime scene from truth when "play" clicked
@@ -15,30 +13,24 @@ using UnityEngine;
 
 public class SimulationManager : MonoBehaviour
 {
-    private enum StartupSpawnMode
-    {
-        None,
-        SingleEnvironment,
-        TrainingGrid
-    }
-
-    public GameObject simulationPrefab;
-    [SerializeField] private StartupSpawnMode startupSpawnMode = StartupSpawnMode.None;
-
-    [SerializeField] private int rowCount = 4;
-    public float spaceBetween = 80;
-
     public GameObject seekerPrefab;
     public GameObject hiderPrefab;
     public GameObject obstaclePrefab;
+
+    List<SeekerAgent> seekerAgents = new List<SeekerAgent>();
+    List<NavMeshAgent> hiderAgents = new List<NavMeshAgent>();
 
     [SerializeField] private Transform environment;
     [SerializeField] private ScenarioGrid grid;
     [SerializeField] private float placementYOffset = 0.02f;
 
-    // keep track of agents and environments
     private readonly List<GameObject> runtimeObjects = new List<GameObject>();
-    private readonly List<GameObject> spawnedEnvironments = new List<GameObject>();
+
+    [SerializeField] private RuntimeNavMeshBuilder runtimeNavMeshBuilder;
+
+    // need to track to assign hider target to seeker prefab later
+    private SeekerAgent spawnedSeeker;
+    private NavMeshAgent spawnedHider;
 
     private void OnEnable()
     {
@@ -55,25 +47,25 @@ public class SimulationManager : MonoBehaviour
         GameEvents.ResetRequested -= ResetSimulation;
     }
 
-    private void Start()
-    {
-        switch (startupSpawnMode)
-        {
-            case StartupSpawnMode.SingleEnvironment:
-                SpawnTesting(simulationPrefab);
-                break;
-            case StartupSpawnMode.TrainingGrid:
-                SpawnTraining(simulationPrefab);
-                break;
-        }
-    }
-
     private void PlaySimulation()
     {
         Debug.Log("Play Simulation.");
 
         ClearRuntimeObjects();
-        BuildRuntimeObjectsFromGrid();
+        BuildObstaclesFromGrid();
+
+        if (runtimeNavMeshBuilder != null)
+        {
+            runtimeNavMeshBuilder.RebuildNavMesh();
+        }
+        else
+        {
+            Debug.LogWarning("Cannot rebuild NavMesh because no RuntimeNavMeshBuilder is assigned.");
+        }
+           
+        BuildAgentsFromGrid();
+        AssignRuntimeTargets();
+        //BuildRuntimeObjectsFromGrid();
     }
 
     private void PauseSimulation()
@@ -90,11 +82,17 @@ public class SimulationManager : MonoBehaviour
         ClearRuntimeObjects();
     }
 
-    private void BuildRuntimeObjectsFromGrid()
+    private void BuildObjectsFromCellType(char targetCellValue, GameObject prefab)
     {
         if (grid == null)
         {
             Debug.LogWarning("Cannot build simulation because no ScenarioGrid is assigned.");
+            return;
+        }
+
+        if (prefab == null)
+        {
+            Debug.LogWarning($"Cannot build objects for cell '{targetCellValue}'");
             return;
         }
 
@@ -103,10 +101,9 @@ public class SimulationManager : MonoBehaviour
             for (int col = 0; col < grid.Width; col++)
             {
                 Vector2Int cell = new Vector2Int(col, row);
-                char cellValue = grid.GetCell(cell);
-                GameObject prefab = GetRuntimePrefabForCell(cellValue);
+                char cellValue = grid.GetCell(cell); // get the character "x,s,h"
 
-                if (prefab == null)
+                if (cellValue != targetCellValue)
                 {
                     continue;
                 }
@@ -115,23 +112,55 @@ public class SimulationManager : MonoBehaviour
                 GameObject runtimeObject = Instantiate(prefab, worldPosition, Quaternion.identity, environment);
                 PlaceObjectOnSurface(runtimeObject, worldPosition);
                 runtimeObjects.Add(runtimeObject);
+
+                // after replacing prefabs, need to save them
+                // everytime want to reference something u need to do this
+                if (targetCellValue == ScenarioGrid.HiderCell)
+                {
+                    spawnedHider = runtimeObject.GetComponentInChildren<NavMeshAgent>();
+                    hiderAgents.Add(spawnedHider);
+                }
+                if (targetCellValue == ScenarioGrid.SeekerCell)
+                {
+                    spawnedSeeker = runtimeObject.GetComponentInChildren<SeekerAgent>();
+                    seekerAgents.Add(spawnedSeeker);
+                }
+            }
+        }
+
+        foreach(SeekerAgent seeker in seekerAgents)
+        {
+            foreach(NavMeshAgent hider in hiderAgents)
+            {
+                seeker.targetAgent = hider; 
             }
         }
     }
 
-    private GameObject GetRuntimePrefabForCell(char cellValue)
+    private void BuildObstaclesFromGrid()
     {
-        switch (cellValue)
+        BuildObjectsFromCellType(ScenarioGrid.WallCell, obstaclePrefab);
+
+    }
+
+    private void BuildAgentsFromGrid()
+    {
+        BuildObjectsFromCellType(ScenarioGrid.SeekerCell, seekerPrefab);
+        BuildObjectsFromCellType(ScenarioGrid.HiderCell, hiderPrefab);
+
+
+    }
+
+    private void AssignRuntimeTargets()
+    {
+        if (spawnedSeeker == null || spawnedHider == null)
         {
-            case ScenarioGrid.SeekerCell:
-                return seekerPrefab;
-            case ScenarioGrid.HiderCell:
-                return hiderPrefab;
-            case ScenarioGrid.WallCell:
-                return obstaclePrefab;
-            default:
-                return null;
+            Debug.LogWarning("Cannot assign target because seeker or hider is missing.");
+            return;
         }
+
+        spawnedSeeker.targetAgent = spawnedHider;
+        Debug.Log("Assigned hider target to seeker");
     }
 
     private void ClearRuntimeObjects()
@@ -147,94 +176,12 @@ public class SimulationManager : MonoBehaviour
         runtimeObjects.Clear();
     }
 
-    private void SpawnTraining(GameObject simulationPrefab)
-    {
-        if (simulationPrefab == null)
-        {
-            Debug.LogWarning("Cannot spawn training environments because no simulation prefab is assigned.");
-            return;
-        }
-
-        for (int i = 0; i < rowCount; i++)
-        {
-            for (int j = 0; j < rowCount; j++)
-            {
-                GameObject environment = Instantiate(simulationPrefab);
-                environment.transform.position = new Vector3(
-                    i * spaceBetween,
-                    0,
-                    j * spaceBetween);
-
-                spawnedEnvironments.Add(environment);
-            }
-        }
-    }
-
-    private void SpawnTesting(GameObject simulationPrefab)
-    {
-        if (simulationPrefab == null)
-        {
-            Debug.LogWarning("Cannot spawn testing environment because no simulation prefab is assigned.");
-            return;
-        }
-
-        GameObject environment = Instantiate(simulationPrefab);
-        spawnedEnvironments.Add(environment);
-    }
-
-    /*
-        for controlling if agent is active for ai or frozen for editing
-     */
-    private void EnableAgentControl(GameObject agentObject)
-    {
-        foreach (var behaviour in agentObject.GetComponentsInChildren<BehaviorParameters>())
-        {
-            behaviour.enabled = true;
-        }
-
-        foreach (var decisionRequester in agentObject.GetComponentsInChildren<DecisionRequester>())
-        {
-            decisionRequester.enabled = true;
-        }
-        foreach (var agent in agentObject.GetComponentsInChildren<Agent>())
-        {
-            agent.enabled = true;
-        }
-        foreach (var rb in agentObject.GetComponentsInChildren<Rigidbody>())
-        {
-            rb.isKinematic = false;
-        }
-    }
-
-    private void DisableAgentControl(GameObject agentObject)
-    {
-        foreach (DecisionRequester decisionRequester in agentObject.GetComponentsInChildren<DecisionRequester>())
-        {
-            decisionRequester.enabled = false;
-        }
-
-        foreach (BehaviorParameters behaviorParameters in agentObject.GetComponentsInChildren<BehaviorParameters>())
-        {
-            behaviorParameters.enabled = false;
-        }
-
-        foreach (Agent agent in agentObject.GetComponentsInChildren<Agent>())
-        {
-            agent.enabled = false;
-        }
-
-        foreach (Rigidbody rb in agentObject.GetComponentsInChildren<Rigidbody>())
-        {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-            rb.isKinematic = true;
-        }
-    }
-
     private void PlaceObjectOnSurface(GameObject objectToPlace, Vector3 surfacePosition)
     {
+        // checks all non trigger collider to find lowest point
         if (!TryGetColliderBounds(objectToPlace, out Bounds bounds))
         {
+            // lift up to surface
             objectToPlace.transform.position = surfacePosition + Vector3.up * placementYOffset;
             return;
         }
@@ -243,6 +190,7 @@ public class SimulationManager : MonoBehaviour
         objectToPlace.transform.position += Vector3.up * liftAmount;
     }
 
+    // this function solves the object spawning halfway inside plane problem
     private bool TryGetColliderBounds(GameObject targetObject, out Bounds combinedBounds)
     {
         Collider[] colliders = targetObject.GetComponentsInChildren<Collider>();

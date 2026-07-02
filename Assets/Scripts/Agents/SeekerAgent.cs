@@ -3,6 +3,7 @@ using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.UIElements;
 
 public class SeekerAgent : Agent
 {
@@ -18,6 +19,7 @@ public class SeekerAgent : Agent
     public float viewDistance = 50f;
     public float viewAngle = 90f;
     public float eyeHeight = 0.5f;
+    public float catchDistance = 1.5f; // TODO:change!
 
     // simulation manager spawns in world, seeker agent spawn inside own world
     [Header("Spawn Settings")]
@@ -96,7 +98,15 @@ public class SeekerAgent : Agent
         float rotate = actions.ContinuousActions[0];
         float move = Mathf.Clamp01(actions.ContinuousActions[1]);
 
-        MoveTowardsTarget();
+        transform.Rotate(0f, rotate * rotateSpeed * Time.deltaTime, 0f);
+        Vector3 moveDirection = transform.forward * move * moveSpeed * Time.deltaTime;
+        seekerAgent.Move(moveDirection);
+
+        if (Vector3.Distance(transform.position, targetAgent.transform.position) < catchDistance)
+        {
+            AddReward(catchReward);
+            EndEpisode();
+        }
 
         ApplyVisibilityBasedRewards(rotate, move);
     }
@@ -137,6 +147,7 @@ public class SeekerAgent : Agent
 
         return false;
     }
+
     private void ResetMovement()
     {
         if (seekerAgent == null)
@@ -204,7 +215,7 @@ public class SeekerAgent : Agent
             
         }
         while (
-            foundValidSpawn && attempts < maxAttempts
+            (!foundValidSpawn && attempts < maxAttempts) // keep looping above if
         );
 
         if (!foundValidSpawn)
@@ -217,25 +228,7 @@ public class SeekerAgent : Agent
 
         targetAgent.Warp(targetSpawn);
     }
-
-    // method for nav mesh agent to move towards target
-    private void MoveTowardsTarget()
-    {
-        if (!HasTargetAndNavAgent())
-        {
-            return;
-        }
-
-        seekerAgent.SetDestination(targetAgent.transform.position);
-    }
-
-
-
-
-    private void ApplyVisibilityBasedRewards(
-        float rotate,
-        float move
-    )
+    private void ApplyVisibilityBasedRewards(float rotate,float move)
     {
         if (targetAgent == null || seekerAgent == null)
         {
@@ -301,15 +294,6 @@ public class SeekerAgent : Agent
         // Very small penalty for excessive spinning.
         // Keep this tiny because the seeker still needs to rotate to scan with rays.
         AddReward(-Mathf.Abs(rotate) * rotationPenaltyScale);
-    }
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        if (collision.gameObject.CompareTag("Hider"))
-        {
-            AddReward(catchReward);
-            EndEpisode();
-        }
     }
 
     private bool HasTargetAndNavAgent()

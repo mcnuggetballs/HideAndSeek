@@ -254,9 +254,9 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 1
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 0}
+  m_Model: {fileID: 5022602860645237092, guid: be254bc6728763544896d12192586d9a, type: 3}
   m_InferenceDevice: 0
-  m_BehaviorType: 0
+  m_BehaviorType: 2
   m_BehaviorName: Seeker
   TeamId: 0
   m_UseChildSensors: 1
@@ -285,6 +285,7 @@ MonoBehaviour:
   viewDistance: 10
   viewAngle: 90
   eyeHeight: 0.5
+  catchDistance: 1.5
   minSpawnDistance: 5
   spawnRadius: 10
   groundY: 0.929
