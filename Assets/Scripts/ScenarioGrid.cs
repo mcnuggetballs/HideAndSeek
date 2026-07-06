@@ -100,14 +100,13 @@ public class ScenarioGrid : MonoBehaviour
             Vector3 start = origin + new Vector3(x * cellSize, 0, 0);
             Vector3 end = origin + new Vector3(x * cellSize, 0, gridHeight * cellSize);
             Gizmos.DrawLine(start, end);
+        }
 
-            for (int y = 0; y <= gridHeight; y++)
-            {
-                Vector3 _start = origin + new Vector3(0, 0, y * cellSize);
-                Vector3 _end = origin + new Vector3(gridWidth * cellSize, 0, y* cellSize);
-                Gizmos.DrawLine(_start, _end);
-
-            }
+        for (int y = 0; y <= gridHeight; y++)
+        {
+            Vector3 start = origin + new Vector3(0, 0, y * cellSize);
+            Vector3 end = origin + new Vector3(gridWidth * cellSize, 0, y * cellSize);
+            Gizmos.DrawLine(start, end);
         }
     }
 }

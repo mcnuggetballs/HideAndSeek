@@ -1,9 +1,9 @@
+using System.Collections.Generic;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.UIElements;
 
 public class SeekerAgent : Agent
 {
@@ -14,6 +14,7 @@ public class SeekerAgent : Agent
     public float moveSpeed = 5f;
     public float rotateSpeed = 180f;
     public NavMeshAgent targetAgent; // hider, does not have to be a navmeshnangent
+    private readonly List<NavMeshAgent> targetAgents = new List<NavMeshAgent>();
 
     //[Header("Visibility Settings")]
     public float viewDistance = 50f;
@@ -23,6 +24,7 @@ public class SeekerAgent : Agent
 
     // simulation manager spawns in world, seeker agent spawn inside own world
     [Header("Spawn Settings")]
+    [SerializeField] private bool useRandomSpawn = true;
     public float minSpawnDistance = 10f;
     public float spawnRadius = 10f;
     public float groundY = 0.929f;
@@ -55,7 +57,8 @@ public class SeekerAgent : Agent
         }
 
         ResetMovement();
-        RandomizeSpawn();
+
+        if (useRandomSpawn){ RandomizeSpawn(); }
 
         prevDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);
     }
@@ -106,6 +109,7 @@ public class SeekerAgent : Agent
         {
             AddReward(catchReward);
             EndEpisode();
+            return;
         }
 
         ApplyVisibilityBasedRewards(rotate, move);
@@ -228,6 +232,25 @@ public class SeekerAgent : Agent
 
         targetAgent.Warp(targetSpawn);
     }
+
+    public void SetUseRandomSpawn(bool decision)
+    {
+        useRandomSpawn = decision;
+    }
+
+    // this function stores all hiders and chooses nearest one as current targetAgent
+    public void SetTargets(List<NavMeshAgent> targets)
+    {
+        targetAgents.Clear();
+        targetAgents.AddRange(targets);
+        targetAgent = FindNearestTarget();
+
+        if (targetAgent != null && seekerAgent != null)
+        {
+            prevDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);
+        }
+    }
+
     private void ApplyVisibilityBasedRewards(float rotate,float move)
     {
         if (targetAgent == null || seekerAgent == null)
@@ -298,6 +321,34 @@ public class SeekerAgent : Agent
 
     private bool HasTargetAndNavAgent()
     {
+        if (targetAgent == null && targetAgents.Count > 0)
+        {
+            targetAgent = FindNearestTarget();
+        }
+
         return targetAgent != null && seekerAgent != null && seekerAgent.isOnNavMesh; // maybe exclude isOnNavMesh
+    }
+
+    private NavMeshAgent FindNearestTarget()
+    {
+        NavMeshAgent nearestTarget = null;
+        float nearestDistance = float.MaxValue;
+
+        foreach (NavMeshAgent possibleTarget in targetAgents)
+        {
+            if (possibleTarget == null) // skip function if there are no possible targets
+            {
+                continue;
+            }
+
+            float distance = Vector3.Distance(transform.position, possibleTarget.transform.position);
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestTarget = possibleTarget;
+            }
+        }
+
+        return nearestTarget;
     }
 }

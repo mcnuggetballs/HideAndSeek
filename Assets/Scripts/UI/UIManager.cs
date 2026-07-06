@@ -11,6 +11,7 @@ public class UIManager : MonoBehaviour
     public Button spawnSeekerButton;
     public Button spawnHiderButton;
     public Button spawnObstacleButton;
+    public Button eraseButton;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -27,6 +28,7 @@ public class UIManager : MonoBehaviour
         AddButtonListener(spawnSeekerButton, OnSpawnSeekerClicked, nameof(spawnSeekerButton));
         AddButtonListener(spawnHiderButton, OnSpawnHiderClicked, nameof(spawnHiderButton));
         AddButtonListener(spawnObstacleButton, OnSpawnObstacleClicked, nameof(spawnObstacleButton));
+        AddButtonListener(eraseButton, OnEraseClicked, nameof(eraseButton));
 
     }
 
@@ -39,6 +41,7 @@ public class UIManager : MonoBehaviour
         RemoveButtonListener(spawnSeekerButton, OnSpawnSeekerClicked);
         RemoveButtonListener(spawnHiderButton, OnSpawnHiderClicked);
         RemoveButtonListener(spawnObstacleButton, OnSpawnObstacleClicked);
+        RemoveButtonListener(eraseButton, OnEraseClicked);
     }
     private void OnPlayClicked()
     {
@@ -69,6 +72,12 @@ public class UIManager : MonoBehaviour
     {
         GameEvents.RequestSpawnObstacle();
         Debug.Log("Spawn Obstacle Button clicked");
+    }
+
+    private void OnEraseClicked()
+    {
+        GameEvents.RequestErase();
+        Debug.Log("Erase Button clicked");
     }
 
     private void AddButtonListener(Button button, UnityEngine.Events.UnityAction action, string fieldName)

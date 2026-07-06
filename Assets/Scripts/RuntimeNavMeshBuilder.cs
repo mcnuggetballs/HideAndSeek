@@ -8,6 +8,12 @@ public class RuntimeNavMeshBuilder : MonoBehaviour
 
     public void RebuildNavMesh()
     {
+        if (navMeshSurface == null)
+        {
+            Debug.LogWarning("Cannot rebuild NavMesh because no NavMeshSurface is assigned.");
+            return;
+        }
+
         navMeshSurface.BuildNavMesh();
         Debug.Log("Runtime NavMesh rebuilt");
     }

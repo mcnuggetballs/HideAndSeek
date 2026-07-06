@@ -2,19 +2,12 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
-using NUnit.Framework.Constraints;
-using Unity.VisualScripting;
-using UnityEditor.Experimental.GraphView;
 
 // edits paint scenario data                                                                                                                                                           
 // this file handles mouse clicks,
 //           brush selection,
 //           asks scenariogrid what cell was clicked and
 //           tells scenariogrid to paint the cell
-
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 public class TestingScenarioEditor : MonoBehaviour
 {
@@ -135,8 +128,7 @@ public class TestingScenarioEditor : MonoBehaviour
     {
         mousePosition = Vector2.zero;
 
-        // instead of wasPressedThisFrame
-        if (Mouse.current == null || !Mouse.current.leftButton.isPressed)
+        if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame)
         {
             return false;
         }

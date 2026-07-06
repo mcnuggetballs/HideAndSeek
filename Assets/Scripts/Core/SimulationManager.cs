@@ -5,20 +5,22 @@ using UnityEngine.AI;
 // Listens to simulation-level events (play pause reset) and controls the active runtime agents (enable disable) and track simulation state
 // Builds runtime scene from truth when "play" clicked
 
-/*
-    TrainingScene - set startupSpawnMode to TrainingGrid, assign simulationPrefab, spawns 16 environments.
-    TestingScene - set startupSpawnMode to None when one SimulationPrefab is already placed in the scene.
- 
- */
-
 public class SimulationManager : MonoBehaviour
 {
+    public enum SimulationMode
+    {
+        Testing, // keep configured positions
+        Training // randomise
+    }
+
+    [SerializeField] private SimulationMode simulationMode = SimulationMode.Testing;
+
     public GameObject seekerPrefab;
     public GameObject hiderPrefab;
     public GameObject obstaclePrefab;
 
-    List<SeekerAgent> seekerAgents = new List<SeekerAgent>();
-    List<NavMeshAgent> hiderAgents = new List<NavMeshAgent>();
+    private readonly List<SeekerAgent> seekerAgents = new List<SeekerAgent>();
+    private readonly List<NavMeshAgent> hiderAgents = new List<NavMeshAgent>();
 
     [SerializeField] private Transform environment;
     [SerializeField] private ScenarioGrid grid;
@@ -27,10 +29,6 @@ public class SimulationManager : MonoBehaviour
     private readonly List<GameObject> runtimeObjects = new List<GameObject>();
 
     [SerializeField] private RuntimeNavMeshBuilder runtimeNavMeshBuilder;
-
-    // need to track to assign hider target to seeker prefab later
-    private SeekerAgent spawnedSeeker;
-    private NavMeshAgent spawnedHider;
 
     private void OnEnable()
     {
@@ -65,7 +63,6 @@ public class SimulationManager : MonoBehaviour
            
         BuildAgentsFromGrid();
         AssignRuntimeTargets();
-        //BuildRuntimeObjectsFromGrid();
     }
 
     private void PauseSimulation()
@@ -80,6 +77,13 @@ public class SimulationManager : MonoBehaviour
         Debug.Log("Reset Simulation.");
 
         ClearRuntimeObjects();
+    }
+
+
+    private void BuildObstaclesFromGrid()
+    {
+        BuildObjectsFromCellType(ScenarioGrid.WallCell, obstaclePrefab);
+
     }
 
     private void BuildObjectsFromCellType(char targetCellValue, GameObject prefab)
@@ -113,36 +117,26 @@ public class SimulationManager : MonoBehaviour
                 PlaceObjectOnSurface(runtimeObject, worldPosition);
                 runtimeObjects.Add(runtimeObject);
 
-                // after replacing prefabs, need to save them
-                // everytime want to reference something u need to do this
                 if (targetCellValue == ScenarioGrid.HiderCell)
                 {
-                    spawnedHider = runtimeObject.GetComponentInChildren<NavMeshAgent>();
-                    hiderAgents.Add(spawnedHider);
+                    NavMeshAgent spawnedHider = runtimeObject.GetComponentInChildren<NavMeshAgent>();
+                    if(spawnedHider !=null){ 
+                        hiderAgents.Add(spawnedHider); 
+                    }
                 }
                 if (targetCellValue == ScenarioGrid.SeekerCell)
                 {
-                    spawnedSeeker = runtimeObject.GetComponentInChildren<SeekerAgent>();
-                    seekerAgents.Add(spawnedSeeker);
+                    SeekerAgent spawnedSeeker = runtimeObject.GetComponentInChildren<SeekerAgent>();
+                    if (spawnedSeeker != null)
+                    {
+                        spawnedSeeker.SetUseRandomSpawn(ShouldUseRandomSpawn());
+                        seekerAgents.Add(spawnedSeeker);
+
+                    }
                 }
             }
         }
-
-        foreach(SeekerAgent seeker in seekerAgents)
-        {
-            foreach(NavMeshAgent hider in hiderAgents)
-            {
-                seeker.targetAgent = hider; 
-            }
-        }
     }
-
-    private void BuildObstaclesFromGrid()
-    {
-        BuildObjectsFromCellType(ScenarioGrid.WallCell, obstaclePrefab);
-
-    }
-
     private void BuildAgentsFromGrid()
     {
         BuildObjectsFromCellType(ScenarioGrid.SeekerCell, seekerPrefab);
@@ -151,24 +145,38 @@ public class SimulationManager : MonoBehaviour
 
     }
 
+    // Gives every seeker the full hider list; each seeker currently follows the nearest target.
     private void AssignRuntimeTargets()
     {
-        if (spawnedSeeker == null || spawnedHider == null)
+        if (seekerAgents.Count == 0 || hiderAgents.Count == 0)
         {
-            Debug.LogWarning("Cannot assign target because seeker or hider is missing.");
+            Debug.LogWarning("Cannot assign target because there are not seekers or hiders.");
             return;
         }
 
-        spawnedSeeker.targetAgent = spawnedHider;
-        Debug.Log("Assigned hider target to seeker");
+        foreach(SeekerAgent seeker in seekerAgents)
+        {
+            seeker.SetUseRandomSpawn(ShouldUseRandomSpawn());
+            seeker.SetTargets(hiderAgents);
+        }
     }
 
+    private bool ShouldUseRandomSpawn()
+    {
+        return simulationMode == SimulationMode.Training;
+    }
+
+    // this functions makes old runtime objects inactive before destroying them to stop affecting runtime navMesh rebuilds
     private void ClearRuntimeObjects()
     {
+        seekerAgents.Clear();
+        hiderAgents.Clear();
+
         foreach (GameObject runtimeObject in runtimeObjects)
         {
             if (runtimeObject != null)
             {
+                runtimeObject.SetActive(false); // make inactive first
                 Destroy(runtimeObject);
             }
         }
