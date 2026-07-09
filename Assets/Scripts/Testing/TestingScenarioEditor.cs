@@ -35,13 +35,13 @@ public class TestingScenarioEditor : MonoBehaviour
     // refine placement logic
     [SerializeField] private Collider placementArea;
     [SerializeField] private LayerMask placementBlockerLayers; // for overlap check
-    [SerializeField] private Transform environment;
 
     [SerializeField] private GameObject emptySeekerPrefab;
     [SerializeField] private GameObject emptyHiderPrefab;
     [SerializeField] private GameObject ObstaclePrefab;
 
-    [SerializeField] private ScenarioGrid grid; // add scenariogrid reference 
+    private Transform environment; // parent? 
+    private ScenarioGrid grid; // not serialised so that can create in own environment 
 
     // when this script becomes active, subscribe SelectSeekerBrush to SpawnSeeker requested
     // += and -= are what actually connect/disconnect the event listener.
@@ -70,6 +70,50 @@ public class TestingScenarioEditor : MonoBehaviour
         GameEvents.PauseRequested -= ShowPaintedVisuals;
         GameEvents.ResetRequested -= ShowPaintedVisuals;
     }
+    void Awake()
+    {
+        grid = GetComponentInParent<ScenarioGrid>(); // auto assign grid
+
+        var envManager = GetComponentInParent<EnvironmentManager>();
+
+        if (envManager == null)
+        {
+            Debug.LogError("No EnvironmentManager found in parent!");
+            return;
+        }
+
+        environment = envManager.transform.Find("RuntimeObjects");
+
+        if (environment == null)
+        {
+            Debug.LogError("RuntimeObjects not found in parent!");
+        }
+    }
+    private void Update()
+    {
+        // was escape key pressed? 
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            currentBrush = PaintBrush.None; // stop placing anything
+            Debug.Log("Stopped placing anything.");
+            return;
+        }
+
+        // if not placing seeker or no mouse click = dont do anything 
+        if (!canPaint || currentBrush == PaintBrush.None || !TryGetMouseClick(out Vector2 mousePosition)) // if in placement mode 
+        {
+            return;
+        }
+
+        // check if u click UI instead of world
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+        {
+            Debug.Log("Object placement click ignored because the pointer is over UI.");
+            return;
+        }
+
+        PaintAtMousePosition(mousePosition);
+    }
 
     public void SelectSeekerBrush()
     {
@@ -97,31 +141,6 @@ public class TestingScenarioEditor : MonoBehaviour
         Debug.Log($"{currentBrush} placement mode is active. Click on the map to place.");
     }
 
-    void Update()
-    {
-        // was escape key pressed? 
-        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-        {
-            currentBrush = PaintBrush.None; // stop placing anything
-            Debug.Log("Stopped placing anything.");
-            return;
-        }
-
-        // if not placing seeker or no mouse click = dont do anything 
-        if (!canPaint || currentBrush == PaintBrush.None || !TryGetMouseClick(out Vector2 mousePosition)) // if in placement mode 
-        {
-            return;
-        }
-
-        // check if u click UI instead of world
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-        {
-            Debug.Log("Object placement click ignored because the pointer is over UI.");
-            return;
-        }
-
-        PaintAtMousePosition(mousePosition);
-    }
 
     // check if left mouse button was click this frame, return the mouse screen position
     private bool TryGetMouseClick(out Vector2 mousePosition)
@@ -159,7 +178,8 @@ public class TestingScenarioEditor : MonoBehaviour
         Vector2Int cell = grid.WorldToCell(surfacePosition);
 
         // if cell not inside grid, skip
-        if (!grid.IsInsideGrid(cell)){
+        if (!grid.IsInsideGrid(cell))
+        {
             Debug.LogWarning("Cannot paint outside grid!");
             return;
         }
@@ -172,13 +192,13 @@ public class TestingScenarioEditor : MonoBehaviour
         switch (currentBrush)
         {
             case PaintBrush.Wall:
-                PaintCell(cell,ScenarioGrid.WallCell,ObstaclePrefab);
+                PaintCell(cell, ScenarioGrid.WallCell, ObstaclePrefab);
                 break;
             case PaintBrush.Seeker:
-                PaintCell(cell,ScenarioGrid.SeekerCell,emptySeekerPrefab);
+                PaintCell(cell, ScenarioGrid.SeekerCell, emptySeekerPrefab);
                 break;
             case PaintBrush.Hider:
-                PaintCell(cell,ScenarioGrid.HiderCell,emptyHiderPrefab);
+                PaintCell(cell, ScenarioGrid.HiderCell, emptyHiderPrefab);
                 break;
             case PaintBrush.Erase:
                 EraseCell(cell);
@@ -203,11 +223,11 @@ public class TestingScenarioEditor : MonoBehaviour
 
         // updates visual layer
         Vector3 worldPosition = grid.CellToWorld(cell); // need world position to place object
-        GameObject visual = Instantiate(prefab, worldPosition,Quaternion.identity, environment);
-        PlaceObjectOnSurface(visual,worldPosition);
+        GameObject visual = Instantiate(prefab, worldPosition, Quaternion.identity, environment);
+        PlaceObjectOnSurface(visual, worldPosition);
 
         paintedVisuals[cell] = visual; // store spawned gameObject based on grid cell
-        
+
 
     }
 

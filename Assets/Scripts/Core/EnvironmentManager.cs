@@ -2,10 +2,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
+// each environment prefab = 1 simulation mgr
+
 // Listens to simulation-level events (play pause reset) and controls the active runtime agents (enable disable) and track simulation state
 // Builds runtime scene from truth when "play" clicked
 
-public class SimulationManager : MonoBehaviour
+public class EnvironmentManager : MonoBehaviour
 {
     public enum SimulationMode
     {
@@ -19,16 +21,20 @@ public class SimulationManager : MonoBehaviour
     public GameObject hiderPrefab;
     public GameObject obstaclePrefab;
 
+    // belongs to each mgr instance
     private readonly List<SeekerAgent> seekerAgents = new List<SeekerAgent>();
     private readonly List<NavMeshAgent> hiderAgents = new List<NavMeshAgent>();
 
-    [SerializeField] private Transform environment;
+    [Header("References")]
     [SerializeField] private ScenarioGrid grid;
-    [SerializeField] private float placementYOffset = 0.02f;
-
     private readonly List<GameObject> runtimeObjects = new List<GameObject>();
-
     [SerializeField] private RuntimeNavMeshBuilder runtimeNavMeshBuilder;
+    [SerializeField] private Transform environment; // runtime objects
+
+
+
+    // yet to implement
+    private bool isPaused = false; // for pause simulation
 
     private void OnEnable()
     {
@@ -48,6 +54,9 @@ public class SimulationManager : MonoBehaviour
     private void PlaySimulation()
     {
         Debug.Log("Play Simulation.");
+    
+        isPaused = false;
+        Time.timeScale = 1f; // let time continue 
 
         ClearRuntimeObjects();
         BuildObstaclesFromGrid();
@@ -60,22 +69,26 @@ public class SimulationManager : MonoBehaviour
         {
             Debug.LogWarning("Cannot rebuild NavMesh because no RuntimeNavMeshBuilder is assigned.");
         }
-           
+
         BuildAgentsFromGrid();
         AssignRuntimeTargets();
     }
 
+    // should freeze but not destroy
     private void PauseSimulation()
     {
         Debug.Log("Pause Simulation.");
 
-        ClearRuntimeObjects();
+        isPaused = true;
+        Time.timeScale = 0f;
     }
 
+    // destroy
     private void ResetSimulation()
     {
         Debug.Log("Reset Simulation.");
 
+        Time.timeScale = 1f;
         ClearRuntimeObjects();
     }
 
@@ -120,8 +133,9 @@ public class SimulationManager : MonoBehaviour
                 if (targetCellValue == ScenarioGrid.HiderCell)
                 {
                     NavMeshAgent spawnedHider = runtimeObject.GetComponentInChildren<NavMeshAgent>();
-                    if(spawnedHider !=null){ 
-                        hiderAgents.Add(spawnedHider); 
+                    if (spawnedHider != null)
+                    {
+                        hiderAgents.Add(spawnedHider);
                     }
                 }
                 if (targetCellValue == ScenarioGrid.SeekerCell)
@@ -154,10 +168,20 @@ public class SimulationManager : MonoBehaviour
             return;
         }
 
-        foreach(SeekerAgent seeker in seekerAgents)
+
+        foreach (SeekerAgent seeker in seekerAgents)
         {
+            if (seeker == null) continue;
+
+            //ensure seeker belongs to the environment
+            if (!seeker.transform.IsChildOf(environment))
+            {
+                Debug.LogWarning("Seeker not part of this environment");
+                continue;
+            }
+
             seeker.SetUseRandomSpawn(ShouldUseRandomSpawn());
-            seeker.SetTargets(hiderAgents);
+            seeker.SetTargets(new List<NavMeshAgent>(hiderAgents)); // pass copy
         }
     }
 
@@ -190,11 +214,11 @@ public class SimulationManager : MonoBehaviour
         if (!TryGetColliderBounds(objectToPlace, out Bounds bounds))
         {
             // lift up to surface
-            objectToPlace.transform.position = surfacePosition + Vector3.up * placementYOffset;
+            objectToPlace.transform.position = surfacePosition + Vector3.up;
             return;
         }
 
-        float liftAmount = surfacePosition.y - bounds.min.y + placementYOffset;
+        float liftAmount = surfacePosition.y - bounds.min.y;
         objectToPlace.transform.position += Vector3.up * liftAmount;
     }
 

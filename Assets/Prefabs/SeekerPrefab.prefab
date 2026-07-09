@@ -286,6 +286,7 @@ MonoBehaviour:
   viewAngle: 90
   eyeHeight: 0.5
   catchDistance: 1.5
+  useRandomSpawn: 1
   minSpawnDistance: 5
   spawnRadius: 10
   groundY: 0.929

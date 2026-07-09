@@ -1,4 +1,4 @@
-using System;
+                            using System;
 using UnityEngine;
 
 // UI Manager will tell GameEvents that this button was clicked, GameEvents broadcast to the whole system
@@ -47,7 +47,6 @@ public static class GameEvents
     {
         ResetRequested?.Invoke();
     }
-
     public static void NotifyAgentSpawned(GameObject agent)
     {
         AgentSpawned?.Invoke(agent);

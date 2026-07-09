@@ -119,37 +119,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &193747629
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 193747630}
-  m_Layer: 0
-  m_Name: Obstacles
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &193747630
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 193747629}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1509366156}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &230654667
 GameObject:
   m_ObjectHideFlags: 0
@@ -1639,15 +1608,13 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1022320175}
-  - component: {fileID: 1022320177}
-  - component: {fileID: 1022320178}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1022320175
 Transform:
   m_ObjectHideFlags: 0
@@ -1663,50 +1630,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1022320177
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1022320173}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d42b1fd9972148db9b87d1a20ce5f403, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TestingScenarioEditor
-  sceneCamera: {fileID: 330585545}
-  placementYOffset: 0.02
-  seekerPreviewScale: 1
-  placementArea: {fileID: 634632341}
-  placementBlockerLayers:
-    serializedVersion: 2
-    m_Bits: 64
-  environment: {fileID: 0}
-  emptySeekerPrefab: {fileID: 1702149679562409119, guid: f73ca6929283a0f469c6260e87d16f6d, type: 3}
-  emptyHiderPrefab: {fileID: 5050601273516166025, guid: 082cb2d2ffe1e99409acb97864633ee2, type: 3}
-  ObstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
-  grid: {fileID: 2084373550}
---- !u!114 &1022320178
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1022320173}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 25a0ca2004e9fd34ebeefbb2a9516c78, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SimulationManager
-  simulationMode: 0
-  seekerPrefab: {fileID: 4382439110685233668, guid: 59799930b7016594399014949c3ff5c7, type: 3}
-  hiderPrefab: {fileID: 8698921351780613049, guid: d6cb008445346c34ab861c9ebd502ba1, type: 3}
-  obstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
-  environment: {fileID: 1509366156}
-  grid: {fileID: 2084373550}
-  placementYOffset: 0.02
-  runtimeNavMeshBuilder: {fileID: 1509366157}
 --- !u!1 &1147061993
 GameObject:
   m_ObjectHideFlags: 0
@@ -1844,6 +1767,60 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1147061993}
   m_CullTransparentMesh: 1
+--- !u!1 &1349535921
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1349535922}
+  - component: {fileID: 1349535923}
+  m_Layer: 0
+  m_Name: TestingScenarioEditor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1349535922
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1349535921}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1509366156}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1349535923
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1349535921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d42b1fd9972148db9b87d1a20ce5f403, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TestingScenarioEditor
+  sceneCamera: {fileID: 330585545}
+  placementYOffset: 0.02
+  seekerPreviewScale: 1
+  placementArea: {fileID: 634632341}
+  placementBlockerLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  emptySeekerPrefab: {fileID: 1702149679562409119, guid: f73ca6929283a0f469c6260e87d16f6d, type: 3}
+  emptyHiderPrefab: {fileID: 5050601273516166025, guid: 082cb2d2ffe1e99409acb97864633ee2, type: 3}
+  ObstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
 --- !u!1 &1386116912
 GameObject:
   m_ObjectHideFlags: 0
@@ -2010,6 +1987,9 @@ GameObject:
   - component: {fileID: 1509366156}
   - component: {fileID: 1509366158}
   - component: {fileID: 1509366157}
+  - component: {fileID: 1509366159}
+  - component: {fileID: 1509366160}
+  - component: {fileID: 1509366161}
   m_Layer: 0
   m_Name: Testing Simulation Environment
   m_TagString: Untagged
@@ -2031,9 +2011,9 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 653016009}
-  - {fileID: 634632340}
-  - {fileID: 193747630}
   - {fileID: 1740093415}
+  - {fileID: 634632340}
+  - {fileID: 1349535922}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1509366157
@@ -2081,6 +2061,64 @@ MonoBehaviour:
   m_MinRegionArea: 2
   m_NavMeshData: {fileID: 0}
   m_BuildHeightMesh: 0
+--- !u!114 &1509366159
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1509366155}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 25a0ca2004e9fd34ebeefbb2a9516c78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnvironmentManager
+  simulationMode: 0
+  seekerPrefab: {fileID: 4382439110685233668, guid: 59799930b7016594399014949c3ff5c7, type: 3}
+  hiderPrefab: {fileID: 8698921351780613049, guid: d6cb008445346c34ab861c9ebd502ba1, type: 3}
+  obstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
+  environment: {fileID: 1740093415}
+  grid: {fileID: 1509366160}
+  placementYOffset: 0.02
+  runtimeNavMeshBuilder: {fileID: 1509366157}
+--- !u!114 &1509366160
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1509366155}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e54cb18a793059439155da4c4ff4024, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScenarioGrid
+  gridWidth: 10
+  gridHeight: 10
+  cellSize: 5
+  gridOrigin: {x: -25, y: 0, z: -25}
+--- !u!114 &1509366161
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1509366155}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d42b1fd9972148db9b87d1a20ce5f403, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TestingScenarioEditor
+  sceneCamera: {fileID: 330585545}
+  placementYOffset: 0.02
+  seekerPreviewScale: 1
+  placementArea: {fileID: 634632341}
+  placementBlockerLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  emptySeekerPrefab: {fileID: 1702149679562409119, guid: f73ca6929283a0f469c6260e87d16f6d, type: 3}
+  emptyHiderPrefab: {fileID: 5050601273516166025, guid: 082cb2d2ffe1e99409acb97864633ee2, type: 3}
+  ObstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
 --- !u!1 &1536900576
 GameObject:
   m_ObjectHideFlags: 0
@@ -2579,7 +2617,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1740093415}
   m_Layer: 0
-  m_Name: Runtime Objects
+  m_Name: RuntimeObjects
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2997,54 +3035,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2056754795}
   m_CullTransparentMesh: 1
---- !u!1 &2084373548
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2084373549}
-  - component: {fileID: 2084373550}
-  m_Layer: 0
-  m_Name: ScenarioGrid
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2084373549
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2084373548}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -11.345, y: 0.35853, z: -6.38309}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2084373550
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2084373548}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3e54cb18a793059439155da4c4ff4024, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ScenarioGrid
-  gridWidth: 10
-  gridHeight: 10
-  cellSize: 5
-  gridOrigin: {x: -25, y: 0, z: -25}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -3056,4 +3046,3 @@ SceneRoots:
   - {fileID: 1386116915}
   - {fileID: 1981676578}
   - {fileID: 1509366156}
-  - {fileID: 2084373549}

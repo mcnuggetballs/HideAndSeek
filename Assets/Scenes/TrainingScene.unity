@@ -683,6 +683,10 @@ PrefabInstance:
       value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 3466068927734382600, guid: 59799930b7016594399014949c3ff5c7, type: 3}
+      propertyPath: m_BehaviorType
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3466068927734382600, guid: 59799930b7016594399014949c3ff5c7, type: 3}
       propertyPath: m_BrainParameters.VectorObservationSize
       value: 5
       objectReference: {fileID: 0}

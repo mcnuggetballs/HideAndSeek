@@ -242,7 +242,7 @@ public class SeekerAgent : Agent
     public void SetTargets(List<NavMeshAgent> targets)
     {
         targetAgents.Clear();
-        targetAgents.AddRange(targets);
+        targetAgents.AddRange(targets); // must only receive local hider agents
         targetAgent = FindNearestTarget();
 
         if (targetAgent != null && seekerAgent != null)
