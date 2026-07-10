@@ -1814,6 +1814,8 @@ MonoBehaviour:
   sceneCamera: {fileID: 330585545}
   placementYOffset: 0.02
   seekerPreviewScale: 1
+  grid: {fileID: 1509366160}
+  environment: {fileID: 1509366156}
   placementArea: {fileID: 634632341}
   placementBlockerLayers:
     serializedVersion: 2
@@ -2077,9 +2079,8 @@ MonoBehaviour:
   seekerPrefab: {fileID: 4382439110685233668, guid: 59799930b7016594399014949c3ff5c7, type: 3}
   hiderPrefab: {fileID: 8698921351780613049, guid: d6cb008445346c34ab861c9ebd502ba1, type: 3}
   obstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
-  environment: {fileID: 1740093415}
   grid: {fileID: 1509366160}
-  placementYOffset: 0.02
+  runtimeObjects: {fileID: 1740093415}
   runtimeNavMeshBuilder: {fileID: 1509366157}
 --- !u!114 &1509366160
 MonoBehaviour:
@@ -2104,7 +2105,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1509366155}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d42b1fd9972148db9b87d1a20ce5f403, type: 3}
   m_Name: 
@@ -2112,6 +2113,8 @@ MonoBehaviour:
   sceneCamera: {fileID: 330585545}
   placementYOffset: 0.02
   seekerPreviewScale: 1
+  grid: {fileID: 0}
+  environment: {fileID: 0}
   placementArea: {fileID: 634632341}
   placementBlockerLayers:
     serializedVersion: 2

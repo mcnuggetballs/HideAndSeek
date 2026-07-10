@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 // this file records the grid map similar to a truth table
@@ -87,6 +89,16 @@ public class ScenarioGrid : MonoBehaviour
     {
         return cell.x >= 0 && cell.x < gridWidth && // check if cell x position is 0 - 19
                cell.y >= 0 && cell.y < gridHeight;
+    }
+    public IEnumerable<Vector2Int> GetAllCells()
+    {
+        for (int row = 0; row < Height; row++)
+        {
+            for (int col = 0; col < Width; col++)
+            {
+                yield return new Vector2Int(col, row);
+            }
+        }
     }
 
     void OnDrawGizmos()

@@ -32,6 +32,9 @@ public class TestingScenarioEditor : MonoBehaviour
     public float placementYOffset = 0.02f;
     public float seekerPreviewScale = 1f;
 
+    [SerializeField] private ScenarioGrid grid; // not serialised so that can create in own environment 
+    [SerializeField] private Transform environment; // parent? 
+
     // refine placement logic
     [SerializeField] private Collider placementArea;
     [SerializeField] private LayerMask placementBlockerLayers; // for overlap check
@@ -39,9 +42,6 @@ public class TestingScenarioEditor : MonoBehaviour
     [SerializeField] private GameObject emptySeekerPrefab;
     [SerializeField] private GameObject emptyHiderPrefab;
     [SerializeField] private GameObject ObstaclePrefab;
-
-    private Transform environment; // parent? 
-    private ScenarioGrid grid; // not serialised so that can create in own environment 
 
     // when this script becomes active, subscribe SelectSeekerBrush to SpawnSeeker requested
     // += and -= are what actually connect/disconnect the event listener.
@@ -70,25 +70,7 @@ public class TestingScenarioEditor : MonoBehaviour
         GameEvents.PauseRequested -= ShowPaintedVisuals;
         GameEvents.ResetRequested -= ShowPaintedVisuals;
     }
-    void Awake()
-    {
-        grid = GetComponentInParent<ScenarioGrid>(); // auto assign grid
 
-        var envManager = GetComponentInParent<EnvironmentManager>();
-
-        if (envManager == null)
-        {
-            Debug.LogError("No EnvironmentManager found in parent!");
-            return;
-        }
-
-        environment = envManager.transform.Find("RuntimeObjects");
-
-        if (environment == null)
-        {
-            Debug.LogError("RuntimeObjects not found in parent!");
-        }
-    }
     private void Update()
     {
         // was escape key pressed? 
@@ -115,6 +97,7 @@ public class TestingScenarioEditor : MonoBehaviour
         PaintAtMousePosition(mousePosition);
     }
 
+    // BRUSH SYSTEM //
     public void SelectSeekerBrush()
     {
         SelectBrush(PaintBrush.Seeker);
@@ -141,7 +124,8 @@ public class TestingScenarioEditor : MonoBehaviour
         Debug.Log($"{currentBrush} placement mode is active. Click on the map to place.");
     }
 
-
+    
+    // INPUT SYSTEM //
     // check if left mouse button was click this frame, return the mouse screen position
     private bool TryGetMouseClick(out Vector2 mousePosition)
     {
@@ -156,7 +140,6 @@ public class TestingScenarioEditor : MonoBehaviour
         return true;
     }
 
-    // main placement logic
     private void PaintAtMousePosition(Vector2 mousePosition)
     {
         if (grid == null)
@@ -245,6 +228,9 @@ public class TestingScenarioEditor : MonoBehaviour
         Debug.Log($"Erased cell from row {cell.y}, col {cell.x}");
     }
 
+    
+    // PLACEMENT LOGIC //
+
     // using camera to get mouse click position
     private Vector3 GetMouseSurfacePosition(Camera cameraToUse, Vector2 mousePosition)
     {
@@ -308,6 +294,8 @@ public class TestingScenarioEditor : MonoBehaviour
         return hasBounds;
     }
 
+   
+    // HIDE & SHOW PAINT VISUALS //
     private void HidePaintedVisuals()
     {
         canPaint = false;

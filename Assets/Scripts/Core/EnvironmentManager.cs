@@ -1,3 +1,4 @@
+using Grpc.Core;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
@@ -17,24 +18,23 @@ public class EnvironmentManager : MonoBehaviour
 
     [SerializeField] private SimulationMode simulationMode = SimulationMode.Testing;
 
+    [Header("Prefabs")]
     public GameObject seekerPrefab;
     public GameObject hiderPrefab;
     public GameObject obstaclePrefab;
 
     // belongs to each mgr instance
-    private readonly List<SeekerAgent> seekerAgents = new List<SeekerAgent>();
-    private readonly List<NavMeshAgent> hiderAgents = new List<NavMeshAgent>();
+    private readonly List<SeekerAgent> seekerAgents = new();
+    private readonly List<NavMeshAgent> hiderAgents = new();
 
     [Header("References")]
     [SerializeField] private ScenarioGrid grid;
-    private readonly List<GameObject> runtimeObjects = new List<GameObject>();
+    [SerializeField] private Transform runtimeObjects; // environment container
+    //private readonly List<GameObject> spawnedObjects = new List<GameObject>();
     [SerializeField] private RuntimeNavMeshBuilder runtimeNavMeshBuilder;
-    [SerializeField] private Transform environment; // runtime objects
 
 
-
-    // yet to implement
-    private bool isPaused = false; // for pause simulation
+    private bool isPaused = false; // yet to implement
 
     private void OnEnable()
     {
@@ -54,23 +54,13 @@ public class EnvironmentManager : MonoBehaviour
     private void PlaySimulation()
     {
         Debug.Log("Play Simulation.");
-    
+
         isPaused = false;
-        Time.timeScale = 1f; // let time continue 
+        Time.timeScale = 1f;
 
         ClearRuntimeObjects();
-        BuildObstaclesFromGrid();
-
-        if (runtimeNavMeshBuilder != null)
-        {
-            runtimeNavMeshBuilder.RebuildNavMesh();
-        }
-        else
-        {
-            Debug.LogWarning("Cannot rebuild NavMesh because no RuntimeNavMeshBuilder is assigned.");
-        }
-
-        BuildAgentsFromGrid();
+        BuildFromGrid();
+        runtimeNavMeshBuilder.RebuildNavMesh();
         AssignRuntimeTargets();
     }
 
@@ -92,71 +82,47 @@ public class EnvironmentManager : MonoBehaviour
         ClearRuntimeObjects();
     }
 
-
-    private void BuildObstaclesFromGrid()
+    private void BuildFromGrid()
     {
-        BuildObjectsFromCellType(ScenarioGrid.WallCell, obstaclePrefab);
+        seekerAgents.Clear();
+        hiderAgents.Clear();
 
-    }
-
-    private void BuildObjectsFromCellType(char targetCellValue, GameObject prefab)
-    {
-        if (grid == null)
+        foreach (var cell in grid.GetAllCells())
         {
-            Debug.LogWarning("Cannot build simulation because no ScenarioGrid is assigned.");
-            return;
-        }
+            char value = grid.GetCell(cell); // know cell type of each grid
+            Vector3 worldPos = grid.CellToWorld(cell); // converted pos 
 
-        if (prefab == null)
-        {
-            Debug.LogWarning($"Cannot build objects for cell '{targetCellValue}'");
-            return;
-        }
+            GameObject obj = null;
 
-        for (int row = 0; row < grid.Height; row++)
-        {
-            for (int col = 0; col < grid.Width; col++)
+            if (value == ScenarioGrid.WallCell)
             {
-                Vector2Int cell = new Vector2Int(col, row);
-                char cellValue = grid.GetCell(cell); // get the character "x,s,h"
-
-                if (cellValue != targetCellValue)
+                obj = Instantiate(obstaclePrefab, worldPos, Quaternion.identity, runtimeObjects);
+            }
+            else if (value == ScenarioGrid.SeekerCell)
+            {
+                obj = Instantiate(seekerPrefab, worldPos, Quaternion.identity, runtimeObjects);
+                var seeker = obj.GetComponentInChildren<SeekerAgent>();
+                if (seeker != null)
                 {
-                    continue;
-                }
-
-                Vector3 worldPosition = grid.CellToWorld(cell);
-                GameObject runtimeObject = Instantiate(prefab, worldPosition, Quaternion.identity, environment);
-                PlaceObjectOnSurface(runtimeObject, worldPosition);
-                runtimeObjects.Add(runtimeObject);
-
-                if (targetCellValue == ScenarioGrid.HiderCell)
-                {
-                    NavMeshAgent spawnedHider = runtimeObject.GetComponentInChildren<NavMeshAgent>();
-                    if (spawnedHider != null)
-                    {
-                        hiderAgents.Add(spawnedHider);
-                    }
-                }
-                if (targetCellValue == ScenarioGrid.SeekerCell)
-                {
-                    SeekerAgent spawnedSeeker = runtimeObject.GetComponentInChildren<SeekerAgent>();
-                    if (spawnedSeeker != null)
-                    {
-                        spawnedSeeker.SetUseRandomSpawn(ShouldUseRandomSpawn());
-                        seekerAgents.Add(spawnedSeeker);
-
-                    }
+                    seeker.SetUseRandomSpawn(ShouldUseRandomSpawn());
+                    seekerAgents.Add(seeker);
                 }
             }
+            else if (value == ScenarioGrid.HiderCell)
+            {
+                obj = Instantiate(hiderPrefab, worldPos, Quaternion.identity, runtimeObjects);
+                var hider = obj.GetComponentInChildren<NavMeshAgent>();
+                if (hider != null)
+                {
+                    hiderAgents.Add(hider);
+                }
+            }
+            if (obj != null)
+            {
+                PlaceObjectOnSurface(obj, worldPos);
+                //spawnedObjects.Add(obj); // TODO: probably dont need this?
+            }
         }
-    }
-    private void BuildAgentsFromGrid()
-    {
-        BuildObjectsFromCellType(ScenarioGrid.SeekerCell, seekerPrefab);
-        BuildObjectsFromCellType(ScenarioGrid.HiderCell, hiderPrefab);
-
-
     }
 
     // Gives every seeker the full hider list; each seeker currently follows the nearest target.
@@ -174,7 +140,7 @@ public class EnvironmentManager : MonoBehaviour
             if (seeker == null) continue;
 
             //ensure seeker belongs to the environment
-            if (!seeker.transform.IsChildOf(environment))
+            if (!seeker.transform.IsChildOf(runtimeObjects))
             {
                 Debug.LogWarning("Seeker not part of this environment");
                 continue;
@@ -196,16 +162,14 @@ public class EnvironmentManager : MonoBehaviour
         seekerAgents.Clear();
         hiderAgents.Clear();
 
-        foreach (GameObject runtimeObject in runtimeObjects)
+        foreach (Transform child in runtimeObjects)
         {
-            if (runtimeObject != null)
+            if (child != null)
             {
-                runtimeObject.SetActive(false); // make inactive first
-                Destroy(runtimeObject);
+                Destroy(child.gameObject);
             }
         }
 
-        runtimeObjects.Clear();
     }
 
     private void PlaceObjectOnSurface(GameObject objectToPlace, Vector3 surfacePosition)
