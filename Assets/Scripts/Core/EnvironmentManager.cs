@@ -30,7 +30,6 @@ public class EnvironmentManager : MonoBehaviour
     [Header("References")]
     [SerializeField] private ScenarioGrid grid;
     [SerializeField] private Transform runtimeObjects; // environment container
-    //private readonly List<GameObject> spawnedObjects = new List<GameObject>();
     [SerializeField] private RuntimeNavMeshBuilder runtimeNavMeshBuilder;
 
 
@@ -120,7 +119,6 @@ public class EnvironmentManager : MonoBehaviour
             if (obj != null)
             {
                 PlaceObjectOnSurface(obj, worldPos);
-                //spawnedObjects.Add(obj); // TODO: probably dont need this?
             }
         }
     }
