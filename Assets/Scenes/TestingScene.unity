@@ -652,8 +652,7 @@ MonoBehaviour:
   zoomSpeed: 5
   minZoom: 5
   maxZoom: 60
-  panSpeed: 0.005
-  environmentCollider: {fileID: 653016010}
+  spawner: {fileID: 0}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1160,11 +1159,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 613875832}
   m_CullTransparentMesh: 1
---- !u!64 &653016010 stripped
-MeshCollider:
-  m_CorrespondingSourceObject: {fileID: 4840427757766838437, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
-  m_PrefabInstance: {fileID: 1676564271430245630}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &739433842
 GameObject:
   m_ObjectHideFlags: 0
@@ -2701,6 +2695,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 355382800254966207, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 1006135926191435751, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -2739,6 +2737,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1006135926191435751, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2134855663785489812, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
+      propertyPath: simulationMode
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6751455813423526616, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}

@@ -153,8 +153,9 @@ GameObject:
   - component: {fileID: 957535751907432168}
   - component: {fileID: 2134855663785489812}
   - component: {fileID: 967686372987626610}
+  - component: {fileID: 355382800254966207}
   m_Layer: 0
-  m_Name: Testing Simulation Environment
+  m_Name: TrainingScenePrefab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -236,7 +237,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25a0ca2004e9fd34ebeefbb2a9516c78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnvironmentManager
-  simulationMode: 0
+  simulationMode: 1
   seekerPrefab: {fileID: 4382439110685233668, guid: 59799930b7016594399014949c3ff5c7, type: 3}
   hiderPrefab: {fileID: 8698921351780613049, guid: d6cb008445346c34ab861c9ebd502ba1, type: 3}
   obstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
@@ -259,6 +260,21 @@ MonoBehaviour:
   gridHeight: 10
   cellSize: 5
   gridOrigin: {x: -25, y: 0, z: -25}
+--- !u!114 &355382800254966207
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7066587739052165337}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8cae71caf21a77643bbf8c99300ae4d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RandomScenarioGenerator
+  obstacleCount: 8
+  seekerCount: 1
+  hiderCount: 1
 --- !u!1001 &3721937914881188924
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -35,6 +35,44 @@ public class EnvironmentManager : MonoBehaviour
 
     private bool isPaused = false; // yet to implement
 
+    private void Start()
+    {
+        Debug.Log($"{name} Start() called");
+
+        if (simulationMode == SimulationMode.Training)
+        {
+            Debug.LogWarning($"{name} Entering training intialisation");
+            InitialiseEnvironment();
+        }
+    }
+
+    private void InitialiseEnvironment()
+    {
+
+        Debug.Log($"{name} InitialiseEnvironment() called");
+
+        ClearRuntimeObjects();
+
+        if(simulationMode == SimulationMode.Training)
+        { 
+        var generator = GetComponent<RandomScenarioGenerator>();
+        if (generator != null)
+        {
+            generator.Generate();
+
+        }
+        else
+        {
+            Debug.LogWarning("No RandomScenarioGenerator found!");
+        }
+        }
+
+        BuildFromGrid();
+        runtimeNavMeshBuilder.RebuildNavMesh();
+        AssignRuntimeTargets();
+    }
+
+    #region Training
     private void OnEnable()
     {
         // simulation maanger listens to play/pause.reset and agent spawning
@@ -57,10 +95,7 @@ public class EnvironmentManager : MonoBehaviour
         isPaused = false;
         Time.timeScale = 1f;
 
-        ClearRuntimeObjects();
-        BuildFromGrid();
-        runtimeNavMeshBuilder.RebuildNavMesh();
-        AssignRuntimeTargets();
+        InitialiseEnvironment();
     }
 
     // should freeze but not destroy
@@ -79,6 +114,11 @@ public class EnvironmentManager : MonoBehaviour
 
         Time.timeScale = 1f;
         ClearRuntimeObjects();
+    }
+
+    public void ResetEnvironment()
+    {
+        InitialiseEnvironment();
     }
 
     private void BuildFromGrid()
@@ -121,6 +161,7 @@ public class EnvironmentManager : MonoBehaviour
                 PlaceObjectOnSurface(obj, worldPos);
             }
         }
+        Debug.Log($"[{name}] BuildFromGrid running");
     }
 
     // Gives every seeker the full hider list; each seeker currently follows the nearest target.
@@ -210,4 +251,7 @@ public class EnvironmentManager : MonoBehaviour
 
         return hasBounds;
     }
+    #endregion
 }
+
+

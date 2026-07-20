@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -31,14 +30,18 @@ public class ScenarioGrid : MonoBehaviour
     void Awake()
     {
         cells = new char[gridHeight, gridWidth];
+        ClearGrid();
+    }
 
-        for (int row = 0; row < gridHeight; row++)
+    public void ClearGrid()
+    {
+        for (int row = 0; row < Height; row++)
         {
-            for (int col = 0; col < gridWidth; col++)
+            for (int col = 0; col < Width; col++)
             {
                 cells[row, col] = EmptyCell;
             }
-        } // now we have a blank canvas yay!
+        }
     }
 
     // converts a unity world position to grid cell 
@@ -52,14 +55,21 @@ public class ScenarioGrid : MonoBehaviour
     }
 
     // converts cell position back to unity world position
-    public Vector3 CellToWorld(Vector2Int cellPosition)
+    public Vector3 CellToWorld(Vector2Int cell)
     {
         // need 0.5f to spawn at center of cell
-        return gridOrigin + new Vector3(
-            cellPosition.x * cellSize + (cellSize * 0.5f),
+        //return gridOrigin + new Vector3(
+        //    cellPosition.x * cell + (cell * 0.5f),
+        //    0,
+        //    cellPosition.y * cell + (cell * 0.5f)
+        //);
+        float offsetX = (gridWidth - 1) * 0.5f;
+        float offsetZ = (gridHeight - 1) * 0.5f;
+
+        return transform.position + new Vector3(
+            (cell.x - offsetX)* cellSize, 
             0,
-            cellPosition.y * cellSize + (cellSize * 0.5f)
-        );
+            (cell.y - offsetZ) * cellSize);
     }
 
     // what is currently in this cell?

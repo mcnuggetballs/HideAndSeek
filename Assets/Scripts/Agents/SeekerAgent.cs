@@ -41,6 +41,12 @@ public class SeekerAgent : Agent
 
     private float prevDistance = 0f;
 
+    private EnvironmentManager environmentManager;
+
+    private void Start()
+    {
+        environmentManager = GetComponentInParent<EnvironmentManager>();
+    }
     private void Awake()
     {
         if (seekerAgent == null)
@@ -51,6 +57,12 @@ public class SeekerAgent : Agent
 
     public override void OnEpisodeBegin()
     {
+        if(environmentManager != null)
+        {
+            environmentManager.ResetEnvironment();
+        }
+        ResetMovement();
+
         if (!HasTargetAndNavAgent())
         {
             return;

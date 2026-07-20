@@ -1,8 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.Rendering.UI;
-using UnityEngine.UIElements;
 
 // this file handles how the environment can be viewed (zoom in/out, look around) during editor mode
 public class TopDownCameraController : MonoBehaviour
@@ -10,17 +8,18 @@ public class TopDownCameraController : MonoBehaviour
     public Camera targetCamera;
 
     // zoom function
-    public float zoomSpeed = 20f;
-    public float minZoom = 5f;
-    public float maxZoom = 60f;
+    public float zoomSpeed = 10f;
+    public float minZoom = 10f;
+    public float maxZoom = 200f;
 
     // pan around
-    public float panSpeed = 0.01f;
-    public Collider environmentCollider;
     private Vector3 dragStartWorldPoint;
     private bool isDraggingMap;
 
+    [SerializeField] private EnvironmentSpawner spawner;
 
+
+    // immediately
     private void Awake()
     {
         if (targetCamera == null)
@@ -28,6 +27,7 @@ public class TopDownCameraController : MonoBehaviour
             targetCamera = GetComponent<Camera>();
         }
     }
+
     // Update is called once per frame
     void Update()
     {
@@ -38,22 +38,33 @@ public class TopDownCameraController : MonoBehaviour
 
         HandleZoom();
         HandlePan();
-        //ClampCameraToBounds();
     }
 
     private void HandleZoom()
     {
+        Debug.Log($"Zoom running on: {gameObject.name}");
+
         // for zoom in/out scroll
         float scroll = Mouse.current.scroll.ReadValue().y;
+        Debug.Log("Scroll value: " + scroll);
+
         if ((Mathf.Abs(scroll) < 0.01f))
         {
             return;
         }
+        Debug.Log("Camera size BEFORE: " + targetCamera.orthographicSize);
+
         targetCamera.orthographicSize -= scroll * zoomSpeed;
+
+        Debug.Log("Camera size AFTER: " + targetCamera.orthographicSize);
+
         targetCamera.orthographicSize = Mathf.Clamp(
             targetCamera.orthographicSize,
             minZoom,
             maxZoom);
+
+        //Debug.Log("Zoom triggered on: " + gameObject.name);
+        //Debug.Log(targetCamera.orthographicSize);
     }
 
     private void HandlePan()
@@ -86,9 +97,11 @@ public class TopDownCameraController : MonoBehaviour
     {
         Ray ray = targetCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
 
-        if (environmentCollider.Raycast(ray, out RaycastHit hit, 500f))
+        Plane groundPlane = new Plane(Vector3.up, Vector3.zero); // y = 0
+
+        if (groundPlane.Raycast(ray, out float enter))
         {
-            worldPoint = hit.point;
+            worldPoint = ray.GetPoint(enter);
             return true;
         }
 
@@ -96,49 +109,4 @@ public class TopDownCameraController : MonoBehaviour
         return false;
     }
 
-    // ensure camera does not go out of view
-    // TODO: height in centre so wont force clamp even though too small
-    private void ClampCameraToBounds()
-    {
-        Camera cam = Camera.main;
-        Bounds bounds = environmentCollider.bounds;
-
-        float halfHeight = cam.orthographicSize;
-        float halfWidth = halfHeight * cam.aspect;
-
-        float boundsWidth = bounds.size.x;
-        float boundsHeight = bounds.size.z;
-
-        Vector3 pos = transform.position;
-
-        // X
-        if (halfWidth * 2 >= boundsWidth)
-        {
-            // Camera is wider than the bounds → stay centered
-            pos.x = bounds.center.x;
-        }
-        else
-        {
-            pos.x = Mathf.Clamp(
-                pos.x,
-                bounds.min.x + halfWidth,
-                bounds.max.x - halfWidth);
-        }
-
-        // Z
-        if (halfHeight * 2 >= boundsHeight)
-        {
-            // Camera is taller than the bounds → stay centered
-            pos.z = bounds.center.z;
-        }
-        else
-        {
-            pos.z = Mathf.Clamp(
-                pos.z,
-                bounds.min.z + halfHeight,
-                bounds.max.z - halfHeight);
-        }
-
-        cam.transform.position = pos;
-    }
 }
