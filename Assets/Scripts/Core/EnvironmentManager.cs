@@ -2,6 +2,7 @@ using Grpc.Core;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.SceneManagement;
 
 // each environment prefab = 1 simulation mgr
 
@@ -43,6 +44,20 @@ public class EnvironmentManager : MonoBehaviour
         {
             Debug.LogWarning($"{name} Entering training intialisation");
             InitialiseEnvironment();
+        }
+    }
+
+    // to ensure manual setup not required and always in the correct mode, can transition to game manager in future
+    private void Awake()
+    {
+        string sceneName = SceneManager.GetActiveScene().name;
+        if (sceneName.Contains("Training"))
+        {
+            simulationMode = SimulationMode.Training;
+        }
+        else
+        {
+            simulationMode = SimulationMode.Testing;
         }
     }
 
