@@ -245,6 +245,7 @@ MonoBehaviour:
   grid: {fileID: 967686372987626610}
   runtimeObjects: {fileID: 4978278084163510711}
   runtimeNavMeshBuilder: {fileID: 957535751907432168}
+  scenarioEditor: {fileID: 0}
   editorRoot: {fileID: 7756727609724575244}
 --- !u!114 &967686372987626610
 MonoBehaviour:
@@ -258,7 +259,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e54cb18a793059439155da4c4ff4024, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ScenarioGrid
-  gridOrigin: {x: -25, y: 0, z: -25}
   gridWidth: 10
   gridHeight: 10
   cellSize: 5
@@ -275,8 +275,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RandomScenarioGenerator
   obstacleCount: 30
-  seekerCount: 1
-  hiderCount: 1
+  seekerCount: 10
+  hiderCount: 10
 --- !u!1 &7756727609724575244
 GameObject:
   m_ObjectHideFlags: 0

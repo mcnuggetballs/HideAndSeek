@@ -20,10 +20,9 @@ public class TestingScenarioEditor : MonoBehaviour
         Hider
     }
 
-    private PaintBrush currentBrush = PaintBrush.None;
+    // Editor States
+    private PaintBrush currentBrush;
     private bool canPaint = true;
-
-    // why dictionary?  when erase can find and destroy exact object
     private readonly Dictionary<Vector2Int, GameObject> paintedVisuals = new Dictionary<Vector2Int, GameObject>();
 
     // assign in inspector
@@ -60,7 +59,6 @@ public class TestingScenarioEditor : MonoBehaviour
 
         GameEvents.PlayRequested += HidePaintedVisuals;
         GameEvents.ResetRequested += ShowPaintedVisuals;
-        GameEvents.ResetRequested += EnableEditing;
 
         Debug.Log("TestingScenarioEditor is listening for object placement requests.");
     }
@@ -73,7 +71,6 @@ public class TestingScenarioEditor : MonoBehaviour
 
         GameEvents.PlayRequested -= HidePaintedVisuals;
         GameEvents.ResetRequested -= ShowPaintedVisuals;
-        GameEvents.ResetRequested -= EnableEditing;
     }
 
     private void Update()
@@ -342,8 +339,9 @@ public class TestingScenarioEditor : MonoBehaviour
         SetPaintedVisualsActive(true);
     }
 
-    public void EnableEditing()
+    public void ResetEditorState()
     {
+        Debug.Log("Resetting editor state");
         canPaint = true;
         currentBrush = PaintBrush.None;
     }

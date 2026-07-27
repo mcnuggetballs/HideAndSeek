@@ -1,4 +1,4 @@
-using Grpc.Core;
+﻿using Grpc.Core;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
@@ -38,8 +38,86 @@ public class EnvironmentManager : MonoBehaviour
     [SerializeField] public GameObject editorRoot;
     private bool isPaused = false; // yet to implement
     private bool isStarted = false;
-    private Dictionary<Vector2Int, GameObject> runtimeMap = new();
     private bool isEdited = false;
+    private Dictionary<Vector2Int, GameObject> runtimeMap = new();
+
+    #region Lifecycle Runs
+    // Builds runtime from grid, Hide editor, Build environment, Start simultion
+    private void PlaySimulation()
+    {
+        Debug.Log("Play Simulation.");
+
+        // ALWAYS ensure runtime container is active BEFORE building
+        if (runtimeObjects != null)
+            runtimeObjects.gameObject.SetActive(true);
+
+        // hide editor visuals
+        if (simulationMode == SimulationMode.Testing && editorRoot != null)
+            editorRoot.SetActive(false);
+
+        // build after editor is hidden
+        if (simulationMode == SimulationMode.Testing)
+        {
+            // first play, grid has been edited
+            if (!isStarted || isEdited) // so that new seekers are reflected
+            {
+                InitialiseEnvironment();
+                isStarted = true;
+                isEdited = false;
+            }
+        }
+        else // training
+        {
+            InitialiseEnvironment();
+        }
+
+        Time.timeScale = 1f;
+        isPaused = false;
+
+
+    }
+
+    // Freeze time, DO NOT rebuild/ destroy
+    private void PauseSimulation()
+    {
+        Debug.Log("Pause Simulation.");
+
+        Time.timeScale = 0f; // do nothing to editor visuals
+        isPaused = true;
+    }
+
+    // Destroy runtime, Clear grid/ editor visuals, Return to Editor Mode
+    private void ResetSimulation()
+    {
+        Debug.Log("Reset Simulation.");
+
+        Time.timeScale = 1f;
+
+        // destroy runtime objects completely
+        ClearRuntimeObjects();
+
+        // destroy editor visuals completely
+        scenarioEditor.ClearEditorVisuals();
+        scenarioEditor.ResetEditorState();
+
+        // clear grid data
+        grid.ClearGrid();
+
+        // reset state flags
+        isStarted = false;
+        isPaused = false;
+        isEdited = false;
+
+        if (editorRoot != null) // this is what enables editing
+        {
+            editorRoot.SetActive(true);
+        }
+        if (runtimeObjects != null)
+        {
+            runtimeObjects.gameObject.SetActive(false);
+        }
+    }
+    #endregion
 
     // decide simulationMode based on scene name (temporary, to be fixed with proper GameManager later)
     private void Awake()
@@ -66,6 +144,13 @@ public class EnvironmentManager : MonoBehaviour
 
         ClearRuntimeObjects();
 
+        // safety check
+        if (!runtimeObjects.gameObject.activeSelf)
+        {
+            Debug.LogWarning("RuntimeObjects was inactive during build. Fixing.");
+            runtimeObjects.gameObject.SetActive(true);
+        }
+
         if (simulationMode == SimulationMode.Training)
         {
             var generator = GetComponent<RandomScenarioGenerator>();
@@ -86,27 +171,12 @@ public class EnvironmentManager : MonoBehaviour
     private void BuildRuntime()
     {
         BuildObstaclesOnly();
-        //Physics.SyncTransforms();
+        Physics.SyncTransforms(); // important when colliders instantiated, bake NavMesh
         runtimeNavMeshBuilder.RebuildNavMesh();
         BuildAgentsOnly();
         AssignRuntimeTargets();
     }
 
-    // getters
-    public bool IsStarted()
-    {
-        return isStarted;
-    }
-
-    public bool IsPaused()
-    {
-        return isPaused;
-    }
-
-    public Transform GetEditorRoot()
-    {
-        return editorRoot.transform;
-    }
 
     // to inform runtime, grid changed (user painted a cell
     public void MarkGridDirty()
@@ -164,83 +234,6 @@ public class EnvironmentManager : MonoBehaviour
         GameEvents.ResetRequested -= ResetSimulation;
     }
 
-    // clicking play purely builds, play again resumes instead of rebuild
-    private void PlaySimulation()
-    {
-        Debug.Log("Play Simulation.");
-
-        // hide editor first
-        if (simulationMode == SimulationMode.Testing && editorRoot != null)
-        {
-            editorRoot.SetActive(false); // hide editor
-            runtimeObjects.gameObject.SetActive(true); // show runtime
-        }
-
-        // build after editor is hidden
-        if (simulationMode == SimulationMode.Testing)
-        {
-            // first play, grid has been edited
-            if (!isStarted || isEdited) // so that new seekers are reflected
-            {
-                InitialiseEnvironment();
-                isStarted = true;
-                isEdited = false;
-            }
-        }
-        else
-        {
-            InitialiseEnvironment();
-        }
-
-        Time.timeScale = 1f;
-        isPaused = false;
-
-
-    }
-
-    // should freeze but not destroy
-    private void PauseSimulation()
-    {
-        Debug.Log("Pause Simulation.");
-
-        Time.timeScale = 0f; // do nothing to editor visuals
-        isPaused = true;
-
-    }
-
-    // clear runtime, go back to editor state
-    private void ResetSimulation()
-    {
-        Debug.Log("Reset Simulation.");
-
-        Time.timeScale = 1f;
-
-        // destroy runtime objects completely
-        ClearRuntimeObjects();
-
-        // destroy editor visuals completely
-        scenarioEditor.ClearEditorVisuals();
-        scenarioEditor.EnableEditing();
-        Debug.LogWarning("Enable Editing");
-
-        // clear grid data
-        grid.ClearGrid();
-
-        // reset state flags
-        isStarted = false;
-        isPaused = false;
-        isEdited = false;
-
-        if (editorRoot != null)
-        {
-            editorRoot.SetActive(true);
-        }
-        if (runtimeObjects != null)
-        {
-            runtimeObjects.gameObject.SetActive(true);
-        }
-    }
-
     void BuildObstaclesOnly()
     {
         foreach (var cell in grid.GetAllCells())
@@ -263,16 +256,17 @@ public class EnvironmentManager : MonoBehaviour
         foreach (var cell in grid.GetAllCells())
         {
             char value = grid.GetCell(cell);
-            Vector3 worldPos = grid.CellToWorld(cell);
 
-            if (!NavMesh.SamplePosition(worldPos, out NavMeshHit hit, 1.0f, NavMesh.AllAreas))
+            if (value == ScenarioGrid.WallCell)
                 continue;
+
+            Vector3 worldPos = grid.CellToWorld(cell);
 
             GameObject obj = null;
 
             if (value == ScenarioGrid.SeekerCell)
             {
-                obj = Instantiate(seekerPrefab, hit.position, Quaternion.identity, runtimeObjects);
+                obj = Instantiate(seekerPrefab, worldPos, Quaternion.identity, runtimeObjects);
                 var seeker = obj.GetComponentInChildren<SeekerAgent>();
                 if (seeker != null)
                 {
@@ -281,7 +275,7 @@ public class EnvironmentManager : MonoBehaviour
             }
             else if (value == ScenarioGrid.HiderCell)
             {
-                obj = Instantiate(hiderPrefab, hit.position, Quaternion.identity, runtimeObjects);
+                obj = Instantiate(hiderPrefab, worldPos, Quaternion.identity, runtimeObjects);
                 var hider = obj.GetComponentInChildren<NavMeshAgent>();
                 if (hider != null)
                 {
@@ -290,11 +284,11 @@ public class EnvironmentManager : MonoBehaviour
             }
             if (obj != null)
             {
-                if (runtimeMap.ContainsKey(cell))
+                if (runtimeMap.TryGetValue(cell, out GameObject existing))
                 {
-                    Destroy(runtimeMap[cell]);
+                    Destroy(runtimeMap[cell]);runtimeMap.Remove(cell);
                 }
-                runtimeMap[cell] = obj; // so im guessing i clean visual map and update runtime map?
+                runtimeMap[cell] = obj;
 
 
             }
@@ -391,6 +385,21 @@ public class EnvironmentManager : MonoBehaviour
         return hasBounds;
     }
 
+    #region Getters
+    public bool IsStarted()
+    {
+        return isStarted;
+    }
+
+    public bool IsPaused()
+    {
+        return isPaused;
+    }
+
+    public Transform GetEditorRoot()
+    {
+        return editorRoot.transform;
+    }
     public GameObject GetSeekerPrefab()
     {
         return seekerPrefab;
@@ -400,6 +409,8 @@ public class EnvironmentManager : MonoBehaviour
     {
         return hiderPrefab;
     }
+    #endregion
+
 }
 
 
