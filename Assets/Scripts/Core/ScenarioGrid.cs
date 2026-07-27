@@ -16,7 +16,6 @@ public class ScenarioGrid : MonoBehaviour
     public const char HiderCell = 'H';
 
     // grid settings
-    [SerializeField] private Vector3 gridOrigin;
     [SerializeField] private int gridWidth; // cols
     [SerializeField] private int gridHeight; // rows 
     [SerializeField] private float cellSize; // how big
@@ -48,8 +47,12 @@ public class ScenarioGrid : MonoBehaviour
     // converts a unity world position to grid cell 
     public Vector2Int WorldToCell(Vector3 worldPosition)
     {
-        int col = Mathf.FloorToInt((worldPosition.x - gridOrigin.x) / cellSize);
-        int row = Mathf.FloorToInt((worldPosition.z - gridOrigin.z) / cellSize);
+        Vector3 origin = transform.position; // was gridOrigin
+
+        float offsetX = (gridWidth * cellSize) / 2f;
+        float offsetZ = (gridHeight * cellSize) / 2f;
+        int col = Mathf.FloorToInt((worldPosition.x - origin.x + offsetX) / cellSize);
+        int row = Mathf.FloorToInt((worldPosition.z - origin.z + offsetZ) / cellSize);
 
         return new Vector2Int(col, row);
     }
@@ -110,7 +113,10 @@ public class ScenarioGrid : MonoBehaviour
     {
         Gizmos.color = Color.green;
 
-        Vector3 origin = gridOrigin;
+        float offsetX = (gridWidth * cellSize) / 2f;
+        float offsetZ = (gridHeight * cellSize) / 2f;
+
+        Vector3 origin = transform.position - new Vector3(offsetX, offsetX, offsetZ);
 
         for (int x = 0; x <= gridWidth; x++)
         {

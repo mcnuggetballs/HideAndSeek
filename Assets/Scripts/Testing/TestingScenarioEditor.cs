@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
@@ -258,8 +258,6 @@ public class TestingScenarioEditor : MonoBehaviour
             Destroy(visual);
             paintedVisuals.Remove(cell);
         }
-
-        Debug.Log($"Erased cell from row {cell.y}, col {cell.x}");
     }
 
 
