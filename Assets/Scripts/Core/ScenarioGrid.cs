@@ -16,13 +16,14 @@ public class ScenarioGrid : MonoBehaviour
     public const char HiderCell = 'H';
 
     // grid settings
-    [SerializeField] private int gridWidth = 50; // cols
-    [SerializeField] private int gridHeight = 50; // rows 
-    [SerializeField] private float cellSize = 1f; // how big
-    [SerializeField] private Vector3 gridOrigin; // where cell 0,0 begins
+    [SerializeField] private Vector3 gridOrigin;
+    [SerializeField] private int gridWidth; // cols
+    [SerializeField] private int gridHeight; // rows 
+    [SerializeField] private float cellSize; // how big
 
     private char[,] cells; // 2d array 
 
+    // Getter, grid.Width, grid.Height
     public int Width => gridWidth;
     public int Height => gridHeight;
 
@@ -47,9 +48,8 @@ public class ScenarioGrid : MonoBehaviour
     // converts a unity world position to grid cell 
     public Vector2Int WorldToCell(Vector3 worldPosition)
     {
-        // snapping
-        int col = Mathf.FloorToInt((worldPosition.x - gridOrigin.x) / cellSize); // left right
-        int row = Mathf.FloorToInt((worldPosition.z - gridOrigin.z) / cellSize); // foward back
+        int col = Mathf.FloorToInt((worldPosition.x - gridOrigin.x) / cellSize);
+        int row = Mathf.FloorToInt((worldPosition.z - gridOrigin.z) / cellSize);
 
         return new Vector2Int(col, row);
     }
@@ -57,19 +57,14 @@ public class ScenarioGrid : MonoBehaviour
     // converts cell position back to unity world position
     public Vector3 CellToWorld(Vector2Int cell)
     {
-        // need 0.5f to spawn at center of cell
-        //return gridOrigin + new Vector3(
-        //    cellPosition.x * cell + (cell * 0.5f),
-        //    0,
-        //    cellPosition.y * cell + (cell * 0.5f)
-        //);
-        float offsetX = (gridWidth - 1) * 0.5f;
-        float offsetZ = (gridHeight - 1) * 0.5f;
+        float offsetX = (gridWidth * cellSize) / 2f;
+        float offsetZ = (gridHeight * cellSize) / 2f;
 
         return transform.position + new Vector3(
-            (cell.x - offsetX)* cellSize, 
+            (cell.x * cellSize) - offsetX + (cellSize * 0.5f),
             0,
-            (cell.y - offsetZ) * cellSize);
+            (cell.y * cellSize) - offsetZ + (cellSize * 0.5f)
+        );
     }
 
     // what is currently in this cell?

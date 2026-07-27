@@ -43,6 +43,9 @@ public class TestingScenarioEditor : MonoBehaviour
     [SerializeField] private GameObject emptyHiderPrefab;
     [SerializeField] private GameObject ObstaclePrefab;
 
+    // references
+    [SerializeField] private EnvironmentManager environmentManager;
+
     // when this script becomes active, subscribe SelectSeekerBrush to SpawnSeeker requested
     // += and -= are what actually connect/disconnect the event listener.
 
@@ -54,9 +57,10 @@ public class TestingScenarioEditor : MonoBehaviour
         GameEvents.SpawnHiderRequested += SelectHiderBrush;
         GameEvents.SpawnWallRequested += SelectWallBrush;
         GameEvents.EraseRequested += SelectEraseBrush;
+
         GameEvents.PlayRequested += HidePaintedVisuals;
-        GameEvents.PauseRequested += ShowPaintedVisuals;
         GameEvents.ResetRequested += ShowPaintedVisuals;
+        GameEvents.ResetRequested += EnableEditing;
 
         Debug.Log("TestingScenarioEditor is listening for object placement requests.");
     }
@@ -66,9 +70,10 @@ public class TestingScenarioEditor : MonoBehaviour
         GameEvents.SpawnHiderRequested -= SelectHiderBrush;
         GameEvents.SpawnWallRequested -= SelectWallBrush;
         GameEvents.EraseRequested -= SelectEraseBrush;
+
         GameEvents.PlayRequested -= HidePaintedVisuals;
-        GameEvents.PauseRequested -= ShowPaintedVisuals;
         GameEvents.ResetRequested -= ShowPaintedVisuals;
+        GameEvents.ResetRequested -= EnableEditing;
     }
 
     private void Update()
@@ -124,7 +129,7 @@ public class TestingScenarioEditor : MonoBehaviour
         Debug.Log($"{currentBrush} placement mode is active. Click on the map to place.");
     }
 
-    
+
     // INPUT SYSTEM //
     // check if left mouse button was click this frame, return the mouse screen position
     private bool TryGetMouseClick(out Vector2 mousePosition)
@@ -191,6 +196,26 @@ public class TestingScenarioEditor : MonoBehaviour
         }
     }
 
+    //John
+    public void DestroyMoveables()
+    {
+        for (int i = 0; i < grid.Width; ++i)
+        {
+            for (int j = 0; j < grid.Height; ++j)
+            {
+                Vector2Int id = new Vector2Int(i, j);
+
+                if ((grid.GetCell(id) == ScenarioGrid.SeekerCell) ||
+                    (grid.GetCell(id) == ScenarioGrid.HiderCell))
+                {
+                    Destroy(paintedVisuals[id]); // destroy visuals, but grid still says 'S'
+                    paintedVisuals[id] = null;
+                }
+            }
+        }
+    }
+    //John
+
     private void PaintCell(Vector2Int cell, char cellValue, GameObject prefab)
     {
         if (prefab == null)
@@ -206,12 +231,21 @@ public class TestingScenarioEditor : MonoBehaviour
 
         // updates visual layer
         Vector3 worldPosition = grid.CellToWorld(cell); // need world position to place object
-        GameObject visual = Instantiate(prefab, worldPosition, Quaternion.identity, environment);
+
+        // REMOVED! INSTEAD OF INSTANTIATE WE SET CELL 
+        GameObject visual = Instantiate(prefab, worldPosition, Quaternion.identity, environmentManager.GetEditorRoot());
+
         PlaceObjectOnSurface(visual, worldPosition);
 
         paintedVisuals[cell] = visual; // store spawned gameObject based on grid cell
 
+        // update runtime if simulation started
+        if (environmentManager.IsStarted())
+        {
+            environmentManager.UpdateRuntimeCell(cell, cellValue); // mini update again
+        }
 
+        environmentManager.MarkGridDirty();
     }
 
     private void EraseCell(Vector2Int cell)
@@ -228,7 +262,7 @@ public class TestingScenarioEditor : MonoBehaviour
         Debug.Log($"Erased cell from row {cell.y}, col {cell.x}");
     }
 
-    
+
     // PLACEMENT LOGIC //
 
     // using camera to get mouse click position
@@ -294,8 +328,9 @@ public class TestingScenarioEditor : MonoBehaviour
         return hasBounds;
     }
 
-   
+
     // HIDE & SHOW PAINT VISUALS //
+
     private void HidePaintedVisuals()
     {
         canPaint = false;
@@ -309,6 +344,12 @@ public class TestingScenarioEditor : MonoBehaviour
         SetPaintedVisualsActive(true);
     }
 
+    public void EnableEditing()
+    {
+        canPaint = true;
+        currentBrush = PaintBrush.None;
+    }
+
     private void SetPaintedVisualsActive(bool isActive)
     {
         foreach (GameObject visual in paintedVisuals.Values)
@@ -320,5 +361,16 @@ public class TestingScenarioEditor : MonoBehaviour
         }
     }
 
+    public void ClearEditorVisuals()
+    {
+        foreach (var kvp in paintedVisuals)
+        {
+            if (kvp.Value != null)
+            {
+                Destroy(kvp.Value);
+            }
+        }
+        paintedVisuals.Clear();
+    }
 
 }

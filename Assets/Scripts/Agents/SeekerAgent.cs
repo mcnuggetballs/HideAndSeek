@@ -57,10 +57,7 @@ public class SeekerAgent : Agent
 
     public override void OnEpisodeBegin()
     {
-        if(environmentManager != null)
-        {
-            environmentManager.ResetEnvironment();
-        }
+        // agent lifecycle should not mix with environment lifecycle
         ResetMovement();
 
         if (!HasTargetAndNavAgent())

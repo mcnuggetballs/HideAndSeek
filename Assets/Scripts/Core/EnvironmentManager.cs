@@ -32,32 +32,30 @@ public class EnvironmentManager : MonoBehaviour
     [SerializeField] private ScenarioGrid grid;
     [SerializeField] private Transform runtimeObjects; // environment container
     [SerializeField] private RuntimeNavMeshBuilder runtimeNavMeshBuilder;
+    [SerializeField] private TestingScenarioEditor scenarioEditor;
 
-
+    // game state
+    [SerializeField] public GameObject editorRoot;
     private bool isPaused = false; // yet to implement
+    private bool isStarted = false;
+    private Dictionary<Vector2Int, GameObject> runtimeMap = new();
+    private bool isEdited = false;
 
-    private void Start()
-    {
-        Debug.Log($"{name} Start() called");
-
-        if (simulationMode == SimulationMode.Training)
-        {
-            Debug.LogWarning($"{name} Entering training intialisation");
-            InitialiseEnvironment();
-        }
-    }
-
-    // to ensure manual setup not required and always in the correct mode, can transition to game manager in future
+    // decide simulationMode based on scene name (temporary, to be fixed with proper GameManager later)
     private void Awake()
     {
         string sceneName = SceneManager.GetActiveScene().name;
-        if (sceneName.Contains("Training"))
+        simulationMode = sceneName.Contains("Training") ? SimulationMode.Training : SimulationMode.Testing;
+    }
+
+    private void Start()
+    {
+        if (simulationMode == SimulationMode.Training)
         {
-            simulationMode = SimulationMode.Training;
-        }
-        else
-        {
-            simulationMode = SimulationMode.Testing;
+            Debug.Log("Training: Auto intialise");
+            InitialiseEnvironment();
+            isStarted = true;
+            Time.timeScale = 1f;
         }
     }
 
@@ -68,26 +66,89 @@ public class EnvironmentManager : MonoBehaviour
 
         ClearRuntimeObjects();
 
-        if(simulationMode == SimulationMode.Training)
-        { 
-        var generator = GetComponent<RandomScenarioGenerator>();
-        if (generator != null)
+        if (simulationMode == SimulationMode.Training)
         {
-            generator.Generate();
+            var generator = GetComponent<RandomScenarioGenerator>();
+            if (generator != null)
+            {
+                generator.Generate();
 
-        }
-        else
-        {
-            Debug.LogWarning("No RandomScenarioGenerator found!");
-        }
+            }
+            else
+            {
+                Debug.LogWarning("No RandomScenarioGenerator found!");
+            }
         }
 
-        BuildFromGrid();
+        BuildRuntime();
+    }
+
+    private void BuildRuntime()
+    {
+        BuildObstaclesOnly();
+        //Physics.SyncTransforms();
         runtimeNavMeshBuilder.RebuildNavMesh();
+        BuildAgentsOnly();
         AssignRuntimeTargets();
     }
 
-    #region Training
+    // getters
+    public bool IsStarted()
+    {
+        return isStarted;
+    }
+
+    public bool IsPaused()
+    {
+        return isPaused;
+    }
+
+    public Transform GetEditorRoot()
+    {
+        return editorRoot.transform;
+    }
+
+    // to inform runtime, grid changed (user painted a cell
+    public void MarkGridDirty()
+    {
+        isEdited = true;
+    }
+
+    public void UpdateRuntimeCell(Vector2Int cell, char value)
+    {
+        Vector3 worldPos = grid.CellToWorld(cell);
+
+        // remove existing runtime object at that cell
+        RemoveRuntimeObjectAt(cell);
+
+        GameObject obj = null;
+
+        if (value == ScenarioGrid.WallCell)
+            obj = Instantiate(obstaclePrefab, worldPos, Quaternion.identity, runtimeObjects);
+
+        else if (value == ScenarioGrid.SeekerCell)
+            obj = Instantiate(seekerPrefab, worldPos, Quaternion.identity, runtimeObjects);
+
+        else if (value == ScenarioGrid.HiderCell)
+            obj = Instantiate(hiderPrefab, worldPos, Quaternion.identity, runtimeObjects);
+
+        if (obj != null)
+            //PlaceObjectOnSurface(obj, worldPos);
+            // store runtime objects when creataed
+            runtimeMap[cell] = obj;
+
+        //runtimeNavMeshBuilder.RebuildNavMesh();
+    }
+
+    private void RemoveRuntimeObjectAt(Vector2Int cell)
+    {
+        if (runtimeMap.TryGetValue(cell, out GameObject obj))
+        {
+            Destroy(obj);
+            runtimeMap.Remove(cell);
+        }
+    }
+
     private void OnEnable()
     {
         // simulation maanger listens to play/pause.reset and agent spawning
@@ -103,14 +164,38 @@ public class EnvironmentManager : MonoBehaviour
         GameEvents.ResetRequested -= ResetSimulation;
     }
 
+    // clicking play purely builds, play again resumes instead of rebuild
     private void PlaySimulation()
     {
         Debug.Log("Play Simulation.");
 
-        isPaused = false;
-        Time.timeScale = 1f;
+        // hide editor first
+        if (simulationMode == SimulationMode.Testing && editorRoot != null)
+        {
+            editorRoot.SetActive(false); // hide editor
+            runtimeObjects.gameObject.SetActive(true); // show runtime
+        }
 
-        InitialiseEnvironment();
+        // build after editor is hidden
+        if (simulationMode == SimulationMode.Testing)
+        {
+            // first play, grid has been edited
+            if (!isStarted || isEdited) // so that new seekers are reflected
+            {
+                InitialiseEnvironment();
+                isStarted = true;
+                isEdited = false;
+            }
+        }
+        else
+        {
+            InitialiseEnvironment();
+        }
+
+        Time.timeScale = 1f;
+        isPaused = false;
+
+
     }
 
     // should freeze but not destroy
@@ -118,53 +203,85 @@ public class EnvironmentManager : MonoBehaviour
     {
         Debug.Log("Pause Simulation.");
 
+        Time.timeScale = 0f; // do nothing to editor visuals
         isPaused = true;
-        Time.timeScale = 0f;
+
     }
 
-    // destroy
+    // clear runtime, go back to editor state
     private void ResetSimulation()
     {
         Debug.Log("Reset Simulation.");
 
         Time.timeScale = 1f;
+
+        // destroy runtime objects completely
         ClearRuntimeObjects();
+
+        // destroy editor visuals completely
+        scenarioEditor.ClearEditorVisuals();
+        scenarioEditor.EnableEditing();
+        Debug.LogWarning("Enable Editing");
+
+        // clear grid data
+        grid.ClearGrid();
+
+        // reset state flags
+        isStarted = false;
+        isPaused = false;
+        isEdited = false;
+
+        if (editorRoot != null)
+        {
+            editorRoot.SetActive(true);
+        }
+        if (runtimeObjects != null)
+        {
+            runtimeObjects.gameObject.SetActive(true);
+        }
     }
 
-    public void ResetEnvironment()
+    void BuildObstaclesOnly()
     {
-        InitialiseEnvironment();
-    }
+        foreach (var cell in grid.GetAllCells())
+        {
+            if (grid.GetCell(cell) == ScenarioGrid.WallCell)
+            {
+                Vector3 worldPos = grid.CellToWorld(cell);
+                GameObject obj = null;
 
-    private void BuildFromGrid()
+                obj = Instantiate(obstaclePrefab, worldPos, Quaternion.identity, runtimeObjects);
+                //PlaceObjectOnSurface(obj, worldPos);
+            }
+        }
+    }
+    void BuildAgentsOnly()
     {
         seekerAgents.Clear();
         hiderAgents.Clear();
 
         foreach (var cell in grid.GetAllCells())
         {
-            char value = grid.GetCell(cell); // know cell type of each grid
-            Vector3 worldPos = grid.CellToWorld(cell); // converted pos 
+            char value = grid.GetCell(cell);
+            Vector3 worldPos = grid.CellToWorld(cell);
+
+            if (!NavMesh.SamplePosition(worldPos, out NavMeshHit hit, 1.0f, NavMesh.AllAreas))
+                continue;
 
             GameObject obj = null;
 
-            if (value == ScenarioGrid.WallCell)
+            if (value == ScenarioGrid.SeekerCell)
             {
-                obj = Instantiate(obstaclePrefab, worldPos, Quaternion.identity, runtimeObjects);
-            }
-            else if (value == ScenarioGrid.SeekerCell)
-            {
-                obj = Instantiate(seekerPrefab, worldPos, Quaternion.identity, runtimeObjects);
+                obj = Instantiate(seekerPrefab, hit.position, Quaternion.identity, runtimeObjects);
                 var seeker = obj.GetComponentInChildren<SeekerAgent>();
                 if (seeker != null)
                 {
-                    seeker.SetUseRandomSpawn(ShouldUseRandomSpawn());
                     seekerAgents.Add(seeker);
                 }
             }
             else if (value == ScenarioGrid.HiderCell)
             {
-                obj = Instantiate(hiderPrefab, worldPos, Quaternion.identity, runtimeObjects);
+                obj = Instantiate(hiderPrefab, hit.position, Quaternion.identity, runtimeObjects);
                 var hider = obj.GetComponentInChildren<NavMeshAgent>();
                 if (hider != null)
                 {
@@ -173,13 +290,19 @@ public class EnvironmentManager : MonoBehaviour
             }
             if (obj != null)
             {
-                PlaceObjectOnSurface(obj, worldPos);
+                if (runtimeMap.ContainsKey(cell))
+                {
+                    Destroy(runtimeMap[cell]);
+                }
+                runtimeMap[cell] = obj; // so im guessing i clean visual map and update runtime map?
+
+
             }
         }
-        Debug.Log($"[{name}] BuildFromGrid running");
+
     }
 
-    // Gives every seeker the full hider list; each seeker currently follows the nearest target.
+    // Gives every seeker the full hider list; each seeker currently the ffollows the nearest target.
     private void AssignRuntimeTargets()
     {
         if (seekerAgents.Count == 0 || hiderAgents.Count == 0)
@@ -224,6 +347,7 @@ public class EnvironmentManager : MonoBehaviour
             }
         }
 
+        runtimeMap.Clear();
     }
 
     private void PlaceObjectOnSurface(GameObject objectToPlace, Vector3 surfacePosition)
@@ -266,7 +390,16 @@ public class EnvironmentManager : MonoBehaviour
 
         return hasBounds;
     }
-    #endregion
+
+    public GameObject GetSeekerPrefab()
+    {
+        return seekerPrefab;
+    }
+
+    public GameObject GetHiderPrefab()
+    {
+        return hiderPrefab;
+    }
 }
 
 

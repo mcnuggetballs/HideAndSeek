@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class RandomScenarioGenerator : MonoBehaviour
 {
@@ -7,10 +9,12 @@ public class RandomScenarioGenerator : MonoBehaviour
     [SerializeField] public int hiderCount = 1;
 
     private ScenarioGrid grid;
+    private EnvironmentManager environmentManager;
 
     private void Awake()
     {
         grid = GetComponent<ScenarioGrid>();
+        environmentManager = GetComponent<EnvironmentManager>();
     }
 
     public void Generate()
@@ -22,23 +26,49 @@ public class RandomScenarioGenerator : MonoBehaviour
         PlaceRandom(ScenarioGrid.HiderCell, hiderCount);
     }
 
+    //void PlaceRandom(char type, int count)
+    //{
+    //    int attempts = 0;
+    //    while (count > 0 && attempts < 1000)
+    //    {
+    //        int x = Random.Range(0, grid.Width);
+    //        int y = Random.Range(0, grid.Height);
+
+    //        Vector2Int cell = new Vector2Int(x, y);
+
+    //        if (grid.GetCell(cell) == ScenarioGrid.EmptyCell)
+    //        {
+    //            grid.SetCell(cell, type);
+    //            count--;
+    //        }
+
+    //        attempts++;
+    //    }
+    //}
     void PlaceRandom(char type, int count)
     {
-        int attempts = 0;
-        while (count > 0 && attempts < 1000)
+        List<Vector2Int> emptyCells = new List<Vector2Int>();
+
+        foreach (var cell in grid.GetAllCells())
         {
-            int x = Random.Range(0, grid.Width);
-            int y = Random.Range(0, grid.Height);
-
-            Vector2Int cell = new Vector2Int(x, y);
-
-            if(grid.GetCell(cell) == ScenarioGrid.EmptyCell)
+            if (grid.GetCell(cell) == ScenarioGrid.EmptyCell)
             {
-                grid.SetCell(cell, type);
-                count--;
+                emptyCells.Add(cell);
             }
+        }
 
-            attempts++;
+        // shuffle
+        for (int i = 0; i < emptyCells.Count; i++)
+        {
+            Vector2Int temp = emptyCells[i];
+            int randomIndex = Random.Range(i, emptyCells.Count);
+            emptyCells[i] = emptyCells[randomIndex];
+            emptyCells[randomIndex] = temp;
+        }
+
+        for (int i = 0; i < count && i < emptyCells.Count; i++)
+        {
+            grid.SetCell(emptyCells[i], type);
         }
     }
 }

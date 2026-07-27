@@ -1329,6 +1329,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &889065357 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7756727609724575244, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
+  m_PrefabInstance: {fileID: 1676564271430245630}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &890563950
 GameObject:
   m_ObjectHideFlags: 0
@@ -2427,6 +2432,17 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1740789610}
   m_CullTransparentMesh: 1
+--- !u!114 &1967047753 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6751455813423526616, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
+  m_PrefabInstance: {fileID: 1676564271430245630}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d42b1fd9972148db9b87d1a20ce5f403, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TestingScenarioEditor
 --- !u!1 &1981676573
 GameObject:
   m_ObjectHideFlags: 0
@@ -2740,8 +2756,24 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2134855663785489812, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
+      propertyPath: tt
+      value: 
+      objectReference: {fileID: 1967047753}
+    - target: {fileID: 2134855663785489812, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
+      propertyPath: editorRoot
+      value: 
+      objectReference: {fileID: 889065357}
+    - target: {fileID: 2134855663785489812, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
+      propertyPath: scenarioEditor
+      value: 
+      objectReference: {fileID: 1967047753}
+    - target: {fileID: 2134855663785489812, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
       propertyPath: simulationMode
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2493304485592230066, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
+      propertyPath: m_CollectObjects
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6751455813423526616, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
       propertyPath: sceneCamera

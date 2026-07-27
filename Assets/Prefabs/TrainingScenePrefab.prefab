@@ -56,12 +56,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3878807438960109861}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1006135926191435751}
+  m_Father: {fileID: 4081540785521990017}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6751455813423526616
 MonoBehaviour:
@@ -87,6 +87,7 @@ MonoBehaviour:
   emptySeekerPrefab: {fileID: 1702149679562409119, guid: f73ca6929283a0f469c6260e87d16f6d, type: 3}
   emptyHiderPrefab: {fileID: 5050601273516166025, guid: 082cb2d2ffe1e99409acb97864633ee2, type: 3}
   ObstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
+  environmentManager: {fileID: 2134855663785489812}
 --- !u!1 &4525255990610018256
 GameObject:
   m_ObjectHideFlags: 0
@@ -177,7 +178,7 @@ Transform:
   - {fileID: 3047036096140032339}
   - {fileID: 4978278084163510711}
   - {fileID: 596920118829254408}
-  - {fileID: 6316554127977790468}
+  - {fileID: 4081540785521990017}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2493304485592230066
@@ -194,7 +195,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshSurface
   m_SerializedVersion: 0
   m_AgentTypeID: 0
-  m_CollectObjects: 0
+  m_CollectObjects: 2
   m_Size: {x: 10, y: 10, z: 10}
   m_Center: {x: 0, y: 2, z: 0}
   m_LayerMask:
@@ -244,6 +245,7 @@ MonoBehaviour:
   grid: {fileID: 967686372987626610}
   runtimeObjects: {fileID: 4978278084163510711}
   runtimeNavMeshBuilder: {fileID: 957535751907432168}
+  editorRoot: {fileID: 7756727609724575244}
 --- !u!114 &967686372987626610
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -256,10 +258,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e54cb18a793059439155da4c4ff4024, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ScenarioGrid
+  gridOrigin: {x: -25, y: 0, z: -25}
   gridWidth: 10
   gridHeight: 10
   cellSize: 5
-  gridOrigin: {x: -25, y: 0, z: -25}
 --- !u!114 &355382800254966207
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -272,9 +274,41 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8cae71caf21a77643bbf8c99300ae4d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RandomScenarioGenerator
-  obstacleCount: 8
+  obstacleCount: 30
   seekerCount: 1
   hiderCount: 1
+--- !u!1 &7756727609724575244
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4081540785521990017}
+  m_Layer: 0
+  m_Name: EditorRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4081540785521990017
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7756727609724575244}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6316554127977790468}
+  m_Father: {fileID: 1006135926191435751}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &3721937914881188924
 PrefabInstance:
   m_ObjectHideFlags: 0
