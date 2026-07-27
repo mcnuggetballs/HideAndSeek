@@ -13,43 +13,43 @@ public class EnvironmentManager : MonoBehaviour
 {
     public enum SimulationMode
     {
-        Testing, // keep configured positions
-        Training // randomise
+        Testing, // use configured positions
+        Training // randomised scenarios
     }
 
     [SerializeField] private SimulationMode simulationMode = SimulationMode.Testing;
 
     [Header("Prefabs")]
-    public GameObject seekerPrefab;
-    public GameObject hiderPrefab;
-    public GameObject obstaclePrefab;
-
-    // belongs to each mgr instance
-    private readonly List<SeekerAgent> seekerAgents = new();
-    private readonly List<NavMeshAgent> hiderAgents = new();
+    [SerializeField] private GameObject seekerPrefab;
+    [SerializeField] private GameObject hiderPrefab;
+    [SerializeField] private GameObject obstaclePrefab;
 
     [Header("References")]
     [SerializeField] private ScenarioGrid grid;
-    [SerializeField] private Transform runtimeObjects; // environment container
     [SerializeField] private RuntimeNavMeshBuilder runtimeNavMeshBuilder;
     [SerializeField] private TestingScenarioEditor scenarioEditor;
+    [SerializeField] private Transform runtimeRoot; // where runtime objects live
+    [SerializeField] private GameObject editorRoot; // where visual objects live
 
-    // game state
-    [SerializeField] public GameObject editorRoot;
-    private bool isPaused = false; // yet to implement
+    // runtime state
+    private bool isPaused = false; 
     private bool isStarted = false;
-    private bool isEdited = false;
+    private bool isEdited = false; // grid changed?
+
+    // runtime data
+    private readonly List<SeekerAgent> seekerAgents = new();
+    private readonly List<NavMeshAgent> hiderAgents = new();
     private Dictionary<Vector2Int, GameObject> runtimeMap = new();
 
-    #region Lifecycle Runs
+    #region Lifecycle
     // Builds runtime from grid, Hide editor, Build environment, Start simultion
     private void PlaySimulation()
     {
         Debug.Log("Play Simulation.");
 
         // ALWAYS ensure runtime container is active BEFORE building
-        if (runtimeObjects != null)
-            runtimeObjects.gameObject.SetActive(true);
+        if (runtimeRoot != null)
+            runtimeRoot.gameObject.SetActive(true);
 
         // hide editor visuals
         if (simulationMode == SimulationMode.Testing && editorRoot != null)
@@ -112,13 +112,28 @@ public class EnvironmentManager : MonoBehaviour
         {
             editorRoot.SetActive(true);
         }
-        if (runtimeObjects != null)
+        if (runtimeRoot != null)
         {
-            runtimeObjects.gameObject.SetActive(false);
+            runtimeRoot.gameObject.SetActive(false);
         }
+    }
+    private void OnEnable()
+    {
+        // simulation maanger listens to play/pause.reset and agent spawning
+        GameEvents.PlayRequested += PlaySimulation;
+        GameEvents.PauseRequested += PauseSimulation;
+        GameEvents.ResetRequested += ResetSimulation;
+    }
+
+    private void OnDisable()
+    {
+        GameEvents.PlayRequested -= PlaySimulation;
+        GameEvents.PauseRequested -= PauseSimulation;
+        GameEvents.ResetRequested -= ResetSimulation;
     }
     #endregion
 
+    #region Simulation Mode & Initialisation
     // decide simulationMode based on scene name (temporary, to be fixed with proper GameManager later)
     private void Awake()
     {
@@ -145,10 +160,10 @@ public class EnvironmentManager : MonoBehaviour
         ClearRuntimeObjects();
 
         // safety check
-        if (!runtimeObjects.gameObject.activeSelf)
+        if (!runtimeRoot.gameObject.activeSelf)
         {
             Debug.LogWarning("RuntimeObjects was inactive during build. Fixing.");
-            runtimeObjects.gameObject.SetActive(true);
+            runtimeRoot.gameObject.SetActive(true);
         }
 
         if (simulationMode == SimulationMode.Training)
@@ -167,7 +182,9 @@ public class EnvironmentManager : MonoBehaviour
 
         BuildRuntime();
     }
+#endregion
 
+    #region Build Pipeline
     private void BuildRuntime()
     {
         BuildObstaclesOnly();
@@ -176,64 +193,6 @@ public class EnvironmentManager : MonoBehaviour
         BuildAgentsOnly();
         AssignRuntimeTargets();
     }
-
-
-    // to inform runtime, grid changed (user painted a cell
-    public void MarkGridDirty()
-    {
-        isEdited = true;
-    }
-
-    public void UpdateRuntimeCell(Vector2Int cell, char value)
-    {
-        Vector3 worldPos = grid.CellToWorld(cell);
-
-        // remove existing runtime object at that cell
-        RemoveRuntimeObjectAt(cell);
-
-        GameObject obj = null;
-
-        if (value == ScenarioGrid.WallCell)
-            obj = Instantiate(obstaclePrefab, worldPos, Quaternion.identity, runtimeObjects);
-
-        else if (value == ScenarioGrid.SeekerCell)
-            obj = Instantiate(seekerPrefab, worldPos, Quaternion.identity, runtimeObjects);
-
-        else if (value == ScenarioGrid.HiderCell)
-            obj = Instantiate(hiderPrefab, worldPos, Quaternion.identity, runtimeObjects);
-
-        if (obj != null)
-            //PlaceObjectOnSurface(obj, worldPos);
-            // store runtime objects when creataed
-            runtimeMap[cell] = obj;
-
-        //runtimeNavMeshBuilder.RebuildNavMesh();
-    }
-
-    private void RemoveRuntimeObjectAt(Vector2Int cell)
-    {
-        if (runtimeMap.TryGetValue(cell, out GameObject obj))
-        {
-            Destroy(obj);
-            runtimeMap.Remove(cell);
-        }
-    }
-
-    private void OnEnable()
-    {
-        // simulation maanger listens to play/pause.reset and agent spawning
-        GameEvents.PlayRequested += PlaySimulation;
-        GameEvents.PauseRequested += PauseSimulation;
-        GameEvents.ResetRequested += ResetSimulation;
-    }
-
-    private void OnDisable()
-    {
-        GameEvents.PlayRequested -= PlaySimulation;
-        GameEvents.PauseRequested -= PauseSimulation;
-        GameEvents.ResetRequested -= ResetSimulation;
-    }
-
     void BuildObstaclesOnly()
     {
         foreach (var cell in grid.GetAllCells())
@@ -243,7 +202,7 @@ public class EnvironmentManager : MonoBehaviour
                 Vector3 worldPos = grid.CellToWorld(cell);
                 GameObject obj = null;
 
-                obj = Instantiate(obstaclePrefab, worldPos, Quaternion.identity, runtimeObjects);
+                obj = Instantiate(obstaclePrefab, worldPos, Quaternion.identity, runtimeRoot);
                 //PlaceObjectOnSurface(obj, worldPos);
             }
         }
@@ -266,7 +225,7 @@ public class EnvironmentManager : MonoBehaviour
 
             if (value == ScenarioGrid.SeekerCell)
             {
-                obj = Instantiate(seekerPrefab, worldPos, Quaternion.identity, runtimeObjects);
+                obj = Instantiate(seekerPrefab, worldPos, Quaternion.identity, runtimeRoot);
                 var seeker = obj.GetComponentInChildren<SeekerAgent>();
                 if (seeker != null)
                 {
@@ -275,7 +234,7 @@ public class EnvironmentManager : MonoBehaviour
             }
             else if (value == ScenarioGrid.HiderCell)
             {
-                obj = Instantiate(hiderPrefab, worldPos, Quaternion.identity, runtimeObjects);
+                obj = Instantiate(hiderPrefab, worldPos, Quaternion.identity, runtimeRoot);
                 var hider = obj.GetComponentInChildren<NavMeshAgent>();
                 if (hider != null)
                 {
@@ -286,7 +245,7 @@ public class EnvironmentManager : MonoBehaviour
             {
                 if (runtimeMap.TryGetValue(cell, out GameObject existing))
                 {
-                    Destroy(runtimeMap[cell]);runtimeMap.Remove(cell);
+                    Destroy(runtimeMap[cell]); runtimeMap.Remove(cell);
                 }
                 runtimeMap[cell] = obj;
 
@@ -295,7 +254,53 @@ public class EnvironmentManager : MonoBehaviour
         }
 
     }
+    #endregion
 
+    #region Runtime Updates
+    // to inform runtime, grid changed (user painted a cell
+    public void MarkGridDirty()
+    {
+        isEdited = true;
+    }
+
+    public void UpdateRuntimeCell(Vector2Int cell, char value)
+    {
+        Vector3 worldPos = grid.CellToWorld(cell);
+
+        // remove existing runtime object at that cell
+        RemoveRuntimeObjectAt(cell);
+
+        GameObject obj = null;
+
+        if (value == ScenarioGrid.WallCell)
+            obj = Instantiate(obstaclePrefab, worldPos, Quaternion.identity, runtimeRoot);
+
+        else if (value == ScenarioGrid.SeekerCell)
+            obj = Instantiate(seekerPrefab, worldPos, Quaternion.identity, runtimeRoot);
+
+        else if (value == ScenarioGrid.HiderCell)
+            obj = Instantiate(hiderPrefab, worldPos, Quaternion.identity, runtimeRoot);
+
+        if (obj != null)
+            //PlaceObjectOnSurface(obj, worldPos);
+            // store runtime objects when creataed
+            runtimeMap[cell] = obj;
+
+        //runtimeNavMeshBuilder.RebuildNavMesh();
+    }
+
+    private void RemoveRuntimeObjectAt(Vector2Int cell)
+    {
+        if (runtimeMap.TryGetValue(cell, out GameObject obj))
+        {
+            Destroy(obj);
+            runtimeMap.Remove(cell);
+        }
+    }
+    #endregion
+
+    #region Agent Assignment
+    // For merging Shao Cong's progress
     // Gives every seeker the full hider list; each seeker currently the ffollows the nearest target.
     private void AssignRuntimeTargets()
     {
@@ -311,29 +316,25 @@ public class EnvironmentManager : MonoBehaviour
             if (seeker == null) continue;
 
             //ensure seeker belongs to the environment
-            if (!seeker.transform.IsChildOf(runtimeObjects))
+            if (!seeker.transform.IsChildOf(runtimeRoot))
             {
                 Debug.LogWarning("Seeker not part of this environment");
                 continue;
             }
 
-            seeker.SetUseRandomSpawn(ShouldUseRandomSpawn());
+            seeker.SetUseRandomSpawn(simulationMode == SimulationMode.Training);
             seeker.SetTargets(new List<NavMeshAgent>(hiderAgents)); // pass copy
         }
     }
+    #endregion
 
-    private bool ShouldUseRandomSpawn()
-    {
-        return simulationMode == SimulationMode.Training;
-    }
-
-    // this functions makes old runtime objects inactive before destroying them to stop affecting runtime navMesh rebuilds
+    #region Cleanup & Utilities
     private void ClearRuntimeObjects()
     {
         seekerAgents.Clear();
         hiderAgents.Clear();
 
-        foreach (Transform child in runtimeObjects)
+        foreach (Transform child in runtimeRoot)
         {
             if (child != null)
             {
@@ -343,49 +344,6 @@ public class EnvironmentManager : MonoBehaviour
 
         runtimeMap.Clear();
     }
-
-    private void PlaceObjectOnSurface(GameObject objectToPlace, Vector3 surfacePosition)
-    {
-        // checks all non trigger collider to find lowest point
-        if (!TryGetColliderBounds(objectToPlace, out Bounds bounds))
-        {
-            // lift up to surface
-            objectToPlace.transform.position = surfacePosition + Vector3.up;
-            return;
-        }
-
-        float liftAmount = surfacePosition.y - bounds.min.y;
-        objectToPlace.transform.position += Vector3.up * liftAmount;
-    }
-
-    // this function solves the object spawning halfway inside plane problem
-    private bool TryGetColliderBounds(GameObject targetObject, out Bounds combinedBounds)
-    {
-        Collider[] colliders = targetObject.GetComponentsInChildren<Collider>();
-        combinedBounds = new Bounds(targetObject.transform.position, Vector3.zero);
-        bool hasBounds = false;
-
-        foreach (Collider collider in colliders)
-        {
-            if (collider.isTrigger)
-            {
-                continue;
-            }
-
-            if (!hasBounds)
-            {
-                combinedBounds = collider.bounds;
-                hasBounds = true;
-                continue;
-            }
-
-            combinedBounds.Encapsulate(collider.bounds);
-        }
-
-        return hasBounds;
-    }
-
-    #region Getters
     public bool IsStarted()
     {
         return isStarted;
