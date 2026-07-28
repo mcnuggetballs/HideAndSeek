@@ -42,29 +42,20 @@ public class TopDownCameraController : MonoBehaviour
 
     private void HandleZoom()
     {
-        Debug.Log($"Zoom running on: {gameObject.name}");
-
         // for zoom in/out scroll
         float scroll = Mouse.current.scroll.ReadValue().y;
-        Debug.Log("Scroll value: " + scroll);
 
         if ((Mathf.Abs(scroll) < 0.01f))
         {
             return;
         }
-        Debug.Log("Camera size BEFORE: " + targetCamera.orthographicSize);
 
         targetCamera.orthographicSize -= scroll * zoomSpeed;
-
-        Debug.Log("Camera size AFTER: " + targetCamera.orthographicSize);
 
         targetCamera.orthographicSize = Mathf.Clamp(
             targetCamera.orthographicSize,
             minZoom,
             maxZoom);
-
-        //Debug.Log("Zoom triggered on: " + gameObject.name);
-        //Debug.Log(targetCamera.orthographicSize);
     }
 
     private void HandlePan()

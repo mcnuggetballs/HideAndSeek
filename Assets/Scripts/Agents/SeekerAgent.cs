@@ -8,66 +8,61 @@ using UnityEngine.AI;
 public class SeekerAgent : Agent
 {
     [Header("Agent Setup")]
-    //public Rigidbody rb;
-    public NavMeshAgent seekerAgent;
+    [SerializeField] private NavMeshAgent seekerAgent;
+    [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float rotateSpeed = 180f;
 
-    public float moveSpeed = 5f;
-    public float rotateSpeed = 180f;
-    public NavMeshAgent targetAgent; // hider, does not have to be a navmeshnangent
+    // runtime state
+    private NavMeshAgent targetAgent;
     private readonly List<NavMeshAgent> targetAgents = new List<NavMeshAgent>();
+    private float prevDistance = 0f;
 
-    //[Header("Visibility Settings")]
-    public float viewDistance = 50f;
-    public float viewAngle = 90f;
-    public float eyeHeight = 0.5f;
-    public float catchDistance = 1.5f; // TODO:change!
+    [Header("Perception Settings")]
+    [SerializeField] private float viewDistance = 50f;
+    [SerializeField] private float viewAngle = 90f;
+    [SerializeField] private float eyeHeight = 0.5f;
+    [SerializeField] private float catchDistance = 1.5f;
 
     // simulation manager spawns in world, seeker agent spawn inside own world
     [Header("Spawn Settings")]
-    [SerializeField] private bool useRandomSpawn = true;
-    public float minSpawnDistance = 10f;
-    public float spawnRadius = 10f;
-    public float groundY = 0.929f;
-
-    [Header("Reward Settings")]
-    public float visibleDistanceRewardScale = 0.04f;
-    public float generalDistanceRewardScale = 0.005f;
-    public float maintainSightReward = 0.001f;
-    public float unseenPenalty = -0.0001f;
-    public float searchMoveReward = 0.0001f;
-    public float rotationPenaltyScale = 0.00005f;
-    public float timePenalty = -0.0002f;
-    public float catchReward = 10f;
-
-    private float prevDistance = 0f;
-
+    private float minSpawnDistance = 10f;
+    private float spawnRadius = 10f;
+    private float groundY = 0.929f;
     private EnvironmentManager environmentManager;
 
-    private void Start()
-    {
-        environmentManager = GetComponentInParent<EnvironmentManager>();
-    }
+    [Header("Reward Settings")]
+    private float visibleDistanceRewardScale = 0.04f;
+    private float generalDistanceRewardScale = 0.005f;
+    private float maintainSightReward = 0.001f;
+    private float unseenPenalty = -0.0001f;
+    private float searchMoveReward = 0.0001f;
+    private float rotationPenaltyScale = 0.00005f;
+    private float timePenalty = -0.0002f;
+    private float catchReward = 10f;
+
+
     private void Awake()
     {
+        seekerAgent.updateRotation = false; // disable agent rotation
+
         if (seekerAgent == null)
         {
             seekerAgent = GetComponent<NavMeshAgent>();
         }
+
+        environmentManager = GetComponentInParent<EnvironmentManager>();
     }
 
+    #region ML Lifecycle
     public override void OnEpisodeBegin()
     {
-        // agent lifecycle should not mix with environment lifecycle
-        ResetMovement();
-
         if (!HasTargetAndNavAgent())
         {
             return;
         }
-
         ResetMovement();
 
-        if (useRandomSpawn){ RandomizeSpawn(); }
+        if (environmentManager != null && environmentManager.IsTrainingMode()) { RandomizeSpawn(); }
 
         prevDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);
     }
@@ -100,6 +95,7 @@ public class SeekerAgent : Agent
         }
     }
 
+    // Catch Logic
     public override void OnActionReceived(ActionBuffers actions)
     {
         if (!HasTargetAndNavAgent())
@@ -114,7 +110,12 @@ public class SeekerAgent : Agent
         Vector3 moveDirection = transform.forward * move * moveSpeed * Time.deltaTime;
         seekerAgent.Move(moveDirection);
 
-        if (Vector3.Distance(transform.position, targetAgent.transform.position) < catchDistance)
+        // catch logic
+        float dist = Vector3.Distance(seekerAgent.nextPosition, targetAgent.nextPosition);
+        float combinedRadius = seekerAgent.radius + targetAgent.radius;
+        float effectiveCatchDistance = Mathf.Max(catchDistance, combinedRadius);
+
+        if (dist < effectiveCatchDistance)
         {
             AddReward(catchReward);
             EndEpisode();
@@ -123,11 +124,14 @@ public class SeekerAgent : Agent
 
         ApplyVisibilityBasedRewards(rotate, move);
     }
+    #endregion
 
+    #region Helpers
+    // uses distance for perception
     private bool GetTargetInfo(out Vector3 localDir, out float normalisedDistance)
     {
         if (targetAgent == null)
-        {   
+        {
             localDir = Vector3.zero;
             normalisedDistance = 1f;
             return false;
@@ -160,19 +164,6 @@ public class SeekerAgent : Agent
 
         return false;
     }
-
-    private void ResetMovement()
-    {
-        if (seekerAgent == null)
-        {
-            return;
-        }
-
-        seekerAgent.ResetPath();
-        seekerAgent.velocity = Vector3.zero;
-        transform.rotation = Quaternion.Euler(0f, 0f, 0f);
-    }
-
     private void RandomizeSpawn()
     {
         if (!HasTargetAndNavAgent())
@@ -216,16 +207,16 @@ public class SeekerAgent : Agent
                 5f,
                 NavMesh.AllAreas);
 
-            if(!seekerFound || !targetFound)
+            if (!seekerFound || !targetFound)
             {
                 continue;
             }
 
-            seekerSpawn = seekerHit.position; 
+            seekerSpawn = seekerHit.position;
             targetSpawn = targetHit.position;
 
             foundValidSpawn = Vector3.Distance(seekerSpawn, targetSpawn) >= minSpawnDistance;
-            
+
         }
         while (
             (!foundValidSpawn && attempts < maxAttempts) // keep looping above if
@@ -239,15 +230,59 @@ public class SeekerAgent : Agent
 
         seekerAgent.Warp(seekerSpawn);
 
-        targetAgent.Warp(targetSpawn);
+        if (targetAgent != null && targetAgent.isOnNavMesh)
+        {
+            targetAgent.Warp(targetSpawn);
+        }
+    }
+    // distance for salection
+    private NavMeshAgent FindNearestTarget()
+    {
+        NavMeshAgent nearestTarget = null;
+        float nearestDistance = float.MaxValue;
+
+        foreach (NavMeshAgent possibleTarget in targetAgents)
+        {
+            if (possibleTarget == null) // skip function if there are no possible targets
+            {
+                continue;
+            }
+
+            float distance = Vector3.Distance(transform.position, possibleTarget.transform.position);
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestTarget = possibleTarget;
+            }
+        }
+
+        return nearestTarget;
+    }
+    // safety check
+    private bool HasTargetAndNavAgent()
+    {
+        if (targetAgent == null && targetAgents.Count > 0)
+        {
+            targetAgent = FindNearestTarget();
+        }
+
+        return targetAgent != null && seekerAgent != null && seekerAgent.isOnNavMesh;
     }
 
-    public void SetUseRandomSpawn(bool decision)
+    private void ResetMovement()
     {
-        useRandomSpawn = decision;
+        if (seekerAgent == null)
+        {
+            return;
+        }
+
+        seekerAgent.ResetPath();
+        seekerAgent.velocity = Vector3.zero;
+        transform.rotation = Quaternion.Euler(0f, 0f, 0f);
     }
 
     // this function stores all hiders and chooses nearest one as current targetAgent
+    // also linked environment to agents
     public void SetTargets(List<NavMeshAgent> targets)
     {
         targetAgents.Clear();
@@ -256,11 +291,16 @@ public class SeekerAgent : Agent
 
         if (targetAgent != null && seekerAgent != null)
         {
-            prevDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);
+            prevDistance = Vector3.Distance(
+                seekerAgent.nextPosition, // changed to get navigation simulation position instead of visual transform
+                targetAgent.nextPosition);
         }
     }
+    #endregion
 
-    private void ApplyVisibilityBasedRewards(float rotate,float move)
+    #region Reward System
+    // uses distance for reward shaping
+    private void ApplyVisibilityBasedRewards(float rotate, float move)
     {
         if (targetAgent == null || seekerAgent == null)
         {
@@ -302,6 +342,7 @@ public class SeekerAgent : Agent
         prevDistance = currentDistance;
     }
 
+    // chase behaviour separation
     private void ApplyChaseRewards(float distanceDiff)
     {
         // Stronger reward for getting closer while the hider is visible.
@@ -311,6 +352,7 @@ public class SeekerAgent : Agent
         AddReward(maintainSightReward);
     }
 
+    // search behaviour separation
     private void ApplySearchRewards(float rotate, float move)
     {
         // Small penalty because the seeker does not currently see the hider.
@@ -327,37 +369,5 @@ public class SeekerAgent : Agent
         // Keep this tiny because the seeker still needs to rotate to scan with rays.
         AddReward(-Mathf.Abs(rotate) * rotationPenaltyScale);
     }
-
-    private bool HasTargetAndNavAgent()
-    {
-        if (targetAgent == null && targetAgents.Count > 0)
-        {
-            targetAgent = FindNearestTarget();
-        }
-
-        return targetAgent != null && seekerAgent != null && seekerAgent.isOnNavMesh; // maybe exclude isOnNavMesh
-    }
-
-    private NavMeshAgent FindNearestTarget()
-    {
-        NavMeshAgent nearestTarget = null;
-        float nearestDistance = float.MaxValue;
-
-        foreach (NavMeshAgent possibleTarget in targetAgents)
-        {
-            if (possibleTarget == null) // skip function if there are no possible targets
-            {
-                continue;
-            }
-
-            float distance = Vector3.Distance(transform.position, possibleTarget.transform.position);
-            if (distance < nearestDistance)
-            {
-                nearestDistance = distance;
-                nearestTarget = possibleTarget;
-            }
-        }
-
-        return nearestTarget;
-    }
+    #endregion
 }

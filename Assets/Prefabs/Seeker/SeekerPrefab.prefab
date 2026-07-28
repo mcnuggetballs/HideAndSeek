@@ -254,7 +254,7 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 1
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 5022602860645237092, guid: be254bc6728763544896d12192586d9a, type: 3}
+  m_Model: {fileID: 5022602860645237092, guid: 1b5fa8955c9a4b442899219da4a720e5, type: 3}
   m_InferenceDevice: 0
   m_BehaviorType: 2
   m_BehaviorName: Seeker
@@ -278,26 +278,13 @@ MonoBehaviour:
     maxStep: 0
   hasUpgradedFromAgentParameters: 1
   MaxStep: 500
-  seekerAgent: {fileID: 0}
+  seekerAgent: {fileID: 7299837999761018527}
   moveSpeed: 5
   rotateSpeed: 200
-  targetAgent: {fileID: 0}
   viewDistance: 10
   viewAngle: 90
   eyeHeight: 0.5
   catchDistance: 1.5
-  useRandomSpawn: 1
-  minSpawnDistance: 5
-  spawnRadius: 10
-  groundY: 0.929
-  visibleDistanceRewardScale: 0.04
-  generalDistanceRewardScale: 0.005
-  maintainSightReward: 0.001
-  unseenPenalty: -0.0001
-  searchMoveReward: 0.0001
-  rotationPenaltyScale: 0.00005
-  timePenalty: -0.0002
-  catchReward: 10
 --- !u!114 &2153714109243389557
 MonoBehaviour:
   m_ObjectHideFlags: 0

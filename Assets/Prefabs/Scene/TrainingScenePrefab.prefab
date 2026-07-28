@@ -274,8 +274,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8cae71caf21a77643bbf8c99300ae4d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RandomScenarioGenerator
-  obstacleCount: 30
-  seekerCount: 1
+  obstacleCount: 40
+  seekerCount: 10
   hiderCount: 1
 --- !u!1 &7756727609724575244
 GameObject:

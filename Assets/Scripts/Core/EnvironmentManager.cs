@@ -32,7 +32,7 @@ public class EnvironmentManager : MonoBehaviour
     [SerializeField] private GameObject editorRoot; // where visual objects live
 
     // runtime state
-    private bool isPaused = false; 
+    private bool isPaused = false;
     private bool isStarted = false;
     private bool isEdited = false; // grid changed?
 
@@ -182,7 +182,7 @@ public class EnvironmentManager : MonoBehaviour
 
         BuildRuntime();
     }
-#endregion
+    #endregion
 
     #region Build Pipeline
     private void BuildRuntime()
@@ -304,12 +304,16 @@ public class EnvironmentManager : MonoBehaviour
     // Gives every seeker the full hider list; each seeker currently the ffollows the nearest target.
     private void AssignRuntimeTargets()
     {
-        if (seekerAgents.Count == 0 || hiderAgents.Count == 0)
+        if (seekerAgents.Count == 0)
         {
-            Debug.LogWarning("Cannot assign target because there are not seekers or hiders.");
+            Debug.LogWarning("No seekers found.");
             return;
         }
 
+        if (hiderAgents.Count == 0)
+        {
+            Debug.LogWarning("No hiders found. Seekers will have no targets.");
+        }
 
         foreach (SeekerAgent seeker in seekerAgents)
         {
@@ -322,8 +326,7 @@ public class EnvironmentManager : MonoBehaviour
                 continue;
             }
 
-            seeker.SetUseRandomSpawn(simulationMode == SimulationMode.Training);
-            seeker.SetTargets(new List<NavMeshAgent>(hiderAgents)); // pass copy
+            seeker.SetTargets(hiderAgents); // pass copy
         }
     }
     #endregion
@@ -354,6 +357,11 @@ public class EnvironmentManager : MonoBehaviour
         return isPaused;
     }
 
+    public bool IsTrainingMode()
+    {
+        return simulationMode == SimulationMode.Training;
+    }
+
     public Transform GetEditorRoot()
     {
         return editorRoot.transform;
@@ -362,7 +370,6 @@ public class EnvironmentManager : MonoBehaviour
     {
         return seekerPrefab;
     }
-
     public GameObject GetHiderPrefab()
     {
         return hiderPrefab;
