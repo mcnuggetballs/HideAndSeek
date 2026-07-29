@@ -296,6 +296,14 @@ public class SeekerAgent : Agent
                 targetAgent.nextPosition);
         }
     }
+
+    private void OnDrawGizmos()
+    {
+        if (targetAgent == null) return;
+
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(transform.position, targetAgent.transform.position);
+    }
     #endregion
 
     #region Reward System

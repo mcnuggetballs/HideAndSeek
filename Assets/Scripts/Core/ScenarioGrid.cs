@@ -1,12 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// this file records the grid map similar to a truth table
-// eventually can have settings for users
-
-
-// try read and load csv files, fall back default??? switch case
-
 public class ScenarioGrid : MonoBehaviour
 {
     // symbols to describe the map
@@ -34,17 +28,8 @@ public class ScenarioGrid : MonoBehaviour
         ClearGrid();
     }
 
-    public void ClearGrid()
-    {
-        for (int row = 0; row < Height; row++)
-        {
-            for (int col = 0; col < Width; col++)
-            {
-                cells[row, col] = EmptyCell;
-            }
-        }
-    }
 
+    #region Utilities
     // converts a unity world position to grid cell 
     public Vector2Int WorldToCell(Vector3 worldPosition)
     {
@@ -70,59 +55,12 @@ public class ScenarioGrid : MonoBehaviour
             (cell.y * cellSize) - offsetZ + (cellSize * 0.5f)
         );
     }
-
-    #region Grid Change
-    // what is currently in this cell?
-    public char GetCell(Vector2Int cell) // but vector2int is x,y
-    {
-        if (!IsInsideGrid(cell))
-        {
-            return EmptyCell;
-        }
-
-        return cells[cell.y, cell.x]; // arrays usually stored as row,col
-    }
-
-    // change cell to either seeker/hider/wall
-    public void SetCell(Vector2Int cell, char value)
-    {
-        if (!IsInsideGrid(cell))
-        {
-            return;
-        }
-
-        cells[cell.y, cell.x] = value;
-    }
-    #endregion
-
-
     // is clicked cell inside grid?
     public bool IsInsideGrid(Vector2Int cell)
     {
         return cell.x >= 0 && cell.x < gridWidth && // check if cell x position is 0 - 19
                cell.y >= 0 && cell.y < gridHeight;
     }
-    public IEnumerable<Vector2Int> GetAllCells()
-    {
-        for (int row = 0; row < Height; row++)
-        {
-            for (int col = 0; col < Width; col++)
-            {
-                yield return new Vector2Int(col, row);
-            }
-        }
-    }
-
-    public bool IsDirty()
-    {
-        return isDirty;
-    }
-
-    public void ClearDirty()
-    {
-        isDirty = false;
-    }
-
     void OnDrawGizmos()
     {
         Gizmos.color = Color.green;
@@ -146,4 +84,60 @@ public class ScenarioGrid : MonoBehaviour
             Gizmos.DrawLine(start, end);
         }
     }
+    #endregion
+
+
+    #region Grid Update
+    public void ClearGrid()
+    {
+        for (int row = 0; row < Height; row++)
+        {
+            for (int col = 0; col < Width; col++)
+            {
+                cells[row, col] = EmptyCell;
+            }
+        }
+    }
+    // what is currently in this cell?
+    public char GetCell(Vector2Int cell) // but vector2int is x,y
+    {
+        if (!IsInsideGrid(cell))
+        {
+            return EmptyCell;
+        }
+
+        return cells[cell.y, cell.x]; // arrays usually stored as row,col
+    }
+
+    // change cell to either seeker/hider/wall
+    public void SetCell(Vector2Int cell, char value)
+    {
+        if (!IsInsideGrid(cell))
+        {
+            return;
+        }
+
+        cells[cell.y, cell.x] = value;
+    }
+    public IEnumerable<Vector2Int> GetAllCells()
+    {
+        for (int row = 0; row < Height; row++)
+        {
+            for (int col = 0; col < Width; col++)
+            {
+                yield return new Vector2Int(col, row);
+            }
+        }
+    }
+
+    public bool IsDirty()
+    {
+        return isDirty;
+    }
+
+    public void ClearDirty()
+    {
+        isDirty = false;
+    }
+    #endregion
 }

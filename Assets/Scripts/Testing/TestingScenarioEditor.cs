@@ -232,6 +232,7 @@ public class TestingScenarioEditor : MonoBehaviour
         // update data layer first
         grid.SetCell(cell, ScenarioGrid.EmptyCell);
 
+        // if simulation has started, DO NOT rebuild everything, just update this 1 cell
         if (environmentManager.IsStarted())
         {
             environmentManager.UpdateRuntimeCell(cell, ScenarioGrid.EmptyCell);

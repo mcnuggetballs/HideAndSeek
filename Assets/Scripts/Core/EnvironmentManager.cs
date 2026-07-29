@@ -210,7 +210,7 @@ public class EnvironmentManager : MonoBehaviour
             }
         }
     }
-    
+
     // FULL rebuild
     void BuildAgentsOnly()
     {
@@ -220,38 +220,10 @@ public class EnvironmentManager : MonoBehaviour
         foreach (var cell in grid.GetAllCells())
         {
             char value = grid.GetCell(cell);
-
             if (value == ScenarioGrid.WallCell)
                 continue;
-
-            Vector3 worldPos = grid.CellToWorld(cell);
-
-            GameObject obj = null;
-
-            if (value == ScenarioGrid.SeekerCell)
-            {
-                obj = Instantiate(seekerPrefab, worldPos, Quaternion.identity, runtimeRoot);
-                var seeker = obj.GetComponentInChildren<SeekerAgent>();
-                if (seeker != null)
-                {
-                    seekerAgents.Add(seeker);
-                }
-            }
-            else if (value == ScenarioGrid.HiderCell)
-            {
-                obj = Instantiate(hiderPrefab, worldPos, Quaternion.identity, runtimeRoot);
-                var hider = obj.GetComponentInChildren<NavMeshAgent>();
-                if (hider != null)
-                {
-                    hiderAgents.Add(hider);
-                }
-            }
-            if (obj != null)
-            {
-                runtimeMap[cell] = obj;
-            }
+            SpawnRuntimeObject(cell, value);
         }
-
     }
     #endregion
 
@@ -259,34 +231,47 @@ public class EnvironmentManager : MonoBehaviour
     // INCREMENTAL update, only 1 cell change
     public void UpdateRuntimeCell(Vector2Int cell, char value)
     {
-        Vector3 worldPos = grid.CellToWorld(cell);
         RemoveRuntimeObjectAt(cell);
+
+        if (value == ScenarioGrid.EmptyCell)
+            return;
+
+        SpawnRuntimeObject(cell, value);
+    }
+
+    // Helper function to build agents
+    private GameObject SpawnRuntimeObject(Vector2Int cell, char value)
+    {
+        Vector3 worldPos = grid.CellToWorld(cell);
         GameObject obj = null;
 
-        if (value == ScenarioGrid.WallCell)
-            obj = Instantiate(obstaclePrefab, worldPos, Quaternion.identity, runtimeRoot);
-
-        else if (value == ScenarioGrid.SeekerCell)
-            obj = Instantiate(seekerPrefab, worldPos, Quaternion.identity, runtimeRoot);
-        var seeker = obj.GetComponentInChildren<SeekerAgent>();
-        if (seeker != null)
+        switch (value)
         {
-            seekerAgents.Add(seeker);
-        }
+            case ScenarioGrid.WallCell:
+                obj = Instantiate(obstaclePrefab, worldPos, Quaternion.identity, runtimeRoot);
+                break;
 
-        else if (value == ScenarioGrid.HiderCell)
-            obj = Instantiate(hiderPrefab, worldPos, Quaternion.identity, runtimeRoot);
-        var hider = obj.GetComponentInChildren<NavMeshAgent>();
-        if (hider != null)
-        {
-            hiderAgents.Add(hider);
+            case ScenarioGrid.SeekerCell:
+                obj = Instantiate(seekerPrefab, worldPos, Quaternion.identity, runtimeRoot);
+                var seeker = obj.GetComponentInChildren<SeekerAgent>();
+                if (seeker != null)
+                    seekerAgents.Add(seeker);
+                break;
+
+            case ScenarioGrid.HiderCell:
+                obj = Instantiate(hiderPrefab, worldPos, Quaternion.identity, runtimeRoot);
+                var hider = obj.GetComponentInChildren<NavMeshAgent>();
+                if (hider != null)
+                    hiderAgents.Add(hider);
+                break;
         }
 
         if (obj != null)
-            // store runtime objects when creataed
             runtimeMap[cell] = obj;
+
+        return obj;
     }
-     
+
     private void RemoveRuntimeObjectAt(Vector2Int cell)
     {
         if (runtimeMap.TryGetValue(cell, out GameObject obj))
