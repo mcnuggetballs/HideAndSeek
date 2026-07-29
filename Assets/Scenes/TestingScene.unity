@@ -2703,6 +2703,18 @@ PrefabInstance:
       propertyPath: sceneCamera
       value: 
       objectReference: {fileID: 330585545}
+    - target: {fileID: 5248701050964835464, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
+      propertyPath: hiderPreviewPrefab
+      value: 
+      objectReference: {fileID: 5050601273516166025, guid: 082cb2d2ffe1e99409acb97864633ee2, type: 3}
+    - target: {fileID: 5248701050964835464, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
+      propertyPath: seekerPreviewPrefab
+      value: 
+      objectReference: {fileID: 1702149679562409119, guid: f73ca6929283a0f469c6260e87d16f6d, type: 3}
+    - target: {fileID: 5248701050964835464, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
+      propertyPath: obstaclePreviewPrefab
+      value: 
+      objectReference: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
     - target: {fileID: 6246770865924678003, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

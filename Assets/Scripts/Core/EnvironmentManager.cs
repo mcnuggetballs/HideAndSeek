@@ -34,7 +34,6 @@ public class EnvironmentManager : MonoBehaviour
     // runtime state
     private bool isPaused = false;
     private bool isStarted = false;
-    private bool isEdited = false; // grid changed?
 
     // runtime data
     private readonly List<SeekerAgent> seekerAgents = new();
@@ -51,19 +50,23 @@ public class EnvironmentManager : MonoBehaviour
         if (runtimeRoot != null)
             runtimeRoot.gameObject.SetActive(true);
 
-        // hide editor visuals
+        // in Testing mode, hide editor visuals (switch from edit -> runtime)
         if (simulationMode == SimulationMode.Testing && editorRoot != null)
             editorRoot.SetActive(false);
 
-        // build after editor is hidden
+        // only applies to Testing mode (user designed scenes)
         if (simulationMode == SimulationMode.Testing)
         {
-            // first play, grid has been edited
-            if (!isStarted || isEdited) // so that new seekers are reflected
+            /* rebuild conditions:
+             * !isStarted -> first time pressing Play (nothing has been build yet)
+             * grid.IsDirty() -> grid was modified after last build so runtime must be updated
+            */
+            if (!isStarted || grid.IsDirty()) // so that new seekers are reflected
             {
-                InitialiseEnvironment();
-                isStarted = true;
-                isEdited = false;
+                InitialiseEnvironment(); // consuming changes
+                isStarted = true; // simulation has now been build at least once
+                grid.ClearDirty(); // changes consumed, no longer dirty
+                // change is consumed here?
             }
         }
         else // training
@@ -102,11 +105,11 @@ public class EnvironmentManager : MonoBehaviour
 
         // clear grid data
         grid.ClearGrid();
+        grid.ClearDirty();
 
         // reset state flags
         isStarted = false;
         isPaused = false;
-        isEdited = false;
 
         if (editorRoot != null) // this is what enables editing
         {
@@ -180,12 +183,12 @@ public class EnvironmentManager : MonoBehaviour
             }
         }
 
-        BuildRuntime();
+        BuildEnvironmentFromGrid();
     }
     #endregion
 
     #region Build Pipeline
-    private void BuildRuntime()
+    private void BuildEnvironmentFromGrid()
     {
         BuildObstaclesOnly();
         Physics.SyncTransforms(); // important when colliders instantiated, bake NavMesh
@@ -207,6 +210,8 @@ public class EnvironmentManager : MonoBehaviour
             }
         }
     }
+    
+    // FULL rebuild
     void BuildAgentsOnly()
     {
         seekerAgents.Clear();
@@ -243,13 +248,7 @@ public class EnvironmentManager : MonoBehaviour
             }
             if (obj != null)
             {
-                if (runtimeMap.TryGetValue(cell, out GameObject existing))
-                {
-                    Destroy(runtimeMap[cell]); runtimeMap.Remove(cell);
-                }
                 runtimeMap[cell] = obj;
-
-
             }
         }
 
@@ -257,19 +256,11 @@ public class EnvironmentManager : MonoBehaviour
     #endregion
 
     #region Runtime Updates
-    // to inform runtime, grid changed (user painted a cell
-    public void MarkGridDirty()
-    {
-        isEdited = true;
-    }
-
+    // INCREMENTAL update, only 1 cell change
     public void UpdateRuntimeCell(Vector2Int cell, char value)
     {
         Vector3 worldPos = grid.CellToWorld(cell);
-
-        // remove existing runtime object at that cell
         RemoveRuntimeObjectAt(cell);
-
         GameObject obj = null;
 
         if (value == ScenarioGrid.WallCell)
@@ -277,22 +268,39 @@ public class EnvironmentManager : MonoBehaviour
 
         else if (value == ScenarioGrid.SeekerCell)
             obj = Instantiate(seekerPrefab, worldPos, Quaternion.identity, runtimeRoot);
+        var seeker = obj.GetComponentInChildren<SeekerAgent>();
+        if (seeker != null)
+        {
+            seekerAgents.Add(seeker);
+        }
 
         else if (value == ScenarioGrid.HiderCell)
             obj = Instantiate(hiderPrefab, worldPos, Quaternion.identity, runtimeRoot);
+        var hider = obj.GetComponentInChildren<NavMeshAgent>();
+        if (hider != null)
+        {
+            hiderAgents.Add(hider);
+        }
 
         if (obj != null)
-            //PlaceObjectOnSurface(obj, worldPos);
             // store runtime objects when creataed
             runtimeMap[cell] = obj;
-
-        //runtimeNavMeshBuilder.RebuildNavMesh();
     }
-
+     
     private void RemoveRuntimeObjectAt(Vector2Int cell)
     {
         if (runtimeMap.TryGetValue(cell, out GameObject obj))
         {
+            var seeker = obj.GetComponentInChildren<SeekerAgent>();
+            if (seeker != null)
+            {
+                seekerAgents.Remove(seeker);
+            }
+            var hider = obj.GetComponent<NavMeshAgent>();
+            if (hider != null)
+            {
+                hiderAgents.Remove(hider);
+            }
             Destroy(obj);
             runtimeMap.Remove(cell);
         }

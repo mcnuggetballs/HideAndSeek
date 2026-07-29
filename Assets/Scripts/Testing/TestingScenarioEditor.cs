@@ -2,6 +2,8 @@
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
+using UnityEngine.Rendering;
+using Unity.VisualScripting;
 
 // edits paint scenario data                                                                                                                                                           
 // this file handles mouse clicks,
@@ -11,6 +13,7 @@ using System.Collections.Generic;
 
 public class TestingScenarioEditor : MonoBehaviour
 {
+    // Enums
     private enum PaintBrush
     {
         None,
@@ -23,32 +26,22 @@ public class TestingScenarioEditor : MonoBehaviour
     // Editor States
     private PaintBrush currentBrush;
     private bool canPaint = true;
+
     private readonly Dictionary<Vector2Int, GameObject> paintedVisuals = new Dictionary<Vector2Int, GameObject>();
 
-    // assign in inspector
-    public Camera sceneCamera;
+    // Inspector References
+    [SerializeField] private Camera sceneCamera;
 
-    public float placementYOffset = 0.02f;
-    public float seekerPreviewScale = 1f;
-
-    [SerializeField] private ScenarioGrid grid; // not serialised so that can create in own environment 
-    [SerializeField] private Transform environment; // parent? 
-
-    // refine placement logic
-    [SerializeField] private Collider placementArea;
-    [SerializeField] private LayerMask placementBlockerLayers; // for overlap check
-
-    [SerializeField] private GameObject emptySeekerPrefab;
-    [SerializeField] private GameObject emptyHiderPrefab;
-    [SerializeField] private GameObject ObstaclePrefab;
-
-    // references
+    [SerializeField] private ScenarioGrid grid;
     [SerializeField] private EnvironmentManager environmentManager;
 
-    // when this script becomes active, subscribe SelectSeekerBrush to SpawnSeeker requested
-    // += and -= are what actually connect/disconnect the event listener.
+    [SerializeField] private GameObject seekerPreviewPrefab;
+    [SerializeField] private GameObject hiderPreviewPrefab;
+    [SerializeField] private GameObject obstaclePreviewPrefab;
 
-    // when this script becomes inactive, stop listening for placement requests
+    public float placementYOffset = 0.02f;
+
+    #region Unity Lifecycle
     private void OnEnable()
     {
         // testinscenarioeditor listens for placement requests
@@ -98,8 +91,9 @@ public class TestingScenarioEditor : MonoBehaviour
 
         PaintAtMousePosition(mousePosition);
     }
+    #endregion
 
-    // BRUSH SYSTEM //
+    #region Brush Selection
     public void SelectSeekerBrush()
     {
         SelectBrush(PaintBrush.Seeker);
@@ -126,8 +120,9 @@ public class TestingScenarioEditor : MonoBehaviour
         Debug.Log($"{currentBrush} placement mode is active. Click on the map to place.");
     }
 
+    #endregion
 
-    // INPUT SYSTEM //
+    #region Input
     // check if left mouse button was click this frame, return the mouse screen position
     private bool TryGetMouseClick(out Vector2 mousePosition)
     {
@@ -141,7 +136,9 @@ public class TestingScenarioEditor : MonoBehaviour
         mousePosition = Mouse.current.position.ReadValue();
         return true;
     }
+    #endregion
 
+    #region Painting
     private void PaintAtMousePosition(Vector2 mousePosition)
     {
         if (grid == null)
@@ -177,13 +174,13 @@ public class TestingScenarioEditor : MonoBehaviour
         switch (currentBrush)
         {
             case PaintBrush.Wall:
-                PaintCell(cell, ScenarioGrid.WallCell, ObstaclePrefab);
+                PaintCell(cell, ScenarioGrid.WallCell, obstaclePreviewPrefab);
                 break;
             case PaintBrush.Seeker:
-                PaintCell(cell, ScenarioGrid.SeekerCell, emptySeekerPrefab);
+                PaintCell(cell, ScenarioGrid.SeekerCell, seekerPreviewPrefab);
                 break;
             case PaintBrush.Hider:
-                PaintCell(cell, ScenarioGrid.HiderCell, emptyHiderPrefab);
+                PaintCell(cell, ScenarioGrid.HiderCell, hiderPreviewPrefab);
                 break;
             case PaintBrush.Erase:
                 EraseCell(cell);
@@ -192,26 +189,6 @@ public class TestingScenarioEditor : MonoBehaviour
                 break;
         }
     }
-
-    //John
-    public void DestroyMoveables()
-    {
-        for (int i = 0; i < grid.Width; ++i)
-        {
-            for (int j = 0; j < grid.Height; ++j)
-            {
-                Vector2Int id = new Vector2Int(i, j);
-
-                if ((grid.GetCell(id) == ScenarioGrid.SeekerCell) ||
-                    (grid.GetCell(id) == ScenarioGrid.HiderCell))
-                {
-                    Destroy(paintedVisuals[id]); // destroy visuals, but grid still says 'S'
-                    paintedVisuals[id] = null;
-                }
-            }
-        }
-    }
-    //John
 
     private void PaintCell(Vector2Int cell, char cellValue, GameObject prefab)
     {
@@ -228,8 +205,6 @@ public class TestingScenarioEditor : MonoBehaviour
 
         // updates visual layer
         Vector3 worldPosition = grid.CellToWorld(cell); // need world position to place object
-
-        // REMOVED! INSTEAD OF INSTANTIATE WE SET CELL 
         GameObject visual = Instantiate(prefab, worldPosition, Quaternion.identity, environmentManager.GetEditorRoot());
 
         PlaceObjectOnSurface(visual, worldPosition);
@@ -242,24 +217,29 @@ public class TestingScenarioEditor : MonoBehaviour
             environmentManager.UpdateRuntimeCell(cell, cellValue); // mini update again
         }
 
-        environmentManager.MarkGridDirty();
     }
 
+    // Remove Visual + Data layer
     private void EraseCell(Vector2Int cell)
     {
-        // update data layer first
-        grid.SetCell(cell, ScenarioGrid.EmptyCell);
-        // then update visual layer, which is to literally remove
-        if (paintedVisuals.TryGetValue(cell, out GameObject visual))
+        // remove visual
+        if (paintedVisuals.TryGetValue(cell, out GameObject obj))
         {
-            Destroy(visual);
+            Destroy(obj);
             paintedVisuals.Remove(cell);
         }
+
+        // update data layer first
+        grid.SetCell(cell, ScenarioGrid.EmptyCell);
+
+        if (environmentManager.IsStarted())
+        {
+            environmentManager.UpdateRuntimeCell(cell, ScenarioGrid.EmptyCell);
+        }
     }
+    #endregion
 
-
-    // PLACEMENT LOGIC //
-
+    #region Placement
     // using camera to get mouse click position
     private Vector3 GetMouseSurfacePosition(Camera cameraToUse, Vector2 mousePosition)
     {
@@ -269,8 +249,10 @@ public class TestingScenarioEditor : MonoBehaviour
 
         foreach (RaycastHit hit in hits)
         {
-
-            return hit.point;
+            if (hit.collider != null)
+            {
+                return hit.point;
+            }
         }
 
         Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
@@ -322,9 +304,9 @@ public class TestingScenarioEditor : MonoBehaviour
 
         return hasBounds;
     }
+    #endregion
 
-
-    // HIDE & SHOW PAINT VISUALS //
+    #region Visual Control
 
     private void HidePaintedVisuals()
     {
@@ -368,5 +350,6 @@ public class TestingScenarioEditor : MonoBehaviour
         }
         paintedVisuals.Clear();
     }
+    #endregion
 
 }

@@ -19,6 +19,7 @@ public class ScenarioGrid : MonoBehaviour
     [SerializeField] private int gridWidth; // cols
     [SerializeField] private int gridHeight; // rows 
     [SerializeField] private float cellSize; // how big
+    private bool isDirty = false;
 
     private char[,] cells; // 2d array 
 
@@ -70,6 +71,7 @@ public class ScenarioGrid : MonoBehaviour
         );
     }
 
+    #region Grid Change
     // what is currently in this cell?
     public char GetCell(Vector2Int cell) // but vector2int is x,y
     {
@@ -91,6 +93,8 @@ public class ScenarioGrid : MonoBehaviour
 
         cells[cell.y, cell.x] = value;
     }
+    #endregion
+
 
     // is clicked cell inside grid?
     public bool IsInsideGrid(Vector2Int cell)
@@ -107,6 +111,16 @@ public class ScenarioGrid : MonoBehaviour
                 yield return new Vector2Int(col, row);
             }
         }
+    }
+
+    public bool IsDirty()
+    {
+        return isDirty;
+    }
+
+    public void ClearDirty()
+    {
+        isDirty = false;
     }
 
     void OnDrawGizmos()

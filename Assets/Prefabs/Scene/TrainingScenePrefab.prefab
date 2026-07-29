@@ -76,18 +76,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TestingScenarioEditor
   sceneCamera: {fileID: 0}
-  placementYOffset: 0.02
-  seekerPreviewScale: 1
   grid: {fileID: 967686372987626610}
-  environment: {fileID: 1006135926191435751}
+  environmentManager: {fileID: 2134855663785489812}
   placementArea: {fileID: 2525804862884329389}
   placementBlockerLayers:
     serializedVersion: 2
     m_Bits: 0
-  emptySeekerPrefab: {fileID: 1702149679562409119, guid: f73ca6929283a0f469c6260e87d16f6d, type: 3}
-  emptyHiderPrefab: {fileID: 5050601273516166025, guid: 082cb2d2ffe1e99409acb97864633ee2, type: 3}
-  ObstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
-  environmentManager: {fileID: 2134855663785489812}
+  seekerPreviewPrefab: {fileID: 0}
+  hiderPreviewPrefab: {fileID: 0}
+  obstaclePreviewPrefab: {fileID: 0}
+  placementYOffset: 0.02
+  seekerPreviewScale: 1
 --- !u!1 &4525255990610018256
 GameObject:
   m_ObjectHideFlags: 0
@@ -274,8 +273,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8cae71caf21a77643bbf8c99300ae4d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RandomScenarioGenerator
-  obstacleCount: 40
-  seekerCount: 10
+  obstacleCount: 30
+  seekerCount: 1
   hiderCount: 1
 --- !u!1 &7756727609724575244
 GameObject:
