@@ -93,7 +93,7 @@ public class TestingScenarioEditor : MonoBehaviour
     }
     #endregion
 
-    #region Brush Selection
+    #region Brush Selection Logic
     public void SelectSeekerBrush()
     {
         SelectBrush(PaintBrush.Seeker);
@@ -138,7 +138,7 @@ public class TestingScenarioEditor : MonoBehaviour
     }
     #endregion
 
-    #region Painting
+    #region Data Layer
     private void PaintAtMousePosition(Vector2 mousePosition)
     {
         if (grid == null)
@@ -240,7 +240,7 @@ public class TestingScenarioEditor : MonoBehaviour
     }
     #endregion
 
-    #region Placement
+    #region Placement Logic
     // using camera to get mouse click position
     private Vector3 GetMouseSurfacePosition(Camera cameraToUse, Vector2 mousePosition)
     {
@@ -307,7 +307,7 @@ public class TestingScenarioEditor : MonoBehaviour
     }
     #endregion
 
-    #region Visual Control
+    #region Visual Layer
 
     private void HidePaintedVisuals()
     {

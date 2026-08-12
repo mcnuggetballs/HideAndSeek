@@ -261,12 +261,15 @@ public class SeekerAgent : Agent
     // safety check
     private bool HasTargetAndNavAgent()
     {
-        if (targetAgent == null && targetAgents.Count > 0)
+        if (targetAgent == null || !targetAgent.isOnNavMesh)
         {
-            targetAgent = FindNearestTarget();
+            if (targetAgents.Count == 0)
+            { targetAgent = FindNearestTarget(); }
         }
 
-        return targetAgent != null && seekerAgent != null && seekerAgent.isOnNavMesh;
+        return targetAgent != null 
+            && seekerAgent != null 
+            && seekerAgent.isOnNavMesh;
     }
 
     private void ResetMovement()

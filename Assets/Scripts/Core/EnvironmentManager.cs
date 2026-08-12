@@ -229,7 +229,7 @@ public class EnvironmentManager : MonoBehaviour
 
     #region Runtime Updates
     // INCREMENTAL update, only 1 cell change
-    public void UpdateRuntimeCell(Vector2Int cell, char value)
+    public void UpdateRuntimeCell(Vector2Int cell, char value) // visual
     {
         RemoveRuntimeObjectAt(cell);
 
@@ -290,9 +290,7 @@ public class EnvironmentManager : MonoBehaviour
             runtimeMap.Remove(cell);
         }
     }
-    #endregion
 
-    #region Agent Assignment
     // For merging Shao Cong's progress
     // Gives every seeker the full hider list; each seeker currently the ffollows the nearest target.
     private void AssignRuntimeTargets()
