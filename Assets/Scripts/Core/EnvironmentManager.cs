@@ -30,6 +30,7 @@ public class EnvironmentManager : MonoBehaviour
     [SerializeField] private TestingScenarioEditor scenarioEditor;
     [SerializeField] private Transform runtimeRoot; // where runtime objects live
     [SerializeField] private GameObject editorRoot; // where visual objects live
+    [SerializeField] private InfluenceMap influenceMap; // analysis layer
 
     // runtime state
     private bool isPaused = false;
@@ -184,6 +185,7 @@ public class EnvironmentManager : MonoBehaviour
         }
 
         BuildEnvironmentFromGrid();
+        influenceMap.Initialise(grid.Height, grid.Width);
     }
     #endregion
 

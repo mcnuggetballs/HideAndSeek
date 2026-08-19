@@ -40,6 +40,9 @@ public class SeekerAgent : Agent
     private float timePenalty = -0.0002f;
     private float catchReward = 10f;
 
+    [Header("InfluenceMap Settings")]
+    [SerializeField] private bool useInfluenceMap;
+    [SerializeField] private InfluenceMap influenceMap;
 
     private void Awake()
     {
@@ -69,6 +72,7 @@ public class SeekerAgent : Agent
 
     public override void CollectObservations(VectorSensor sensor)
     {
+        // normal observations
         if (targetAgent == null)
         {
             sensor.AddObservation(0);
@@ -93,6 +97,15 @@ public class SeekerAgent : Agent
             sensor.AddObservation(Vector3.zero);
             sensor.AddObservation(1f);
         }
+
+        // if using influence map
+        if (useInfluenceMap && influenceMap != null)
+        {
+            float influence = influenceMap.GetInfluenceAtPosition(transform.position);
+            sensor.AddObservation(influence);
+        }
+
+
     }
 
     // Catch Logic
@@ -379,6 +392,18 @@ public class SeekerAgent : Agent
         // Very small penalty for excessive spinning.
         // Keep this tiny because the seeker still needs to rotate to scan with rays.
         AddReward(-Mathf.Abs(rotate) * rotationPenaltyScale);
+    }
+    #endregion
+
+    #region InfluenceMap
+    void UpdateAgentPosition()
+    {
+
+    }
+
+    void UpdateAgentObservations()
+    {
+
     }
     #endregion
 }
