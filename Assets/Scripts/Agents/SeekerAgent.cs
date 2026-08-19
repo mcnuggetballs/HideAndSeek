@@ -72,7 +72,7 @@ public class SeekerAgent : Agent
 
     public override void CollectObservations(VectorSensor sensor)
     {
-        // normal observations
+        // target observations //
         if (targetAgent == null)
         {
             sensor.AddObservation(0);
@@ -80,31 +80,48 @@ public class SeekerAgent : Agent
             sensor.AddObservation(1f);
             return;
         }
-
-        Vector3 localDir;
-        float normalisedDistance;
-
-        bool visible = GetTargetInfo(out localDir, out normalisedDistance);
-        sensor.AddObservation(visible ? 1 : 0); // target visible?
-
-        if (visible)
-        {
-            sensor.AddObservation(localDir);
-            sensor.AddObservation(normalisedDistance);
-        }
         else
-        { // need to return same amount of observations
-            sensor.AddObservation(Vector3.zero);
-            sensor.AddObservation(1f);
+        {
+            Vector3 localDir;
+            float normalisedDistance;
+
+            bool visible = GetTargetInfo(out localDir, out normalisedDistance);
+            sensor.AddObservation(visible ? 1 : 0); // target visible?
+
+            if (visible)
+            {
+                sensor.AddObservation(localDir);
+                sensor.AddObservation(normalisedDistance);
+            }
+            else
+            { // need to return same amount of observations
+                sensor.AddObservation(Vector3.zero);
+                sensor.AddObservation(1f);
+            }
         }
 
-        // if using influence map
+        // influence map observations //
         if (useInfluenceMap && influenceMap != null)
         {
-            float influence = influenceMap.GetInfluenceAtPosition(transform.position);
+            // basic 
+            float influence = influenceMap.GetCombinedInfluence(transform.position);
             sensor.AddObservation(influence);
-        }
 
+            // spatial awareness
+            //Vector2Int cell = influenceMap.WorldToCell(transform.position);
+
+            //sensor.AddObservation(influenceMap.GetValue(cell));
+            //sensor.AddObservation(influenceMap.GetValue(cell + Vector2Int.up));
+            //sensor.AddObservation(influenceMap.GetValue(cell + Vector2Int.right));
+            //sensor.AddObservation(influenceMap.GetValue(cell + Vector2Int.down));
+            //sensor.AddObservation(influenceMap.GetValue(cell + Vector2Int.left));
+
+
+        }
+        else
+        {
+            sensor.AddObservation(0f);
+        }
 
     }
 

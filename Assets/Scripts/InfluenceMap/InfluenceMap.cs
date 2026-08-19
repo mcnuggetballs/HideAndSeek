@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Unity.Mathematics;
 
 // acts an an analysis + agent perception layer 
 // enforces layer filtering? but all layers should be able to overlay one another tho
@@ -16,7 +17,7 @@ public class InfluenceMap : MonoBehaviour
     }
     // references
     [SerializeField] private ScenarioGrid grid; // truth layer
-    [SerializeField] private GridRenderer renderer;
+    [SerializeField] private GridRenderer gridRenderer;
     [SerializeField] private LayerTag debugLayer;
 
     private int rows;
@@ -33,7 +34,7 @@ public class InfluenceMap : MonoBehaviour
         InitialiseLayers();
     }
 
-    // contain influenceMap data from Grid
+    // creating 4 separate grids 
     private void InitialiseLayers()
     {
         layers = new Dictionary<LayerTag, float[,]>
@@ -94,10 +95,44 @@ public class InfluenceMap : MonoBehaviour
         {
             for(int x = 0; x < cols; x++)
             {
-                float v = layers[debugLayer][y, x];
-                renderer.SetCellColor(x, y, Color.Lerp(Color.white, Color.red, v));
+
+                float v = layers[LayerTag.AgentPositions][y, x];
+                gridRenderer.SetCellColor(x, y, Color.Lerp(Color.white, Color.red, v));
             }
         }
+    }
+
+    #endregion
+
+    #region runtime influence map
+    // mark where agents are on the grid
+    public void UpdateAgentPositions(List<Transform> agents)
+    {
+        var data = layers[LayerTag.AgentPositions];
+
+        // clear grid
+        for (int y = 0; y<rows;y++)
+        {
+            for(int x = 0; x < cols; x++)
+            {
+                data[y, x] = 0f;
+            }
+        }
+
+        // mark agent positions
+        foreach(var agent in agents)
+        {
+            Vector2Int cell = grid.WorldToCell(agent.position);
+            Debug.Log($"{agent.name} world={agent.position} -> cell={cell}");
+
+            if (!grid.IsInsideGrid(cell))
+            {
+                Debug.Log("GRID IS OUT OF BOUNDS!");
+                continue;
+            }
+            data[cell.y, cell.x] = 1f;
+        }
+        Debug.Log($"Agents received: {agents.Count}");
     }
     #endregion
 }

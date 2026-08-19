@@ -31,6 +31,51 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1006135926191435751}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1356792241875772344
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4205099994723433257}
+  - component: {fileID: 767162598405019422}
+  m_Layer: 0
+  m_Name: GridRenderer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4205099994723433257
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1356792241875772344}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 16.17149, y: 0, z: 40.23644}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1006135926191435751}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &767162598405019422
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1356792241875772344}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4208dba06e5975469805ef6546a8121, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GridRenderer
+  tilePrefab: {fileID: 2776681547395200417, guid: 80e426ddc8511df46824a66dcac6fabe, type: 3}
 --- !u!1 &3878807438960109861
 GameObject:
   m_ObjectHideFlags: 0
@@ -78,15 +123,10 @@ MonoBehaviour:
   sceneCamera: {fileID: 0}
   grid: {fileID: 967686372987626610}
   environmentManager: {fileID: 2134855663785489812}
-  placementArea: {fileID: 2525804862884329389}
-  placementBlockerLayers:
-    serializedVersion: 2
-    m_Bits: 0
   seekerPreviewPrefab: {fileID: 0}
   hiderPreviewPrefab: {fileID: 0}
   obstaclePreviewPrefab: {fileID: 0}
   placementYOffset: 0.02
-  seekerPreviewScale: 1
 --- !u!1 &4525255990610018256
 GameObject:
   m_ObjectHideFlags: 0
@@ -178,6 +218,8 @@ Transform:
   - {fileID: 4978278084163510711}
   - {fileID: 596920118829254408}
   - {fileID: 4081540785521990017}
+  - {fileID: 8022799073781364200}
+  - {fileID: 4205099994723433257}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2493304485592230066
@@ -246,6 +288,8 @@ MonoBehaviour:
   scenarioEditor: {fileID: 0}
   runtimeRoot: {fileID: 4978278084163510711}
   editorRoot: {fileID: 7756727609724575244}
+  influenceMap: {fileID: 8200088974579226572}
+  gridRenderer: {fileID: 767162598405019422}
 --- !u!114 &967686372987626610
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -308,6 +352,53 @@ Transform:
   - {fileID: 6316554127977790468}
   m_Father: {fileID: 1006135926191435751}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &8661276545730211433
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8022799073781364200}
+  - component: {fileID: 8200088974579226572}
+  m_Layer: 0
+  m_Name: InfluenceMap
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8022799073781364200
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8661276545730211433}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1006135926191435751}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8200088974579226572
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8661276545730211433}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3eb9fbc4f7564504d984c3ead0cb7c83, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InfluenceMap
+  grid: {fileID: 967686372987626610}
+  gridRenderer: {fileID: 767162598405019422}
+  debugLayer: 3
 --- !u!1001 &3721937914881188924
 PrefabInstance:
   m_ObjectHideFlags: 0

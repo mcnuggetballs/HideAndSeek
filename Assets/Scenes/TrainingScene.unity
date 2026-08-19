@@ -446,7 +446,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnvironmentSpawner
   environmentPrefab: {fileID: 7066587739052165337, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
-  environmentCount: 30
+  environmentCount: 16
   environmentSize: 30
   maxCount: 50
 --- !u!1 &1281126694

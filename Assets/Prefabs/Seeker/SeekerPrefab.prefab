@@ -254,7 +254,7 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 1
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 5022602860645237092, guid: 16ead6f131896064fbf0c08d16c6dc17, type: 3}
+  m_Model: {fileID: 5022602860645237092, guid: a13a284c968d09144876aabd96141bac, type: 3}
   m_InferenceDevice: 0
   m_BehaviorType: 2
   m_BehaviorName: Seeker
@@ -285,6 +285,8 @@ MonoBehaviour:
   viewAngle: 90
   eyeHeight: 0.5
   catchDistance: 1.5
+  useInfluenceMap: 0
+  influenceMap: {fileID: 0}
 --- !u!114 &2153714109243389557
 MonoBehaviour:
   m_ObjectHideFlags: 0

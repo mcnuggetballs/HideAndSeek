@@ -1,5 +1,7 @@
 ﻿using Grpc.Core;
 using System.Collections.Generic;
+using System.Linq;
+using Unity.MLAgents;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.SceneManagement;
@@ -31,6 +33,7 @@ public class EnvironmentManager : MonoBehaviour
     [SerializeField] private Transform runtimeRoot; // where runtime objects live
     [SerializeField] private GameObject editorRoot; // where visual objects live
     [SerializeField] private InfluenceMap influenceMap; // analysis layer
+    [SerializeField] private GridRenderer gridRenderer; // analysis layer
 
     // runtime state
     private bool isPaused = false;
@@ -41,7 +44,7 @@ public class EnvironmentManager : MonoBehaviour
     private readonly List<NavMeshAgent> hiderAgents = new();
     private Dictionary<Vector2Int, GameObject> runtimeMap = new();
 
-    #region Lifecycle
+    #region Simulation Lifecycle
     // Builds runtime from grid, Hide editor, Build environment, Start simultion
     private void PlaySimulation()
     {
@@ -137,7 +140,7 @@ public class EnvironmentManager : MonoBehaviour
     }
     #endregion
 
-    #region Simulation Mode & Initialisation
+    #region Unity Lifecycle
     // decide simulationMode based on scene name (temporary, to be fixed with proper GameManager later)
     private void Awake()
     {
@@ -170,6 +173,7 @@ public class EnvironmentManager : MonoBehaviour
             runtimeRoot.gameObject.SetActive(true);
         }
 
+        // training generation
         if (simulationMode == SimulationMode.Training)
         {
             var generator = GetComponent<RandomScenarioGenerator>();
@@ -184,8 +188,22 @@ public class EnvironmentManager : MonoBehaviour
             }
         }
 
+        // build runtime world
         BuildEnvironmentFromGrid();
-        influenceMap.Initialise(grid.Height, grid.Width);
+        gridRenderer.BuildGrid(grid.Width, grid.Height);
+
+        // initialise influence map after build
+        if(influenceMap != null)
+        {
+            influenceMap.Initialise(grid); // initialise influencemap after environment is done building
+
+            var agents = FindObjectsByType<Agent>().Select(a => a.transform).ToList(); // find agents
+
+            influenceMap.UpdateAgentPositions(agents); // update agent 
+
+            influenceMap.RefreshDebugView();
+        }
+        Debug.Log("InfluenceMap is " + (influenceMap == null ? "NULL" : "NOT NULL"));
     }
     #endregion
 
@@ -339,6 +357,12 @@ public class EnvironmentManager : MonoBehaviour
         }
 
         runtimeMap.Clear();
+    }
+
+    public void ResetEnvironment()
+    {
+        InitialiseEnvironment();
+        //influenceMap.ResetLayers();
     }
     public bool IsStarted()
     {

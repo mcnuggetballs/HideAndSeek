@@ -1,10 +1,12 @@
-for virtual environment?
-download python 3.10.12
-open cmd in project directory
-python -3.10 -m venv mlagents_env
+1. download python 3.10.12
+2. open cmd in project directory, and run either that works:
+	python -3.10 -m venv mlagents_env
+	py -3.10 -m venv mlagents_env
+
+3. run this, should see (mlagents_env)
 mlagents_env\Scripts\activate
-should see (mlagents_env)
-pip -m pip install --upgrade pip
+
+python -m pip install --upgrade pip
 
 pip install mlagents==1.1.0 torch==2.1.1
 
