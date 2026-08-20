@@ -5,6 +5,8 @@ using Unity.MLAgents.Sensors;
 using UnityEngine;
 using UnityEngine.AI;
 
+// agents should only report state,not modify global systems directly
+
 public class SeekerAgent : Agent
 {
     [Header("Agent Setup")]
@@ -104,8 +106,8 @@ public class SeekerAgent : Agent
         if (useInfluenceMap && influenceMap != null)
         {
             // basic 
-            float influence = influenceMap.GetCombinedInfluence(transform.position);
-            sensor.AddObservation(influence);
+            //float influence = influenceMap.GetCombinedInfluence(transform.position);
+            //sensor.AddObservation(influence);
 
             // spatial awareness
             //Vector2Int cell = influenceMap.WorldToCell(transform.position);
@@ -413,10 +415,6 @@ public class SeekerAgent : Agent
     #endregion
 
     #region InfluenceMap
-    void UpdateAgentPosition()
-    {
-
-    }
 
     void UpdateAgentObservations()
     {

@@ -11,6 +11,9 @@ using UnityEngine.SceneManagement;
 // Listens to simulation-level events (play pause reset) and controls the active runtime agents (enable disable) and track simulation state
 // Builds runtime scene from truth when "play" clicked
 
+// reads scenariogrid data when needed
+
+// should orchestrate updates
 public class EnvironmentManager : MonoBehaviour
 {
     public enum SimulationMode
@@ -190,7 +193,7 @@ public class EnvironmentManager : MonoBehaviour
 
         // build runtime world
         BuildEnvironmentFromGrid();
-        gridRenderer.BuildGrid(grid.Width, grid.Height);
+        gridRenderer.BuildFromScenarioGrid(grid);
 
         // initialise influence map after build
         if(influenceMap != null)
@@ -201,7 +204,6 @@ public class EnvironmentManager : MonoBehaviour
 
             influenceMap.UpdateAgentPositions(agents); // update agent 
 
-            influenceMap.RefreshDebugView();
         }
         Debug.Log("InfluenceMap is " + (influenceMap == null ? "NULL" : "NOT NULL"));
     }
@@ -393,6 +395,13 @@ public class EnvironmentManager : MonoBehaviour
     }
     #endregion
 
+    #region Influence Map Pipeline
+    public void UpdateAgentPositions()
+    {
+        // collects positions and updates influence map
+        // influence map updates grid data and gridrenderer visualises result
+    }
+    #endregion
 }
 
 

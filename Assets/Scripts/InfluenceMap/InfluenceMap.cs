@@ -1,32 +1,40 @@
 using UnityEngine;
 using System.Collections.Generic;
 using Unity.Mathematics;
+using Unity.VisualScripting;
 
-// acts an an analysis + agent perception layer 
-// enforces layer filtering? but all layers should be able to overlay one another tho
+// view this as a reward + perception abstraction layer for RL agents
+
+// owns and runs influence logic
+// reads world state (runtime/agent) state and computes layers
 
 public class InfluenceMap : MonoBehaviour
 {
     // influence map layers, ablet o coexist internally but not visually
     public enum LayerTag
     {
-        WasSeen,
-        TimeSinceLastSeen,
-        DistanceToGoal,
-        AgentPositions
+        WasSeen, // decay over time
+        TimeSinceLastSeen, // ticking timer
+        DistanceToGoal, // bfs / dijkstra
+        AgentPositions // occupancy grid
     }
     // references
-    [SerializeField] private ScenarioGrid grid; // truth layer
-    [SerializeField] private GridRenderer gridRenderer;
     [SerializeField] private LayerTag debugLayer;
+    [SerializeField] private ScenarioGrid grid; // truth layer
 
     private int rows;
     private int cols;
 
-    private Dictionary<LayerTag, float[,]> layers;
+    private Dictionary<LayerTag, float[,]> layers; // core storage
 
+    // system set up
     public void Initialise(ScenarioGrid gridRef)
     {
+        if(gridRef == null)
+        {
+            Debug.LogError("InfluenceMap: Grid reference missing!");
+            return;
+        }
         grid = gridRef;
         rows = grid.Width;
         cols = grid.Height;
@@ -34,7 +42,7 @@ public class InfluenceMap : MonoBehaviour
         InitialiseLayers();
     }
 
-    // creating 4 separate grids 
+    // creating memory for each influence layer
     private void InitialiseLayers()
     {
         layers = new Dictionary<LayerTag, float[,]>
@@ -45,29 +53,31 @@ public class InfluenceMap : MonoBehaviour
             { LayerTag.AgentPositions, new float[rows, cols] }
         };
     }
-    #region Core functions
+    #region Core queries
     public float GetInfluenceAtPosition(Vector3 worldPosition, LayerTag layer)
     {
         Vector2Int cell = grid.WorldToCell(worldPosition);
-        if (!grid.IsInsideGrid(cell)) return 0f;
+        if (!grid.IsInsideGrid(cell)) return 0f; 
+        
 
         return layers[layer][cell.y,cell.x]; // query for specific single layer
     }
 
     // used by agent reward system
-    public float GetCombinedInfluence(Vector3 worldPosition)
+    public float GetCombinedInfluence(Vector3 worldPosition, Dictionary<LayerTag,float> weights)
     {
         Vector2Int cell = grid.WorldToCell(worldPosition);
         if (!grid.IsInsideGrid(cell)) return 0f;
 
         float value = 0f;
-        value += layers[LayerTag.WasSeen][cell.y, cell.x];
-        value += layers[LayerTag.TimeSinceLastSeen][cell.y, cell.x];
-        value += layers[LayerTag.DistanceToGoal][cell.y, cell.x];
-        value += layers[LayerTag.AgentPositions][cell.y, cell.x];
+
+        foreach (var w in weights)
+        {
+            value += layers[w.Key][cell.y, cell.x] * w.Value;
+        }
 
         return value;
-    }
+    } // can be improved to make it safer
     
     // seperate debug hook for visualisation instead of tied to influenceMap
 
@@ -75,7 +85,7 @@ public class InfluenceMap : MonoBehaviour
 
     #region How agents influence the map
     // agent position update
-    public void SetAgentInfluence(Vector2Int cell, float value)
+    public void WriteAgentLayer(Vector2Int cell, float value)
     {
         if (!grid.IsInsideGrid(cell)) return;
 
@@ -83,28 +93,14 @@ public class InfluenceMap : MonoBehaviour
     }
 
     // distance field
-    public void SetDistanceToGoal(float[,] data)
+    public void WriteDistanceToGoalLayer(float[,] data)
     {
         layers[LayerTag.DistanceToGoal] = data;
     }
 
-    // for switching or inspecting layers
-    public void RefreshDebugView()
-    {
-        for (int y = 0; y < rows; y++)
-        {
-            for(int x = 0; x < cols; x++)
-            {
-
-                float v = layers[LayerTag.AgentPositions][y, x];
-                gridRenderer.SetCellColor(x, y, Color.Lerp(Color.white, Color.red, v));
-            }
-        }
-    }
-
     #endregion
 
-    #region runtime influence map
+    #region layer update functions
     // mark where agents are on the grid
     public void UpdateAgentPositions(List<Transform> agents)
     {
@@ -133,6 +129,16 @@ public class InfluenceMap : MonoBehaviour
             data[cell.y, cell.x] = 1f;
         }
         Debug.Log($"Agents received: {agents.Count}");
+    }
+
+    public void UpdateDistanceToGoal()
+    {
+
+    }
+
+    public void UpdateWasSeen()
+    {
+
     }
     #endregion
 }

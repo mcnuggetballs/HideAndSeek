@@ -76,57 +76,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GridRenderer
   tilePrefab: {fileID: 2776681547395200417, guid: 80e426ddc8511df46824a66dcac6fabe, type: 3}
---- !u!1 &3878807438960109861
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 6316554127977790468}
-  - component: {fileID: 6751455813423526616}
-  m_Layer: 0
-  m_Name: TestingScenarioEditor
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &6316554127977790468
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3878807438960109861}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4081540785521990017}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &6751455813423526616
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3878807438960109861}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d42b1fd9972148db9b87d1a20ce5f403, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TestingScenarioEditor
-  sceneCamera: {fileID: 0}
-  grid: {fileID: 967686372987626610}
-  environmentManager: {fileID: 2134855663785489812}
-  seekerPreviewPrefab: {fileID: 0}
-  hiderPreviewPrefab: {fileID: 0}
-  obstaclePreviewPrefab: {fileID: 0}
-  placementYOffset: 0.02
 --- !u!1 &4525255990610018256
 GameObject:
   m_ObjectHideFlags: 0
@@ -217,7 +166,6 @@ Transform:
   - {fileID: 3047036096140032339}
   - {fileID: 4978278084163510711}
   - {fileID: 596920118829254408}
-  - {fileID: 4081540785521990017}
   - {fileID: 8022799073781364200}
   - {fileID: 4205099994723433257}
   m_Father: {fileID: 0}
@@ -287,7 +235,7 @@ MonoBehaviour:
   runtimeNavMeshBuilder: {fileID: 957535751907432168}
   scenarioEditor: {fileID: 0}
   runtimeRoot: {fileID: 4978278084163510711}
-  editorRoot: {fileID: 7756727609724575244}
+  editorRoot: {fileID: 0}
   influenceMap: {fileID: 8200088974579226572}
   gridRenderer: {fileID: 767162598405019422}
 --- !u!114 &967686372987626610
@@ -320,38 +268,6 @@ MonoBehaviour:
   obstacleCount: 30
   seekerCount: 1
   hiderCount: 1
---- !u!1 &7756727609724575244
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 4081540785521990017}
-  m_Layer: 0
-  m_Name: EditorRoot
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &4081540785521990017
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7756727609724575244}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 6316554127977790468}
-  m_Father: {fileID: 1006135926191435751}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8661276545730211433
 GameObject:
   m_ObjectHideFlags: 0
