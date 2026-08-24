@@ -47,7 +47,7 @@ public class EnvironmentManager : MonoBehaviour
     private readonly List<NavMeshAgent> hiderAgents = new();
     private Dictionary<Vector2Int, GameObject> runtimeMap = new();
 
-    #region Simulation Lifecycle
+    #region SIMULATION CONTROL PHASE: Play / Pause / Reset / Rebuild
     // Builds runtime from grid, Hide editor, Build environment, Start simultion
     private void PlaySimulation()
     {
@@ -162,6 +162,18 @@ public class EnvironmentManager : MonoBehaviour
         }
     }
 
+    // mainly needed cos of influence maps
+    private void Update()
+    {
+        // reads agent position
+        // updates grid 
+        // updates visual
+
+    }
+
+    #endregion
+
+    #region BUILD PHASE: Create world from ScenarioGrid
     private void InitialiseEnvironment()
     {
 
@@ -196,7 +208,7 @@ public class EnvironmentManager : MonoBehaviour
         gridRenderer.BuildFromScenarioGrid(grid);
 
         // initialise influence map after build
-        if(influenceMap != null)
+        if (influenceMap != null)
         {
             influenceMap.Initialise(grid); // initialise influencemap after environment is done building
 
@@ -207,9 +219,7 @@ public class EnvironmentManager : MonoBehaviour
         }
         Debug.Log("InfluenceMap is " + (influenceMap == null ? "NULL" : "NOT NULL"));
     }
-    #endregion
 
-    #region Build Pipeline
     private void BuildEnvironmentFromGrid()
     {
         BuildObstaclesOnly();
@@ -233,7 +243,6 @@ public class EnvironmentManager : MonoBehaviour
         }
     }
 
-    // FULL rebuild
     void BuildAgentsOnly()
     {
         seekerAgents.Clear();
@@ -249,7 +258,7 @@ public class EnvironmentManager : MonoBehaviour
     }
     #endregion
 
-    #region Runtime Updates
+    #region Runtime Systems
     // INCREMENTAL update, only 1 cell change
     public void UpdateRuntimeCell(Vector2Int cell, char value) // visual
     {
