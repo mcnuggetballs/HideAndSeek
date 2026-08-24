@@ -4,7 +4,7 @@ using UnityEngine;
 public class GridRenderer : MonoBehaviour
 {
     [SerializeField] private GameObject tilePrefab;
-
+    [SerializeField] private ScenarioGrid grid;
 
     private Renderer[,] tiles;
 
@@ -22,12 +22,16 @@ public class GridRenderer : MonoBehaviour
 
         tiles = new Renderer[rows, cols];
 
+
         for (int y = 0; y < rows; y++)
         {
             for(int x = 0; x < cols; x++)
             {
+                Vector3 worldPos = grid.CellToWorld(new Vector2Int(x,y));
                 GameObject tile = Instantiate(tilePrefab, transform);
-                tile.transform.localPosition = new Vector3(x, 0, y);
+
+                // if you getting world space, use position**
+                tile.transform.position = worldPos;
                 tiles[x,y] = tile.GetComponent<Renderer>();
             }
         }

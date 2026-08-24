@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+// grid origin system, anytime dealing with grid positions ONLY can take from ScenarioGrid
+
 public class ScenarioGrid : MonoBehaviour
 {
     // symbols to describe the map
