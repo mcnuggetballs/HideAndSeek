@@ -76,6 +76,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GridRenderer
   tilePrefab: {fileID: 2776681547395200417, guid: 80e426ddc8511df46824a66dcac6fabe, type: 3}
+  grid: {fileID: 967686372987626610}
 --- !u!1 &4525255990610018256
 GameObject:
   m_ObjectHideFlags: 0
@@ -312,9 +313,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3eb9fbc4f7564504d984c3ead0cb7c83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InfluenceMap
+  debugLayer: 3
   grid: {fileID: 967686372987626610}
   gridRenderer: {fileID: 767162598405019422}
-  debugLayer: 3
 --- !u!1001 &3721937914881188924
 PrefabInstance:
   m_ObjectHideFlags: 0

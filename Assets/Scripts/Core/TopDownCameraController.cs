@@ -16,9 +16,6 @@ public class TopDownCameraController : MonoBehaviour
     private Vector3 dragStartWorldPoint;
     private bool isDraggingMap;
 
-    [SerializeField] private EnvironmentSpawner spawner;
-
-
     // immediately
     private void Awake()
     {

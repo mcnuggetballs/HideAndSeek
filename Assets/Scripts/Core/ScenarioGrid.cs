@@ -23,6 +23,8 @@ public class ScenarioGrid : MonoBehaviour
     public int Width => gridWidth;
     public int Height => gridHeight;
 
+    public float CellSize => cellSize;
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Awake()
     {

@@ -2,9 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using Unity.MLAgents;
+using Unity.VisualScripting;
+using UnityEditor.Rendering;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.SceneManagement;
+using static InfluenceMap;
 
 // each environment prefab = 1 simulation mgr
 
@@ -35,6 +38,8 @@ public class EnvironmentManager : MonoBehaviour
     [SerializeField] private TestingScenarioEditor scenarioEditor;
     [SerializeField] private Transform runtimeRoot; // where runtime objects live
     [SerializeField] private GameObject editorRoot; // where visual objects live
+
+    [SerializeField] private LayerTag debugLayer;
     [SerializeField] private InfluenceMap influenceMap; // analysis layer
     [SerializeField] private GridRenderer gridRenderer; // analysis layer
 
@@ -46,6 +51,7 @@ public class EnvironmentManager : MonoBehaviour
     private readonly List<SeekerAgent> seekerAgents = new();
     private readonly List<NavMeshAgent> hiderAgents = new();
     private Dictionary<Vector2Int, GameObject> runtimeMap = new();
+    private List<Transform> agentTransforms = new List<Transform>();
 
     #region SIMULATION CONTROL PHASE: Play / Pause / Reset / Rebuild
     // Builds runtime from grid, Hide editor, Build environment, Start simultion
@@ -163,12 +169,27 @@ public class EnvironmentManager : MonoBehaviour
     }
 
     // mainly needed cos of influence maps
-    private void Update()
+    void Update()
     {
-        // reads agent position
-        // updates grid 
-        // updates visual
+        if (influenceMap == null || !isStarted || isPaused) return;
 
+        // reads agent position
+        agentTransforms.Clear();
+
+        foreach(var seeker in seekerAgents)
+        {
+            if (seeker != null)
+                agentTransforms.Add(seeker.transform);
+        }
+
+        // updates grid 
+        influenceMap.UpdateAgentPositions(agentTransforms);
+
+        // updates visual
+        if(influenceMap.TryGetLayer(debugLayer, out var data))
+        {
+            gridRenderer.Render(data);
+        }
     }
 
     #endregion

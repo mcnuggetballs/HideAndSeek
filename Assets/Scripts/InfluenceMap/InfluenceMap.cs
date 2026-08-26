@@ -15,11 +15,10 @@ public class InfluenceMap : MonoBehaviour
     {
         WasSeen, // decay over time
         TimeSinceLastSeen, // ticking timer
-        DistanceToGoal, // bfs / dijkstra
-        AgentPositions // occupancy grid
+        DistanceToGoal, // bfs / dijkstra, not sure if i actually need this
+        AgentPositions // occupancy grid, where agents ARE
     }
     // references
-    [SerializeField] private LayerTag debugLayer;
     [SerializeField] private ScenarioGrid grid; // truth layer
 
     private int rows;
@@ -53,34 +52,23 @@ public class InfluenceMap : MonoBehaviour
             { LayerTag.AgentPositions, new float[rows, cols] }
         };
     }
+
     #region Core queries
-    public float GetInfluenceAtPosition(Vector3 worldPosition, LayerTag layer)
+    public float GetValue(Vector3 worldPosition, LayerTag layer)
     {
         Vector2Int cell = grid.WorldToCell(worldPosition);
-        if (!grid.IsInsideGrid(cell)) return 0f; 
-        
 
-        return layers[layer][cell.y,cell.x]; // query for specific single layer
-    }
-
-    // used by agent reward system
-    public float GetCombinedInfluence(Vector3 worldPosition, Dictionary<LayerTag,float> weights)
-    {
-        Vector2Int cell = grid.WorldToCell(worldPosition);
         if (!grid.IsInsideGrid(cell)) return 0f;
 
-        float value = 0f;
+        if (!layers.TryGetValue(layer, out var data)) return 0f;
 
-        foreach (var w in weights)
-        {
-            value += layers[w.Key][cell.y, cell.x] * w.Value;
-        }
+        return data[cell.y, cell.x];
+    }
 
-        return value;
-    } // can be improved to make it safer
-    
-    // seperate debug hook for visualisation instead of tied to influenceMap
-
+    public bool TryGetLayer(LayerTag layer, out float[,] data)
+    {
+        return layers.TryGetValue(layer, out data);
+    }
     #endregion
 
     #region How agents influence the map
@@ -101,7 +89,7 @@ public class InfluenceMap : MonoBehaviour
     #endregion
 
     #region layer update functions
-    // mark where agents are on the grid
+    // occupancy grid
     public void UpdateAgentPositions(List<Transform> agents)
     {
         var data = layers[LayerTag.AgentPositions];
@@ -140,5 +128,7 @@ public class InfluenceMap : MonoBehaviour
     {
 
     }
+
+
     #endregion
 }
