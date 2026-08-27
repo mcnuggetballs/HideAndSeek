@@ -212,7 +212,7 @@ public class TestingScenarioEditor : MonoBehaviour
         paintedVisuals[cell] = visual; // store spawned gameObject based on grid cell
 
         // update runtime if simulation started
-        if (environmentManager.IsStarted())
+        if (environmentManager.IsStarted)
         {
             environmentManager.UpdateRuntimeCell(cell, cellValue); // mini update again
         }
@@ -233,7 +233,7 @@ public class TestingScenarioEditor : MonoBehaviour
         grid.SetCell(cell, ScenarioGrid.EmptyCell);
 
         // if simulation has started, DO NOT rebuild everything, just update this 1 cell
-        if (environmentManager.IsStarted())
+        if (environmentManager.IsStarted)
         {
             environmentManager.UpdateRuntimeCell(cell, ScenarioGrid.EmptyCell);
         }

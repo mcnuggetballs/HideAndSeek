@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
@@ -18,6 +19,7 @@ public class SeekerAgent : Agent
     private NavMeshAgent targetAgent;
     private readonly List<NavMeshAgent> targetAgents = new List<NavMeshAgent>();
     private float prevDistance = 0f;
+    private Vector2Int previousCell; // for wasSeen layer, mark when cell changes
 
     [Header("Perception Settings")]
     [SerializeField] private float viewDistance = 50f;
@@ -46,6 +48,7 @@ public class SeekerAgent : Agent
     [SerializeField] private bool useInfluenceMap;
     [SerializeField] private InfluenceMap influenceMap;
 
+    #region Unity Lifecycle
     private void Awake()
     {
         seekerAgent.updateRotation = false; // disable agent rotation
@@ -58,6 +61,26 @@ public class SeekerAgent : Agent
         environmentManager = GetComponentInParent<EnvironmentManager>();
     }
 
+    public void Initialize(InfluenceMap map)
+    {
+        influenceMap = map;
+    }
+    void Update()
+    {
+        if (influenceMap == null) return;
+
+        Vector2Int currentCell = influenceMap.WorldToCell(transform.position);
+
+        if (currentCell != previousCell)
+        {
+            influenceMap.MarkWasSeen(transform.position); // every frame mark position
+            Debug.Log("HELLLLLLLLOOOOO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+            previousCell = currentCell;
+        }
+
+
+    }
+    #endregion
     #region ML Lifecycle
     public override void OnEpisodeBegin()
     {
@@ -67,7 +90,7 @@ public class SeekerAgent : Agent
         }
         ResetMovement();
 
-        if (environmentManager != null && environmentManager.IsTrainingMode()) { RandomizeSpawn(); }
+        if (environmentManager != null && environmentManager.IsTrainingMode) { RandomizeSpawn(); }
 
         prevDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);
     }
@@ -299,8 +322,8 @@ public class SeekerAgent : Agent
             { targetAgent = FindNearestTarget(); }
         }
 
-        return targetAgent != null 
-            && seekerAgent != null 
+        return targetAgent != null
+            && seekerAgent != null
             && seekerAgent.isOnNavMesh;
     }
 
@@ -411,14 +434,6 @@ public class SeekerAgent : Agent
         // Very small penalty for excessive spinning.
         // Keep this tiny because the seeker still needs to rotate to scan with rays.
         AddReward(-Mathf.Abs(rotate) * rotationPenaltyScale);
-    }
-    #endregion
-
-    #region InfluenceMap
-
-    void UpdateAgentObservations()
-    {
-
     }
     #endregion
 }

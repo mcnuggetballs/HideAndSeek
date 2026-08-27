@@ -39,6 +39,7 @@ public class EnvironmentManager : MonoBehaviour
     [SerializeField] private Transform runtimeRoot; // where runtime objects live
     [SerializeField] private GameObject editorRoot; // where visual objects live
 
+    // for influence map
     [SerializeField] private LayerTag debugLayer;
     [SerializeField] private InfluenceMap influenceMap; // analysis layer
     [SerializeField] private GridRenderer gridRenderer; // analysis layer
@@ -51,7 +52,10 @@ public class EnvironmentManager : MonoBehaviour
     private readonly List<SeekerAgent> seekerAgents = new();
     private readonly List<NavMeshAgent> hiderAgents = new();
     private Dictionary<Vector2Int, GameObject> runtimeMap = new();
-    private List<Transform> agentTransforms = new List<Transform>();
+    private readonly List<Transform> seekerTransforms = new();
+
+    public bool IsStarted => isStarted;
+    public bool IsTrainingMode => simulationMode == SimulationMode.Training;
 
     #region SIMULATION CONTROL PHASE: Play / Pause / Reset / Rebuild
     // Builds runtime from grid, Hide editor, Build environment, Start simultion
@@ -173,22 +177,16 @@ public class EnvironmentManager : MonoBehaviour
     {
         if (influenceMap == null || !isStarted || isPaused) return;
 
-        // reads agent position
-        agentTransforms.Clear();
+        // read world
+       GetSeekerTransforms(seekerTransforms);
 
-        foreach(var seeker in seekerAgents)
+        // 2. update influence map
+        influenceMap.UpdateAgentPositions(seekerTransforms);
+
+        // 3. render debug view
+        if (influenceMap.TryGetLayer(debugLayer, out var data))
         {
-            if (seeker != null)
-                agentTransforms.Add(seeker.transform);
-        }
-
-        // updates grid 
-        influenceMap.UpdateAgentPositions(agentTransforms);
-
-        // updates visual
-        if(influenceMap.TryGetLayer(debugLayer, out var data))
-        {
-            gridRenderer.Render(data);
+            gridRenderer.Render(data, debugLayer);
         }
     }
 
@@ -238,7 +236,7 @@ public class EnvironmentManager : MonoBehaviour
             influenceMap.UpdateAgentPositions(agents); // update agent 
 
         }
-        Debug.Log("InfluenceMap is " + (influenceMap == null ? "NULL" : "NOT NULL"));
+        //Debug.Log("InfluenceMap is " + (influenceMap == null ? "NULL" : "NOT NULL"));
     }
 
     private void BuildEnvironmentFromGrid()
@@ -391,26 +389,6 @@ public class EnvironmentManager : MonoBehaviour
         runtimeMap.Clear();
     }
 
-    public void ResetEnvironment()
-    {
-        InitialiseEnvironment();
-        //influenceMap.ResetLayers();
-    }
-    public bool IsStarted()
-    {
-        return isStarted;
-    }
-
-    public bool IsPaused()
-    {
-        return isPaused;
-    }
-
-    public bool IsTrainingMode()
-    {
-        return simulationMode == SimulationMode.Training;
-    }
-
     public Transform GetEditorRoot()
     {
         return editorRoot.transform;
@@ -423,15 +401,19 @@ public class EnvironmentManager : MonoBehaviour
     {
         return hiderPrefab;
     }
-    #endregion
 
-    #region Influence Map Pipeline
-    public void UpdateAgentPositions()
+    private void GetSeekerTransforms(List<Transform>output)
     {
-        // collects positions and updates influence map
-        // influence map updates grid data and gridrenderer visualises result
+        output.Clear();
+        
+        foreach (var seeker in seekerAgents)
+        {
+            if (seeker != null)
+                output.Add(seeker.transform); 
+        }
     }
     #endregion
+
 }
 
 

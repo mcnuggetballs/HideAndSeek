@@ -285,7 +285,7 @@ MonoBehaviour:
   viewAngle: 90
   eyeHeight: 0.5
   catchDistance: 1.5
-  useInfluenceMap: 0
+  useInfluenceMap: 1
   influenceMap: {fileID: 0}
 --- !u!114 &2153714109243389557
 MonoBehaviour:

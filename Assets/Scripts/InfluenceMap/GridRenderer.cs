@@ -1,10 +1,14 @@
 using UnityEngine;
+using static InfluenceMap;
 
 // reads influenceMap output to visalise layers
 public class GridRenderer : MonoBehaviour
 {
     [SerializeField] private GameObject tilePrefab;
     [SerializeField] private ScenarioGrid grid;
+   
+    [SerializeField] Color seenColor;
+    [SerializeField] Color unseenColor;
 
     private Renderer[,] tiles;
 
@@ -59,20 +63,33 @@ public class GridRenderer : MonoBehaviour
         tile.SetPropertyBlock(block);
     }
 
-    public void Render(float[,] data)
+    // convert data to colors
+    public void Render(float[,] data, LayerTag layer)
     {
         for (int y = 0; y < rows; y++)
-        {
             for (int x = 0; x < cols; x++)
             {
                 float v = data[y, x];
-                Color c = Color.Lerp(Color.white, Color.red, v);
-                c.a = 0.3f;
 
-                SetCellColor(x, y, c);
+                Color col;
 
+                switch (layer)
+                {
+                    case LayerTag.WasSeen:
+                        col = (v > 0f) ? Color.red : Color.black;
+                        break;
+
+                    case LayerTag.AgentPositions:
+                        col = (v > 0f) ? Color.blue : Color.black;
+                        break;
+
+                    default:
+                        col = Color.Lerp(Color.black, Color.white, v);
+                        break;
+                }
+
+                SetCellColor(x, y, col);
             }
-        }
     }
 
     public float[,] Smooth(float[,] data)
