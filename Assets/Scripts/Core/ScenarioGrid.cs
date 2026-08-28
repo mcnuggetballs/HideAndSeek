@@ -45,13 +45,6 @@ public class ScenarioGrid : MonoBehaviour
         int row = Mathf.FloorToInt((worldPosition.z - origin.z + offsetZ) / cellSize);
 
         return new Vector2Int(col, row);
-
-        //Vector3 local = worldPosition - transform.position;
-
-        //int x = Mathf.FloorToInt(local.x / cellSize);
-        //int y = Mathf.FloorToInt(local.z / cellSize);
-
-        //return new Vector2Int(x, y);
     }
 
     // converts cell position back to unity world position
@@ -65,12 +58,6 @@ public class ScenarioGrid : MonoBehaviour
             0,
             (cell.y * cellSize) - offsetZ + (cellSize * 0.5f)
         );
-
-        //return new Vector3(
-        //    cell.x * cellSize,
-        //    0f,
-        //    cell.y * cellSize)
-        //     + transform.position;
 
     }
     // is clicked cell inside grid?

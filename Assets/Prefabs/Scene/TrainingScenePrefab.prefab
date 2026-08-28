@@ -145,7 +145,7 @@ GameObject:
   - component: {fileID: 957535751907432168}
   - component: {fileID: 2134855663785489812}
   - component: {fileID: 967686372987626610}
-  - component: {fileID: 355382800254966207}
+  - component: {fileID: 127918798017813620}
   m_Layer: 0
   m_Name: TrainingScenePrefab
   m_TagString: Untagged
@@ -242,6 +242,9 @@ MonoBehaviour:
   debugLayer: 0
   influenceMap: {fileID: 8200088974579226572}
   gridRenderer: {fileID: 767162598405019422}
+  generator: {fileID: 127918798017813620}
+  mapFile: {fileID: 4900000, guid: 91604c8b035e32b4db72c09978a7e9fa, type: 3}
+  useFixedMap: 1
 --- !u!114 &967686372987626610
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -257,7 +260,7 @@ MonoBehaviour:
   gridWidth: 10
   gridHeight: 10
   cellSize: 5
---- !u!114 &355382800254966207
+--- !u!114 &127918798017813620
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -268,8 +271,8 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8cae71caf21a77643bbf8c99300ae4d9, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RandomScenarioGenerator
-  obstacleCount: 30
+  m_EditorClassIdentifier: Assembly-CSharp::ScenarioGenerator
+  obstacleCount: 8
   seekerCount: 1
   hiderCount: 1
 --- !u!1 &8661276545730211433

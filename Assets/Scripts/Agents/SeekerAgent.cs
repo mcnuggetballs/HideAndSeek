@@ -88,9 +88,10 @@ public class SeekerAgent : Agent
         {
             return;
         }
-        ResetMovement();
+        //ResetMovement();
+        environmentManager.ResetEnvironment();
 
-        if (environmentManager != null && environmentManager.IsTrainingMode) { RandomizeSpawn(); }
+        //if (environmentManager != null && environmentManager.IsTrainingMode) { RandomizeSpawn(); }
 
         prevDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);
     }
@@ -219,78 +220,80 @@ public class SeekerAgent : Agent
 
         return false;
     }
-    private void RandomizeSpawn()
-    {
-        if (!HasTargetAndNavAgent())
-        {
-            return;
-        }
 
-        int attempts = 0;
-        int maxAttempts = 100;
+    //private void RandomizeSpawn()
+    //{
+    //    if (!HasTargetAndNavAgent())
+    //    {
+    //        return;
+    //    }
 
-        Vector3 rootPosition = transform.parent != null ? transform.parent.position : Vector3.zero; // root position of simulation prefab
-        Vector3 seekerSpawn = Vector3.zero;
-        Vector3 targetSpawn = Vector3.zero;
-        bool foundValidSpawn = false;
+    //    int attempts = 0;
+    //    int maxAttempts = 100;
 
-        // randomise the seeker/hider position based on the simulation prefab root position
-        do
-        {
-            attempts++;
-            Vector3 seekerCandidate = new Vector3(
-                rootPosition.x + Random.Range(-spawnRadius, spawnRadius),
-                groundY,
-                rootPosition.z + Random.Range(-spawnRadius, spawnRadius)
-            );
+    //    Vector3 rootPosition = transform.parent != null ? transform.parent.position : Vector3.zero; // root position of simulation prefab
+    //    Vector3 seekerSpawn = Vector3.zero;
+    //    Vector3 targetSpawn = Vector3.zero;
+    //    bool foundValidSpawn = false;
 
-            Vector3 targetCandidate = new Vector3(
-                rootPosition.x + Random.Range(-spawnRadius, spawnRadius),
-                groundY,
-                rootPosition.z + Random.Range(-spawnRadius, spawnRadius)
-            );
+    //    // randomise the seeker/hider position based on the simulation prefab root position
+    //    do
+    //    {
+    //        attempts++;
+    //        Vector3 seekerCandidate = new Vector3(
+    //            rootPosition.x + Random.Range(-spawnRadius, spawnRadius),
+    //            groundY,
+    //            rootPosition.z + Random.Range(-spawnRadius, spawnRadius)
+    //        );
 
-            bool seekerFound = NavMesh.SamplePosition(
-                seekerCandidate,
-                out NavMeshHit seekerHit,
-                5f,
-                NavMesh.AllAreas);
+    //        Vector3 targetCandidate = new Vector3(
+    //            rootPosition.x + Random.Range(-spawnRadius, spawnRadius),
+    //            groundY,
+    //            rootPosition.z + Random.Range(-spawnRadius, spawnRadius)
+    //        );
 
-            bool targetFound = NavMesh.SamplePosition(
-                targetCandidate,
-                out NavMeshHit targetHit,
-                5f,
-                NavMesh.AllAreas);
+    //        bool seekerFound = NavMesh.SamplePosition(
+    //            seekerCandidate,
+    //            out NavMeshHit seekerHit,
+    //            5f,
+    //            NavMesh.AllAreas);
 
-            if (!seekerFound || !targetFound)
-            {
-                continue;
-            }
+    //        bool targetFound = NavMesh.SamplePosition(
+    //            targetCandidate,
+    //            out NavMeshHit targetHit,
+    //            5f,
+    //            NavMesh.AllAreas);
 
-            seekerSpawn = seekerHit.position;
-            targetSpawn = targetHit.position;
+    //        if (!seekerFound || !targetFound)
+    //        {
+    //            continue;
+    //        }
 
-            foundValidSpawn = Vector3.Distance(seekerSpawn, targetSpawn) >= minSpawnDistance;
+    //        seekerSpawn = seekerHit.position;
+    //        targetSpawn = targetHit.position;
 
-        }
-        while (
-            (!foundValidSpawn && attempts < maxAttempts) // keep looping above if
-        );
+    //        foundValidSpawn = Vector3.Distance(seekerSpawn, targetSpawn) >= minSpawnDistance;
 
-        if (!foundValidSpawn)
-        {
-            Debug.LogWarning("Could not ifnd valid spawn positions on the NavMesh");
-            return;
-        }
+    //    }
+    //    while (
+    //        (!foundValidSpawn && attempts < maxAttempts) // keep looping above if
+    //    );
 
-        seekerAgent.Warp(seekerSpawn);
+    //    if (!foundValidSpawn)
+    //    {
+    //        Debug.LogWarning("Could not ifnd valid spawn positions on the NavMesh");
+    //        return;
+    //    }
 
-        if (targetAgent != null && targetAgent.isOnNavMesh)
-        {
-            targetAgent.Warp(targetSpawn);
-        }
-    }
+    //    seekerAgent.Warp(seekerSpawn);
+
+    //    if (targetAgent != null && targetAgent.isOnNavMesh)
+    //    {
+    //        targetAgent.Warp(targetSpawn);
+    //    }
+    //}
     // distance for salection
+    
     private NavMeshAgent FindNearestTarget()
     {
         NavMeshAgent nearestTarget = null;
@@ -327,6 +330,7 @@ public class SeekerAgent : Agent
             && seekerAgent.isOnNavMesh;
     }
 
+    // Agent reset
     private void ResetMovement()
     {
         if (seekerAgent == null)

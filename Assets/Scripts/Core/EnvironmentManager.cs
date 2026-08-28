@@ -44,6 +44,11 @@ public class EnvironmentManager : MonoBehaviour
     [SerializeField] private InfluenceMap influenceMap; // analysis layer
     [SerializeField] private GridRenderer gridRenderer; // analysis layer
 
+    //for scene generation
+    [SerializeField] private ScenarioGenerator generator;
+    [SerializeField] private TextAsset mapFile;
+    [SerializeField] private bool useFixedMap;
+
     // runtime state
     private bool isPaused = false;
     private bool isStarted = false;
@@ -57,7 +62,7 @@ public class EnvironmentManager : MonoBehaviour
     public bool IsStarted => isStarted;
     public bool IsTrainingMode => simulationMode == SimulationMode.Training;
 
-    #region SIMULATION CONTROL PHASE: Play / Pause / Reset / Rebuild
+    #region TESTING SIMULATION CONTROL
     // Builds runtime from grid, Hide editor, Build environment, Start simultion
     private void PlaySimulation()
     {
@@ -106,7 +111,7 @@ public class EnvironmentManager : MonoBehaviour
         isPaused = true;
     }
 
-    // Destroy runtime, Clear grid/ editor visuals, Return to Editor Mode
+    // EDITOR RESET: Destroy runtime, Clear grid/ editor visuals, Return to Editor Mode
     private void ResetSimulation()
     {
         Debug.Log("Reset Simulation.");
@@ -137,6 +142,7 @@ public class EnvironmentManager : MonoBehaviour
             runtimeRoot.gameObject.SetActive(false);
         }
     }
+
     private void OnEnable()
     {
         // simulation maanger listens to play/pause.reset and agent spawning
@@ -150,6 +156,19 @@ public class EnvironmentManager : MonoBehaviour
         GameEvents.PlayRequested -= PlaySimulation;
         GameEvents.PauseRequested -= PauseSimulation;
         GameEvents.ResetRequested -= ResetSimulation;
+    }
+    #endregion
+
+    #region TRAINING SIMULATION CONTROL
+    public void ResetEnvironment()
+    {
+        // used when OnEpisodeBegin() is called
+        ClearRuntimeObjects();
+
+        if (!runtimeRoot.gameObject.activeSelf)
+            runtimeRoot.gameObject.SetActive(true);
+
+        InitialiseEnvironment();
     }
     #endregion
 
@@ -207,18 +226,16 @@ public class EnvironmentManager : MonoBehaviour
             runtimeRoot.gameObject.SetActive(true);
         }
 
-        // training generation
-        if (simulationMode == SimulationMode.Training)
+        if(generator != null)
         {
-            var generator = GetComponent<RandomScenarioGenerator>();
-            if (generator != null)
+            generator.Initialize(grid);
+            if(useFixedMap && mapFile != null)
             {
-                generator.Generate();
-
+                generator.GenerateFixed(mapFile);
             }
             else
             {
-                Debug.LogWarning("No RandomScenarioGenerator found!");
+                generator.GenerateRandom();
             }
         }
 
@@ -236,7 +253,6 @@ public class EnvironmentManager : MonoBehaviour
             influenceMap.UpdateAgentPositions(agents); // update agent 
 
         }
-        //Debug.Log("InfluenceMap is " + (influenceMap == null ? "NULL" : "NOT NULL"));
     }
 
     private void BuildEnvironmentFromGrid()
