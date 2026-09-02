@@ -27,11 +27,6 @@ public class SeekerAgent : Agent
     [SerializeField] private float eyeHeight = 0.5f;
     [SerializeField] private float catchDistance = 1.5f;
 
-    // simulation manager spawns in world, seeker agent spawn inside own world
-    [Header("Spawn Settings")]
-    private float minSpawnDistance = 10f;
-    private float spawnRadius = 10f;
-    private float groundY = 0.929f;
     private EnvironmentManager environmentManager;
 
     [Header("Reward Settings")]
@@ -81,6 +76,7 @@ public class SeekerAgent : Agent
 
     }
     #endregion
+
     #region ML Lifecycle
     public override void OnEpisodeBegin()
     {
@@ -88,10 +84,9 @@ public class SeekerAgent : Agent
         {
             return;
         }
-        //ResetMovement();
+        // no destruction, no rebuilding
         environmentManager.ResetEnvironment();
-
-        //if (environmentManager != null && environmentManager.IsTrainingMode) { RandomizeSpawn(); }
+        
 
         prevDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);
     }
@@ -221,79 +216,7 @@ public class SeekerAgent : Agent
         return false;
     }
 
-    //private void RandomizeSpawn()
-    //{
-    //    if (!HasTargetAndNavAgent())
-    //    {
-    //        return;
-    //    }
-
-    //    int attempts = 0;
-    //    int maxAttempts = 100;
-
-    //    Vector3 rootPosition = transform.parent != null ? transform.parent.position : Vector3.zero; // root position of simulation prefab
-    //    Vector3 seekerSpawn = Vector3.zero;
-    //    Vector3 targetSpawn = Vector3.zero;
-    //    bool foundValidSpawn = false;
-
-    //    // randomise the seeker/hider position based on the simulation prefab root position
-    //    do
-    //    {
-    //        attempts++;
-    //        Vector3 seekerCandidate = new Vector3(
-    //            rootPosition.x + Random.Range(-spawnRadius, spawnRadius),
-    //            groundY,
-    //            rootPosition.z + Random.Range(-spawnRadius, spawnRadius)
-    //        );
-
-    //        Vector3 targetCandidate = new Vector3(
-    //            rootPosition.x + Random.Range(-spawnRadius, spawnRadius),
-    //            groundY,
-    //            rootPosition.z + Random.Range(-spawnRadius, spawnRadius)
-    //        );
-
-    //        bool seekerFound = NavMesh.SamplePosition(
-    //            seekerCandidate,
-    //            out NavMeshHit seekerHit,
-    //            5f,
-    //            NavMesh.AllAreas);
-
-    //        bool targetFound = NavMesh.SamplePosition(
-    //            targetCandidate,
-    //            out NavMeshHit targetHit,
-    //            5f,
-    //            NavMesh.AllAreas);
-
-    //        if (!seekerFound || !targetFound)
-    //        {
-    //            continue;
-    //        }
-
-    //        seekerSpawn = seekerHit.position;
-    //        targetSpawn = targetHit.position;
-
-    //        foundValidSpawn = Vector3.Distance(seekerSpawn, targetSpawn) >= minSpawnDistance;
-
-    //    }
-    //    while (
-    //        (!foundValidSpawn && attempts < maxAttempts) // keep looping above if
-    //    );
-
-    //    if (!foundValidSpawn)
-    //    {
-    //        Debug.LogWarning("Could not ifnd valid spawn positions on the NavMesh");
-    //        return;
-    //    }
-
-    //    seekerAgent.Warp(seekerSpawn);
-
-    //    if (targetAgent != null && targetAgent.isOnNavMesh)
-    //    {
-    //        targetAgent.Warp(targetSpawn);
-    //    }
-    //}
-    // distance for salection
-    
+  
     private NavMeshAgent FindNearestTarget()
     {
         NavMeshAgent nearestTarget = null;
@@ -331,16 +254,22 @@ public class SeekerAgent : Agent
     }
 
     // Agent reset
-    private void ResetMovement()
+    public void ResetMovement(Vector3 spawnPosition)
     {
-        if (seekerAgent == null)
+        if (seekerAgent != null)
         {
-            return;
+            seekerAgent.Warp(spawnPosition); // set to spawn position
+            seekerAgent.ResetPath(); // navmesh path
+            seekerAgent.velocity = Vector3.zero; 
+
+        }
+        else
+        {
+            transform.position = spawnPosition;
         }
 
-        seekerAgent.ResetPath();
-        seekerAgent.velocity = Vector3.zero;
         transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+        targetAgent = null;
     }
 
     // this function stores all hiders and chooses nearest one as current targetAgent

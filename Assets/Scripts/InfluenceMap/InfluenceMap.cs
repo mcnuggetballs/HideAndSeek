@@ -65,7 +65,15 @@ public class InfluenceMap : MonoBehaviour
 
     public bool TryGetLayer(LayerTag layer, out float[,] data)
     {
-        return layers.TryGetValue(layer, out data);
+        data = null;
+
+        if (layers == null)
+            return false;
+
+        if (!layers.TryGetValue(layer, out data))
+            return false;
+
+        return data != null;
     }
     #endregion
 
@@ -111,22 +119,27 @@ public class InfluenceMap : MonoBehaviour
     // occupancy grid
     public void UpdateAgentPositions(List<Transform> agents)
     {
-        var data = layers[LayerTag.AgentPositions];
+        if(layers == null)
+        {
+            Debug.LogWarning("InfluenceMap is not initialised. Skipping. ");
+            return;
+        }
 
-        // clear grid
+        if(!layers.TryGetValue(LayerTag.AgentPositions, out var data))
+        {
+            Debug.LogWarning("AgentPositions Layer missing");
+            return;
+        }
+
         ClearLayer(data);
-
         // mark agent positions
         foreach (var agent in agents)
         {
             Vector2Int cell = grid.WorldToCell(agent.position);
 
-            if (!grid.IsInsideGrid(cell))
-            {
-                Debug.Log("GRID IS OUT OF BOUNDS!");
-                continue;
-            }
-            data[cell.y, cell.x] = 1f;
+            if (!grid.IsInsideGrid(cell)) continue;
+
+            data[cell.x, cell.y] = 1f; // cols, rows
         }
     }
 

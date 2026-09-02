@@ -28,7 +28,7 @@ public class ScenarioGrid : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Awake()
     {
-        cells = new char[gridHeight, gridWidth];
+        cells = new char[gridWidth,gridHeight];
         ClearGrid();
     }
 
@@ -73,7 +73,9 @@ public class ScenarioGrid : MonoBehaviour
         float offsetX = (gridWidth * cellSize) / 2f;
         float offsetZ = (gridHeight * cellSize) / 2f;
 
-        Vector3 origin = transform.position - new Vector3(offsetX, offsetX, offsetZ);
+        //Vector3 origin = transform.position - new Vector3(offsetX, offsetX, offsetZ);
+        Vector3 origin = transform.position - new Vector3(offsetX, 0f, offsetZ);
+
 
         for (int x = 0; x <= gridWidth; x++)
         {
@@ -93,6 +95,14 @@ public class ScenarioGrid : MonoBehaviour
 
 
     #region Grid Update
+    public void Resize(int width, int height)
+    {
+        gridWidth = width;
+        gridHeight = height;
+
+        cells = new char[gridHeight, gridWidth];
+    }
+
     public void ClearGrid()
     {
         for (int row = 0; row < Height; row++)
@@ -122,7 +132,7 @@ public class ScenarioGrid : MonoBehaviour
             return;
         }
 
-        cells[cell.y, cell.x] = value;
+        cells[cell.y, cell.x] = value;// left to right
     }
     public IEnumerable<Vector2Int> GetAllCells()
     {
@@ -130,7 +140,7 @@ public class ScenarioGrid : MonoBehaviour
         {
             for (int col = 0; col < Width; col++)
             {
-                yield return new Vector2Int(col, row);
+                yield return new Vector2Int(col, row); 
             }
         }
     }

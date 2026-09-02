@@ -1,13 +1,11 @@
 ﻿using Grpc.Core;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using Unity.MLAgents;
-using Unity.VisualScripting;
-using UnityEditor.Rendering;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.SceneManagement;
 using static InfluenceMap;
+using static ScenarioSystem;
 
 // each environment prefab = 1 simulation mgr
 
@@ -19,12 +17,12 @@ using static InfluenceMap;
 // should orchestrate updates
 public class EnvironmentManager : MonoBehaviour
 {
+    // mode control
     public enum SimulationMode
     {
         Testing, // use configured positions
         Training // randomised scenarios
     }
-
     [SerializeField] private SimulationMode simulationMode = SimulationMode.Testing;
 
     [Header("Prefabs")]
@@ -38,29 +36,61 @@ public class EnvironmentManager : MonoBehaviour
     [SerializeField] private TestingScenarioEditor scenarioEditor;
     [SerializeField] private Transform runtimeRoot; // where runtime objects live
     [SerializeField] private GameObject editorRoot; // where visual objects live
+    [SerializeField] private ScenarioSystem scenarioSystem;
 
     // for influence map
     [SerializeField] private LayerTag debugLayer;
     [SerializeField] private InfluenceMap influenceMap; // analysis layer
     [SerializeField] private GridRenderer gridRenderer; // analysis layer
 
-    //for scene generation
-    [SerializeField] private ScenarioGenerator generator;
+    // for fixed
     [SerializeField] private TextAsset mapFile;
-    [SerializeField] private bool useFixedMap;
+    [SerializeField] private ScenarioType scenarioType;
 
     // runtime state
     private bool isPaused = false;
     private bool isStarted = false;
+    private bool worldBuilt = false;
 
     // runtime data
     private readonly List<SeekerAgent> seekerAgents = new();
     private readonly List<NavMeshAgent> hiderAgents = new();
-    private Dictionary<Vector2Int, GameObject> runtimeMap = new();
-    private readonly List<Transform> seekerTransforms = new();
+    private Dictionary<Vector2Int, GameObject> runtimeMap = new(); // spatial look up for grid rebugging
+    private readonly List<Transform> seekerBuffer = new();
 
     public bool IsStarted => isStarted;
     public bool IsTrainingMode => simulationMode == SimulationMode.Training;
+
+    // temporary hider position to follow reset format of seeker
+
+
+    #region Unity Lifecycle
+    // decide simulationMode based on scene name (temporary, to be fixed with proper GameManager later)
+    private void Awake()
+    {
+        string sceneName = SceneManager.GetActiveScene().name;
+        simulationMode = sceneName.Contains("Training") ? SimulationMode.Training : SimulationMode.Testing;
+    }
+
+    // mainly needed cos of influence maps
+    void Update()
+    {
+        if (!worldBuilt) return;
+        if (influenceMap == null) return;
+
+        GetSeekerTransforms(seekerBuffer);
+
+        // 2. update influence map
+        influenceMap.UpdateAgentPositions(seekerBuffer);
+
+        // 3. render debug view
+        if (influenceMap.TryGetLayer(debugLayer, out var data))
+        {
+            gridRenderer.Render(data, debugLayer);
+        }
+    }
+
+    #endregion
 
     #region TESTING SIMULATION CONTROL
     // Builds runtime from grid, Hide editor, Build environment, Start simultion
@@ -85,21 +115,19 @@ public class EnvironmentManager : MonoBehaviour
             */
             if (!isStarted || grid.IsDirty()) // so that new seekers are reflected
             {
-                InitialiseEnvironment(); // consuming changes
+                BuildWorld(); // build runtime
+                if (influenceMap != null)
+                {
+                    influenceMap.Initialise(grid);
+                }
                 isStarted = true; // simulation has now been build at least once
                 grid.ClearDirty(); // changes consumed, no longer dirty
                 // change is consumed here?
             }
         }
-        else // training
-        {
-            InitialiseEnvironment();
-        }
 
         Time.timeScale = 1f;
         isPaused = false;
-
-
     }
 
     // Freeze time, DO NOT rebuild/ destroy
@@ -160,110 +188,66 @@ public class EnvironmentManager : MonoBehaviour
     #endregion
 
     #region TRAINING SIMULATION CONTROL
-    public void ResetEnvironment()
-    {
-        // used when OnEpisodeBegin() is called
-        ClearRuntimeObjects();
-
-        if (!runtimeRoot.gameObject.activeSelf)
-            runtimeRoot.gameObject.SetActive(true);
-
-        InitialiseEnvironment();
-    }
-    #endregion
-
-    #region Unity Lifecycle
-    // decide simulationMode based on scene name (temporary, to be fixed with proper GameManager later)
-    private void Awake()
-    {
-        string sceneName = SceneManager.GetActiveScene().name;
-        simulationMode = sceneName.Contains("Training") ? SimulationMode.Training : SimulationMode.Testing;
-    }
 
     private void Start()
     {
         if (simulationMode == SimulationMode.Training)
         {
-            Debug.Log("Training: Auto intialise");
-            InitialiseEnvironment();
-            isStarted = true;
-            Time.timeScale = 1f;
+            if (!worldBuilt)
+            {
+
+                InitialiseScenario();
+                BuildWorld();
+                worldBuilt = true;
+            }
         }
+        isStarted = true;
     }
 
-    // mainly needed cos of influence maps
-    void Update()
+    // NOT rebuilding world, NOT touching grid, ONLY resets agents
+    public void ResetEnvironment()
     {
-        if (influenceMap == null || !isStarted || isPaused) return;
+        if (!runtimeRoot.gameObject.activeSelf)
+            runtimeRoot.gameObject.SetActive(true);
 
-        // read world
-       GetSeekerTransforms(seekerTransforms);
-
-        // 2. update influence map
-        influenceMap.UpdateAgentPositions(seekerTransforms);
-
-        // 3. render debug view
-        if (influenceMap.TryGetLayer(debugLayer, out var data))
-        {
-            gridRenderer.Render(data, debugLayer);
-        }
+        ResetAgentsOnly();
+        AssignRuntimeTargets();
     }
-
     #endregion
 
     #region BUILD PHASE: Create world from ScenarioGrid
-    private void InitialiseEnvironment()
+    private void InitialiseScenario()
     {
-
-        Debug.Log($"{name} InitialiseEnvironment() called");
-
-        ClearRuntimeObjects();
-
-        // safety check
-        if (!runtimeRoot.gameObject.activeSelf)
+        switch (scenarioType)
         {
-            Debug.LogWarning("RuntimeObjects was inactive during build. Fixing.");
-            runtimeRoot.gameObject.SetActive(true);
+            case ScenarioType.Fixed:
+                grid = scenarioSystem.Generate(ScenarioType.Fixed, mapFile);
+                break;
+            case ScenarioType.Random:
+                grid = scenarioSystem.Generate(ScenarioType.Random);
+                break;
         }
-
-        if(generator != null)
-        {
-            generator.Initialize(grid);
-            if(useFixedMap && mapFile != null)
-            {
-                generator.GenerateFixed(mapFile);
-            }
-            else
-            {
-                generator.GenerateRandom();
-            }
-        }
-
-        // build runtime world
-        BuildEnvironmentFromGrid();
-        gridRenderer.BuildFromScenarioGrid(grid);
-
-        // initialise influence map after build
-        if (influenceMap != null)
-        {
-            influenceMap.Initialise(grid); // initialise influencemap after environment is done building
-
-            var agents = FindObjectsByType<Agent>().Select(a => a.transform).ToList(); // find agents
-
-            influenceMap.UpdateAgentPositions(agents); // update agent 
-
-        }
+        gridRenderer.BuildVisualGrid(grid);
     }
-
-    private void BuildEnvironmentFromGrid()
+    private void BuildWorld()
     {
+        ClearRuntimeObjects(); // clean old world
+        
         BuildObstaclesOnly();
+        BuildAgentsOnly();
+
         Physics.SyncTransforms(); // important when colliders instantiated, bake NavMesh
         runtimeNavMeshBuilder.RebuildNavMesh();
-        BuildAgentsOnly();
-        AssignRuntimeTargets();
+
+        if (influenceMap != null)
+        {
+            influenceMap.Initialise(grid);
+        }
     }
-    void BuildObstaclesOnly()
+    //build scenariogrid and build from scenariogrid
+
+
+    private void BuildObstaclesOnly()
     {
         foreach (var cell in grid.GetAllCells())
         {
@@ -278,7 +262,7 @@ public class EnvironmentManager : MonoBehaviour
         }
     }
 
-    void BuildAgentsOnly()
+    private void BuildAgentsOnly()
     {
         seekerAgents.Clear();
         hiderAgents.Clear();
@@ -389,6 +373,25 @@ public class EnvironmentManager : MonoBehaviour
     #endregion
 
     #region Cleanup & Utilities
+    private void ResetAgentsOnly()
+    {
+        foreach (var seeker in seekerAgents)
+        {
+            if (seeker != null)
+            {
+                seeker.ResetMovement(seeker.transform.position);
+
+            }
+        }
+
+        //foreach(var hider in hiderAgents)
+        //{
+        //    if (hider != null)
+        //    {
+        //        hider.Warp(GetSpawnFromGrid());
+        //    }
+        //}
+    }
     private void ClearRuntimeObjects()
     {
         seekerAgents.Clear();
@@ -409,23 +412,15 @@ public class EnvironmentManager : MonoBehaviour
     {
         return editorRoot.transform;
     }
-    public GameObject GetSeekerPrefab()
-    {
-        return seekerPrefab;
-    }
-    public GameObject GetHiderPrefab()
-    {
-        return hiderPrefab;
-    }
 
-    private void GetSeekerTransforms(List<Transform>output)
+    private void GetSeekerTransforms(List<Transform> output)
     {
         output.Clear();
-        
+
         foreach (var seeker in seekerAgents)
         {
             if (seeker != null)
-                output.Add(seeker.transform); 
+                output.Add(seeker.transform);
         }
     }
     #endregion

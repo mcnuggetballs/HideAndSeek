@@ -8,16 +8,15 @@ public class EnvironmentSpawner : MonoBehaviour
     public GameObject environmentPrefab;
 
     [SerializeField] public int environmentCount = 16;
-    [SerializeField] public float environmentSize = 30f;
+    [SerializeField] public static float environmentSize = 30f;
     public int maxCount = 50;
 
-    private float spacing = 80f;
+    private float spacing = environmentSize + 100f;
 
     private void Start()
     {
 
         int gridSize = Mathf.CeilToInt(Mathf.Sqrt(environmentCount));
-        float totalWorldSize = gridSize * environmentSize;
 
         if (environmentCount > maxCount)
         {
