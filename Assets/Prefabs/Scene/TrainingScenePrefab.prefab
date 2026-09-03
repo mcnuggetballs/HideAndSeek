@@ -79,6 +79,50 @@ MonoBehaviour:
   grid: {fileID: 967686372987626610}
   seenColor: {r: 1, g: 0.9118239, b: 0, a: 0}
   unseenColor: {r: 0.1981132, g: 0.16838767, b: 0, a: 0}
+--- !u!1 &3013169384008848905
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8383364956152021038}
+  - component: {fileID: 8162351802836656904}
+  m_Layer: 0
+  m_Name: WorldBuilder
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8383364956152021038
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3013169384008848905}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1006135926191435751}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8162351802836656904
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3013169384008848905}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a579698497cc4194f896d9edf2b42fc9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldBuilder
 --- !u!1 &4525255990610018256
 GameObject:
   m_ObjectHideFlags: 0
@@ -171,6 +215,7 @@ Transform:
   - {fileID: 596920118829254408}
   - {fileID: 8022799073781364200}
   - {fileID: 4205099994723433257}
+  - {fileID: 8383364956152021038}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2493304485592230066
@@ -230,21 +275,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25a0ca2004e9fd34ebeefbb2a9516c78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnvironmentManager
-  simulationMode: 1
   seekerPrefab: {fileID: 4382439110685233668, guid: 59799930b7016594399014949c3ff5c7, type: 3}
   hiderPrefab: {fileID: 8698921351780613049, guid: d6cb008445346c34ab861c9ebd502ba1, type: 3}
   obstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
-  grid: {fileID: 967686372987626610}
-  runtimeNavMeshBuilder: {fileID: 957535751907432168}
-  scenarioEditor: {fileID: 0}
+  simulationMode: 1
+  scenarioType: 0
+  mapFile: {fileID: 4900000, guid: 91604c8b035e32b4db72c09978a7e9fa, type: 3}
   runtimeRoot: {fileID: 4978278084163510711}
   editorRoot: {fileID: 0}
+  grid: {fileID: 967686372987626610}
+  runtimeNavMeshBuilder: {fileID: 957535751907432168}
   scenarioSystem: {fileID: 127918798017813620}
-  debugLayer: 2
+  worldBuilder: {fileID: 8162351802836656904}
+  scenarioEditor: {fileID: 0}
   influenceMap: {fileID: 8200088974579226572}
   gridRenderer: {fileID: 767162598405019422}
-  mapFile: {fileID: 4900000, guid: 91604c8b035e32b4db72c09978a7e9fa, type: 3}
-  scenarioType: 0
+  debugLayer: 2
 --- !u!114 &967686372987626610
 MonoBehaviour:
   m_ObjectHideFlags: 0

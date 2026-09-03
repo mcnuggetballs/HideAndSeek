@@ -1,9 +1,10 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using Unity.VisualScripting;
+using UnityEditor.EditorTools;
+using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using System.Collections.Generic;
 using UnityEngine.Rendering;
-using Unity.VisualScripting;
 
 // edits paint scenario data                                                                                                                                                           
 // this file handles mouse clicks,
@@ -11,7 +12,7 @@ using Unity.VisualScripting;
 //           asks scenariogrid what cell was clicked and
 //           tells scenariogrid to paint the cell
 
-public class TestingScenarioEditor : MonoBehaviour
+public class EditorController : MonoBehaviour
 {
     // Enums
     private enum PaintBrush
@@ -33,7 +34,9 @@ public class TestingScenarioEditor : MonoBehaviour
     [SerializeField] private Camera sceneCamera;
 
     [SerializeField] private ScenarioGrid grid;
-    [SerializeField] private EnvironmentManager environmentManager;
+    [SerializeField] private SimulationController simulationController; // should this exist here?
+    private WorldBuilder worldBuilder;
+
 
     [SerializeField] private GameObject seekerPreviewPrefab;
     [SerializeField] private GameObject hiderPreviewPrefab;
@@ -205,16 +208,16 @@ public class TestingScenarioEditor : MonoBehaviour
 
         // updates visual layer
         Vector3 worldPosition = grid.CellToWorld(cell); // need world position to place object
-        GameObject visual = Instantiate(prefab, worldPosition, Quaternion.identity, environmentManager.GetEditorRoot());
+        GameObject visual = Instantiate(prefab, worldPosition, Quaternion.identity, this.GetEditorRoot());
 
         PlaceObjectOnSurface(visual, worldPosition);
 
         paintedVisuals[cell] = visual; // store spawned gameObject based on grid cell
 
         // update runtime if simulation started
-        if (environmentManager.IsStarted)
+        if (simulationController.IsStarted)
         {
-            environmentManager.UpdateRuntimeCell(cell, cellValue); // mini update again
+            worldBuilder.UpdateRuntimeCell(cell, cellValue); // mini update again
         }
 
     }
@@ -233,9 +236,9 @@ public class TestingScenarioEditor : MonoBehaviour
         grid.SetCell(cell, ScenarioGrid.EmptyCell);
 
         // if simulation has started, DO NOT rebuild everything, just update this 1 cell
-        if (environmentManager.IsStarted)
+        if (simulationController.IsStarted)
         {
-            environmentManager.UpdateRuntimeCell(cell, ScenarioGrid.EmptyCell);
+            worldBuilder.UpdateRuntimeCell(cell, ScenarioGrid.EmptyCell);
         }
     }
     #endregion
@@ -352,5 +355,12 @@ public class TestingScenarioEditor : MonoBehaviour
         paintedVisuals.Clear();
     }
     #endregion
+
+
+    public Transform GetEditorRoot()
+    {
+        return transform;
+    }
+
 
 }

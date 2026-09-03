@@ -27,7 +27,7 @@ public class SeekerAgent : Agent
     [SerializeField] private float eyeHeight = 0.5f;
     [SerializeField] private float catchDistance = 1.5f;
 
-    private EnvironmentManager environmentManager;
+    private SimulationController simulationController;
 
     [Header("Reward Settings")]
     private float visibleDistanceRewardScale = 0.04f;
@@ -43,7 +43,7 @@ public class SeekerAgent : Agent
     [SerializeField] private bool useInfluenceMap;
     [SerializeField] private InfluenceMap influenceMap;
 
-    #region Unity Lifecycle
+    #region Public API
     private void Awake()
     {
         seekerAgent.updateRotation = false; // disable agent rotation
@@ -53,13 +53,14 @@ public class SeekerAgent : Agent
             seekerAgent = GetComponent<NavMeshAgent>();
         }
 
-        environmentManager = GetComponentInParent<EnvironmentManager>();
+        simulationController = GetComponentInParent<SimulationController>();
     }
 
     public void Initialize(InfluenceMap map)
     {
         influenceMap = map;
     }
+    
     void Update()
     {
         if (influenceMap == null) return;
@@ -75,6 +76,41 @@ public class SeekerAgent : Agent
 
 
     }
+
+    // Agent reset
+    public void ResetMovement(Vector3 spawnPosition)
+    {
+        if (seekerAgent != null)
+        {
+            seekerAgent.Warp(spawnPosition); // set to spawn position
+            seekerAgent.ResetPath(); // navmesh path
+            seekerAgent.velocity = Vector3.zero;
+
+        }
+        else
+        {
+            transform.position = spawnPosition;
+        }
+
+        transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+        targetAgent = null;
+    }
+
+    // this function stores all hiders and chooses nearest one as current targetAgent
+    // also linked environment to agents
+    public void SetTargets(List<NavMeshAgent> targets)
+    {
+        targetAgents.Clear();
+        targetAgents.AddRange(targets); // must only receive local hider agents
+        targetAgent = FindNearestTarget();
+
+        if (targetAgent != null && seekerAgent != null)
+        {
+            prevDistance = Vector3.Distance(
+                seekerAgent.nextPosition, // changed to get navigation simulation position instead of visual transform
+                targetAgent.nextPosition);
+        }
+    }
     #endregion
 
     #region ML Lifecycle
@@ -85,7 +121,7 @@ public class SeekerAgent : Agent
             return;
         }
         // no destruction, no rebuilding
-        environmentManager.ResetEnvironment();
+        simulationController.ResetEnvironment();
         
 
         prevDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);
@@ -177,7 +213,7 @@ public class SeekerAgent : Agent
     }
     #endregion
 
-    #region Helpers
+    #region Helper Functions
     // uses distance for perception
     private bool GetTargetInfo(out Vector3 localDir, out float normalisedDistance)
     {
@@ -216,7 +252,6 @@ public class SeekerAgent : Agent
         return false;
     }
 
-  
     private NavMeshAgent FindNearestTarget()
     {
         NavMeshAgent nearestTarget = null;
@@ -251,41 +286,6 @@ public class SeekerAgent : Agent
         return targetAgent != null
             && seekerAgent != null
             && seekerAgent.isOnNavMesh;
-    }
-
-    // Agent reset
-    public void ResetMovement(Vector3 spawnPosition)
-    {
-        if (seekerAgent != null)
-        {
-            seekerAgent.Warp(spawnPosition); // set to spawn position
-            seekerAgent.ResetPath(); // navmesh path
-            seekerAgent.velocity = Vector3.zero; 
-
-        }
-        else
-        {
-            transform.position = spawnPosition;
-        }
-
-        transform.rotation = Quaternion.Euler(0f, 0f, 0f);
-        targetAgent = null;
-    }
-
-    // this function stores all hiders and chooses nearest one as current targetAgent
-    // also linked environment to agents
-    public void SetTargets(List<NavMeshAgent> targets)
-    {
-        targetAgents.Clear();
-        targetAgents.AddRange(targets); // must only receive local hider agents
-        targetAgent = FindNearestTarget();
-
-        if (targetAgent != null && seekerAgent != null)
-        {
-            prevDistance = Vector3.Distance(
-                seekerAgent.nextPosition, // changed to get navigation simulation position instead of visual transform
-                targetAgent.nextPosition);
-        }
     }
 
     private void OnDrawGizmos()
