@@ -63,16 +63,6 @@ public class SeekerAgent : Agent
     
     void Update()
     {
-        if (influenceMap == null) return;
-
-        Vector2Int currentCell = influenceMap.WorldToCell(transform.position);
-
-        if (currentCell != previousCell)
-        {
-            influenceMap.MarkWasSeen(transform.position); // every frame mark position
-            Debug.Log("HELLLLLLLLOOOOO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            previousCell = currentCell;
-        }
 
 
     }
