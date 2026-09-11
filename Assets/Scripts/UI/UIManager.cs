@@ -47,38 +47,31 @@ public class UIManager : MonoBehaviour
     private void OnPlayClicked()
     {
         GameEvents.RequestPlay();
-        Debug.Log("Play Button clicked");
     }  
     private void OnPauseClicked()
     {
         GameEvents.RequestPause();
-        Debug.Log("Pause Button clicked");
     }
     private void OnResetClicked()
     {
         GameEvents.RequestReset();
-        Debug.Log("Reset Button clicked");
     }
     private void OnSpawnSeekerClicked()
     {
         GameEvents.RequestSpawnSeeker();
-        Debug.Log("Spawn Seeker Button clicked");
     }
     private void OnSpawnHiderClicked()
     {
         GameEvents.RequestSpawnHider();
-        Debug.Log("Spawn Hider Button clicked");
     }
     private void OnSpawnObstacleClicked()
     {
         GameEvents.RequestSpawnObstacle();
-        Debug.Log("Spawn Obstacle Button clicked");
     }
 
     private void OnEraseClicked()
     {
         GameEvents.RequestErase();
-        Debug.Log("Erase Button clicked");
     }
 
     private void AddButtonListener(Button button, UnityEngine.Events.UnityAction action, string fieldName)

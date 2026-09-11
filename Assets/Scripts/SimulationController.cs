@@ -31,11 +31,11 @@ public class SimulationController : MonoBehaviour
     [SerializeField] private SimulationMode simulationMode; // testing or training?
     [SerializeField] private ScenarioType scenarioType; // if training, fixed or random?
     [SerializeField] private TextAsset mapFile; // for fixed
-    
+
     [Header("Scene Roots")]
     [SerializeField] private Transform runtimeRoot; // where runtime objects live
     [SerializeField] private GameObject editorRoot; // where visual objects live
-    
+
     [Header("Core Systems")]
     [SerializeField] private ScenarioGrid grid;
     [SerializeField] private RuntimeNavMeshBuilder runtimeNavMeshBuilder;
@@ -60,7 +60,7 @@ public class SimulationController : MonoBehaviour
     private List<SeekerAgent> seekerAgents = new();
     private List<NavMeshAgent> hiderAgents = new();
     private Dictionary<Vector2Int, GameObject> runtimeMap = new(); // spatial look up for grid rebugging
-    private readonly List<Transform> seekerBuffer = new();
+    private List<Transform> seekerBuffer = new();
 
     public bool IsStarted => isStarted;
     public bool IsTrainingMode => simulationMode == SimulationMode.Training;
@@ -70,8 +70,8 @@ public class SimulationController : MonoBehaviour
     private void Awake()
     {
         string sceneName = SceneManager.GetActiveScene().name;
-        simulationMode = sceneName.Contains("Training")? 
-            SimulationMode.Training : 
+        simulationMode = sceneName.Contains("Training") ?
+            SimulationMode.Training :
             SimulationMode.Testing;
     }
 
@@ -80,31 +80,26 @@ public class SimulationController : MonoBehaviour
         isStarted = true;
 
         // only auto-run simulation in Training Mode
-        if (simulationMode == SimulationMode.Training)
+        if (!worldBuilt)
         {
-            if (!worldBuilt)
-            {
 
-                InitialiseScenario(); // 1. grid ready
+            InitialiseScenario(); // 1. grid ready
 
-                worldBuilder.BuildGeometry(grid,obstaclePrefab, runtimeRoot);
+            worldBuilder.BuildGeometry(grid, obstaclePrefab, runtimeRoot);
 
-                Physics.SyncTransforms(); // 3. must sync transforms before navmesh
-                runtimeNavMeshBuilder.RebuildNavMesh(); // 4. bake navmesh after world exists
+            Physics.SyncTransforms(); // 3. must sync transforms before navmesh
+            runtimeNavMeshBuilder.RebuildNavMesh(); // 4. bake navmesh after world exists
 
-                worldBuilder.BuildAgents(seekerPrefab, hiderPrefab); // targets assigned
+            worldBuilder.BuildAgents(seekerPrefab, hiderPrefab); // targets assigned
 
-                seekerAgents = worldBuilder.GetSeekers();
-                hiderAgents = worldBuilder.GetHiders();
+            seekerAgents = worldBuilder.GetSeekers(); // cache references
+            hiderAgents = worldBuilder.GetHiders();
 
-                if(influenceMap != null)
-                {
-                    influenceMap.Initialise(grid); // 5. init ai perception systems
-                }
+            influenceMap?.Initialise(grid); // 5. init ai perception systems
 
-                worldBuilt = true;
-            }
+            worldBuilt = true;
         }
+
     }
 
     // mainly needed cos of influence maps
@@ -140,8 +135,8 @@ public class SimulationController : MonoBehaviour
         GameEvents.ResetRequested -= ResetSimulation;
     }
 
-    // For episode reset, triggered by UI button (Reset)
-    public void ResetEnvironment() 
+    // For auto episode reset, environment does not change (for now)
+    public void ResetEnvironment()
     {
         if (!runtimeRoot.gameObject.activeSelf)
             runtimeRoot.gameObject.SetActive(true);
@@ -174,7 +169,9 @@ public class SimulationController : MonoBehaviour
              * !isStarted -> first time pressing Play (nothing has been build yet)
              * grid.IsDirty() -> grid was modified after last build so runtime must be updated
             */
-            if (!isStarted || grid.IsDirty()) // so that new seekers are reflected
+            bool needsRebuild = !IsStarted || grid.isDirty;// so that new seekers are reflected
+
+            if (needsRebuild)
             {
 
                 worldBuilder.BuildGeometry(
@@ -247,7 +244,7 @@ public class SimulationController : MonoBehaviour
         grid = scenarioSystem.Generate(scenarioType, mapFile);
         gridRenderer.BuildVisualGrid(grid);
     }
-    
+
 
 }
 

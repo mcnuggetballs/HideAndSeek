@@ -1,10 +1,10 @@
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.AI;
-using UnityEngine.Audio;
+using static UnityEngine.UI.Image;
 
+// only create, fill and return grid
 // factory that produces configured grid
+
 public class ScenarioSystem : MonoBehaviour
 {
     public enum ScenarioType
@@ -17,18 +17,16 @@ public class ScenarioSystem : MonoBehaviour
     [SerializeField] public int obstacleCount = 8;
     [SerializeField] public int seekerCount = 1;
     [SerializeField] public int hiderCount = 1;
-    
-    [SerializeField] private ScenarioGrid grid;
 
-    public ScenarioGrid Generate(ScenarioType type, TextAsset asset = null)
+    public ScenarioGrid Generate(ScenarioType type, TextAsset asset = null, float cellSize = 1f, Vector3 origin = default)
     {
         switch (type)
         {
             case ScenarioType.Fixed:
-                return GenerateFixed(asset);
+                return GenerateFixed(asset, cellSize, origin);
 
             case ScenarioType.Random:
-                return GenerateRandom();
+                return GenerateRandom(cellSize,origin);
 
             default:
                 Debug.LogError("Unknown ScenarioType");
@@ -36,49 +34,53 @@ public class ScenarioSystem : MonoBehaviour
         }
 
     }
-    private ScenarioGrid GenerateFixed(TextAsset file)
+    private ScenarioGrid GenerateFixed(TextAsset file, float cellSize, Vector3 origin)
     {
         if (file == null)
         {
             Debug.LogWarning("No map file assigned.");
-            return grid;
+            return null;
         }
 
         string[] lines = file.text
-                .Replace("\r", "")
-                .Split('\n');
+            .Replace("\r", "")
+            .Split('\n');
 
         int height = lines.Length;
         int width = lines[0].Length;
 
-        grid.Resize(width, height);
-        grid.ClearGrid();
+        ScenarioGrid grid = new ScenarioGrid();
+        grid.Initialise(width, height, cellSize, origin);
 
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
-                char c = lines[y][x]; // assign char to grid
+                char c = lines[y][x];
                 Vector2Int cell = new Vector2Int(x, height - 1 - y);
 
                 grid.SetCell(cell, c);
             }
         }
-        return grid;
+
+        return new ScenarioGrid(); // or better: empty valid grid
     }
 
-    private ScenarioGrid GenerateRandom()
+    private ScenarioGrid GenerateRandom(float cellSize, Vector3 origin)
     {
-        grid.ClearGrid();
+        int width = 20;
+        int height = 20;
+        ScenarioGrid grid = new ScenarioGrid();
+        grid.Initialise(width, height, cellSize, origin);
 
-        PlaceRandom(ScenarioGrid.WallCell, obstacleCount);
-        PlaceRandom(ScenarioGrid.SeekerCell, seekerCount);
-        PlaceRandom(ScenarioGrid.HiderCell, hiderCount);
+        PlaceRandom(grid,ScenarioGrid.WallCell, obstacleCount);
+        PlaceRandom(grid, ScenarioGrid.SeekerCell, seekerCount);
+        PlaceRandom(grid, ScenarioGrid.HiderCell, hiderCount);
 
         return grid;
     }
 
-    private void PlaceRandom(char type, int count)
+    private void PlaceRandom(ScenarioGrid grid,char type, int count)
     {
         List<Vector2Int> emptyCells = new List<Vector2Int>();
 

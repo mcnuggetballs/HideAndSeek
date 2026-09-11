@@ -25,7 +25,7 @@ public class GridRenderer : MonoBehaviour
 
     {
         ClearTiles();
-        this.width = grid.Width;
+        this.width = grid.Width; 
         this.height = grid.Height;
 
         float size = grid.CellSize;

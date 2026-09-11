@@ -16,7 +16,7 @@ public class InfluenceMap : MonoBehaviour
         AgentPositions // occupancy grid, current position of SEEKER/HIDER
     }
     // references
-    [SerializeField] private ScenarioGrid grid; // truth layer
+    private ScenarioGrid grid; // truth layer
 
     private int rows;
     private int cols;
@@ -32,7 +32,7 @@ public class InfluenceMap : MonoBehaviour
             Debug.LogError("InfluenceMap: Grid reference missing!");
             return;
         }
-        grid = gridRef;
+        this.grid = gridRef;
         rows = grid.Width;
         cols = grid.Height;
 

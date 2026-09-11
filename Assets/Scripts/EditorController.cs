@@ -1,6 +1,4 @@
 ﻿using System.Collections.Generic;
-using Unity.VisualScripting;
-using UnityEditor.EditorTools;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -34,13 +32,10 @@ public class EditorController : MonoBehaviour
     [SerializeField] private Camera sceneCamera;
 
     [SerializeField] private ScenarioGrid grid;
-    [SerializeField] private SimulationController simulationController; // should this exist here?
-    private WorldBuilder worldBuilder;
 
-
-    [SerializeField] private GameObject seekerPreviewPrefab;
-    [SerializeField] private GameObject hiderPreviewPrefab;
-    [SerializeField] private GameObject obstaclePreviewPrefab;
+    [SerializeField] private GameObject emptySeekerPrefab;
+    [SerializeField] private GameObject emptyHiderPrefab;
+    [SerializeField] private GameObject obstaclePrefab;
 
     public float placementYOffset = 0.02f;
 
@@ -75,7 +70,6 @@ public class EditorController : MonoBehaviour
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             currentBrush = PaintBrush.None; // stop placing anything
-            Debug.Log("Stopped placing anything.");
             return;
         }
 
@@ -120,7 +114,6 @@ public class EditorController : MonoBehaviour
     private void SelectBrush(PaintBrush brushMode)
     {
         currentBrush = brushMode;
-        Debug.Log($"{currentBrush} placement mode is active. Click on the map to place.");
     }
 
     #endregion
@@ -177,13 +170,13 @@ public class EditorController : MonoBehaviour
         switch (currentBrush)
         {
             case PaintBrush.Wall:
-                PaintCell(cell, ScenarioGrid.WallCell, obstaclePreviewPrefab);
+                PaintCell(cell, ScenarioGrid.WallCell, obstaclePrefab);
                 break;
             case PaintBrush.Seeker:
-                PaintCell(cell, ScenarioGrid.SeekerCell, seekerPreviewPrefab);
+                PaintCell(cell, ScenarioGrid.SeekerCell, emptySeekerPrefab);
                 break;
             case PaintBrush.Hider:
-                PaintCell(cell, ScenarioGrid.HiderCell, hiderPreviewPrefab);
+                PaintCell(cell, ScenarioGrid.HiderCell, emptyHiderPrefab);
                 break;
             case PaintBrush.Erase:
                 EraseCell(cell);
@@ -213,18 +206,15 @@ public class EditorController : MonoBehaviour
         PlaceObjectOnSurface(visual, worldPosition);
 
         paintedVisuals[cell] = visual; // store spawned gameObject based on grid cell
-
-        // update runtime if simulation started
-        if (simulationController.IsStarted)
-        {
-            worldBuilder.UpdateRuntimeCell(cell, cellValue); // mini update again
-        }
-
     }
 
     // Remove Visual + Data layer
     private void EraseCell(Vector2Int cell)
     {
+        //Debug.Log($"grid null? {grid == null}");
+        //Debug.Log($"simulationController null? {simulationController == null}");
+        //Debug.Log($"worldBuilder null? {worldBuilder == null}");
+
         // remove visual
         if (paintedVisuals.TryGetValue(cell, out GameObject obj))
         {
@@ -235,11 +225,6 @@ public class EditorController : MonoBehaviour
         // update data layer first
         grid.SetCell(cell, ScenarioGrid.EmptyCell);
 
-        // if simulation has started, DO NOT rebuild everything, just update this 1 cell
-        if (simulationController.IsStarted)
-        {
-            worldBuilder.UpdateRuntimeCell(cell, ScenarioGrid.EmptyCell);
-        }
     }
     #endregion
 

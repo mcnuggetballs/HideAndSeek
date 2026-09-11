@@ -1,5 +1,49 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &604437751221232570
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3888026830767517413}
+  - component: {fileID: 1857127274825101901}
+  m_Layer: 0
+  m_Name: InfluenceMap
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3888026830767517413
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 604437751221232570}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6246770865924678003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1857127274825101901
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 604437751221232570}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3eb9fbc4f7564504d984c3ead0cb7c83, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InfluenceMap
 --- !u!1 &1369899831542956923
 GameObject:
   m_ObjectHideFlags: 0
@@ -65,7 +109,6 @@ GameObject:
   - component: {fileID: 3233563245426020836}
   - component: {fileID: 7775793908095657963}
   - component: {fileID: 6474338889623940484}
-  - component: {fileID: 4979092101512667605}
   - component: {fileID: 6634240702757956815}
   m_Layer: 0
   m_Name: TestingScenePrefab
@@ -91,6 +134,9 @@ Transform:
   - {fileID: 6915711254132362047}
   - {fileID: 1712358657165268500}
   - {fileID: 3231882929509014755}
+  - {fileID: 5496357335063368470}
+  - {fileID: 3888026830767517413}
+  - {fileID: 6163941306871726637}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &3233563245426020836
@@ -150,30 +196,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25a0ca2004e9fd34ebeefbb2a9516c78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnvironmentManager
-  simulationMode: 0
   seekerPrefab: {fileID: 4382439110685233668, guid: 59799930b7016594399014949c3ff5c7, type: 3}
   hiderPrefab: {fileID: 8698921351780613049, guid: d6cb008445346c34ab861c9ebd502ba1, type: 3}
   obstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
-  grid: {fileID: 4979092101512667605}
-  runtimeNavMeshBuilder: {fileID: 7775793908095657963}
-  scenarioEditor: {fileID: 5248701050964835464}
+  simulationMode: 0
+  scenarioType: 0
+  mapFile: {fileID: 0}
   runtimeRoot: {fileID: 6915711254132362047}
   editorRoot: {fileID: 4063549694382856132}
---- !u!114 &4979092101512667605
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2083225150855395725}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3e54cb18a793059439155da4c4ff4024, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ScenarioGrid
-  gridWidth: 10
-  gridHeight: 10
-  cellSize: 5
+  runtimeNavMeshBuilder: {fileID: 7775793908095657963}
+  scenarioSystem: {fileID: 6634240702757956815}
+  worldBuilder: {fileID: 5907203151126164545}
+  scenarioEditor: {fileID: 5248701050964835464}
+  influenceMap: {fileID: 1857127274825101901}
+  gridRenderer: {fileID: 8163546873113851806}
+  debugLayer: 0
 --- !u!114 &6634240702757956815
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -234,18 +271,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TestingScenarioEditor
   sceneCamera: {fileID: 0}
-  placementYOffset: 0.02
-  seekerPreviewScale: 1
-  grid: {fileID: 4979092101512667605}
-  environment: {fileID: 6246770865924678003}
-  placementArea: {fileID: 6126231948324362559}
-  placementBlockerLayers:
-    serializedVersion: 2
-    m_Bits: 0
   emptySeekerPrefab: {fileID: 1702149679562409119, guid: f73ca6929283a0f469c6260e87d16f6d, type: 3}
   emptyHiderPrefab: {fileID: 5050601273516166025, guid: 082cb2d2ffe1e99409acb97864633ee2, type: 3}
-  ObstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
-  environmentManager: {fileID: 6474338889623940484}
+  obstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
+  placementYOffset: 0.02
 --- !u!1 &4063549694382856132
 GameObject:
   m_ObjectHideFlags: 0
@@ -309,6 +338,97 @@ Transform:
   m_Children: []
   m_Father: {fileID: 6246770865924678003}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7945518099993730402
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6163941306871726637}
+  - component: {fileID: 5907203151126164545}
+  m_Layer: 0
+  m_Name: WorldBuilder
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6163941306871726637
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7945518099993730402}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6246770865924678003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5907203151126164545
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7945518099993730402}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a579698497cc4194f896d9edf2b42fc9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldBuilder
+--- !u!1 &9121182012074327858
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5496357335063368470}
+  - component: {fileID: 8163546873113851806}
+  m_Layer: 0
+  m_Name: GridRenderer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5496357335063368470
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9121182012074327858}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6246770865924678003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8163546873113851806
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9121182012074327858}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4208dba06e5975469805ef6546a8121, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GridRenderer
+  tilePrefab: {fileID: 2776681547395200417, guid: 80e426ddc8511df46824a66dcac6fabe, type: 3}
+  seenColor: {r: 0, g: 0, b: 0, a: 0}
+  unseenColor: {r: 0, g: 0, b: 0, a: 0}
 --- !u!1001 &7410463331183275624
 PrefabInstance:
   m_ObjectHideFlags: 0

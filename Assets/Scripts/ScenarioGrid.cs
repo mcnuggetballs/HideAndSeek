@@ -1,9 +1,12 @@
+using Grpc.Core;
+using NUnit.Framework.Constraints;
 using System.Collections.Generic;
 using UnityEngine;
 
 // grid origin system, anytime dealing with grid positions ONLY can take from ScenarioGrid
+// changing to non monobehaviour as we are creating grids instead of having a grid
 
-public class ScenarioGrid : MonoBehaviour
+public class ScenarioGrid
 {
     // symbols to describe the map
     public const char EmptyCell = ' ';
@@ -11,34 +14,34 @@ public class ScenarioGrid : MonoBehaviour
     public const char SeekerCell = 'S';
     public const char HiderCell = 'H';
 
-    // grid settings
-    [SerializeField] private int gridWidth; // cols
-    [SerializeField] private int gridHeight; // rows 
-    [SerializeField] private float cellSize; // how big
-    private bool isDirty = false;
+    public bool isDirty { get; private set; } // will be referenced by simulation controller
 
     private char[,] cells; // 2d array 
+    private int gridWidth;
+    private int gridHeight;
+    private float cellSize;
+    private Vector3 origin;
 
-    // Getter, grid.Width, grid.Height
     public int Width => gridWidth;
     public int Height => gridHeight;
-
     public float CellSize => cellSize;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Awake()
+    // decide this in SimulationController or EditorController
+    public void Initialise(int width, int height, float size, Vector3 origin)
     {
-        cells = new char[gridWidth,gridHeight];
-        ClearGrid();
+        this.gridWidth = width;
+        this.gridHeight = height;
+        this.cellSize = size;
+        this.origin = origin;
+
+        cells = new char[width, height];
+
     }
 
-
-    #region Utilities
+    #region Conversion Helpers
     // converts a unity world position to grid cell 
     public Vector2Int WorldToCell(Vector3 worldPosition)
     {
-        Vector3 origin = transform.position; // was gridOrigin
-
         float offsetX = (gridWidth * cellSize) / 2f;
         float offsetZ = (gridHeight * cellSize) / 2f;
         int col = Mathf.FloorToInt((worldPosition.x - origin.x + offsetX) / cellSize);
@@ -53,7 +56,7 @@ public class ScenarioGrid : MonoBehaviour
         float offsetX = (gridWidth * cellSize) / 2f;
         float offsetZ = (gridHeight * cellSize) / 2f;
 
-        return transform.position + new Vector3(
+        return origin + new Vector3(
             (cell.x * cellSize) - offsetX + (cellSize * 0.5f),
             0,
             (cell.y * cellSize) - offsetZ + (cellSize * 0.5f)
@@ -66,35 +69,11 @@ public class ScenarioGrid : MonoBehaviour
         return cell.x >= 0 && cell.x < gridWidth && // check if cell x position is 0 - 19
                cell.y >= 0 && cell.y < gridHeight;
     }
-    void OnDrawGizmos()
-    {
-        Gizmos.color = Color.green;
 
-        float offsetX = (gridWidth * cellSize) / 2f;
-        float offsetZ = (gridHeight * cellSize) / 2f;
-
-        //Vector3 origin = transform.position - new Vector3(offsetX, offsetX, offsetZ);
-        Vector3 origin = transform.position - new Vector3(offsetX, 0f, offsetZ);
-
-
-        for (int x = 0; x <= gridWidth; x++)
-        {
-            Vector3 start = origin + new Vector3(x * cellSize, 0, 0);
-            Vector3 end = origin + new Vector3(x * cellSize, 0, gridHeight * cellSize);
-            Gizmos.DrawLine(start, end);
-        }
-
-        for (int y = 0; y <= gridHeight; y++)
-        {
-            Vector3 start = origin + new Vector3(0, 0, y * cellSize);
-            Vector3 end = origin + new Vector3(gridWidth * cellSize, 0, y * cellSize);
-            Gizmos.DrawLine(start, end);
-        }
-    }
     #endregion
 
 
-    #region Grid Update
+    #region Data Manipulation
     public void Resize(int width, int height)
     {
         gridWidth = width;
@@ -105,9 +84,9 @@ public class ScenarioGrid : MonoBehaviour
 
     public void ClearGrid()
     {
-        for (int row = 0; row < Height; row++)
+        for (int row = 0; row < gridHeight; row++)
         {
-            for (int col = 0; col < Width; col++)
+            for (int col = 0; col < gridWidth; col++)
             {
                 cells[row, col] = EmptyCell;
             }
@@ -129,27 +108,28 @@ public class ScenarioGrid : MonoBehaviour
     {
         if (!IsInsideGrid(cell))
         {
+            Debug.LogError($"SetCell out of bounds: {cell}");
             return;
         }
 
-        cells[cell.y, cell.x] = value;// left to right
+        cells[cell.x, cell.y] = value;// left to right
+        isDirty = true;
     }
     public IEnumerable<Vector2Int> GetAllCells()
     {
-        for (int row = 0; row < Height; row++)
+        for (int row = 0; row < gridHeight; row++)
         {
-            for (int col = 0; col < Width; col++)
+            for (int col = 0; col < gridWidth; col++)
             {
-                yield return new Vector2Int(col, row); 
+                yield return new Vector2Int(col, row);
             }
         }
     }
 
-    public bool IsDirty()
+    public void MarkDirty()
     {
-        return isDirty;
+        isDirty = true;
     }
-
     public void ClearDirty()
     {
         isDirty = false;

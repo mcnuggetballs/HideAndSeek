@@ -65,7 +65,8 @@ public class WorldBuilder : MonoBehaviour
         BuildAgentsOnly();
         AssignRuntimeTargets();
     }
-    // mini update function for editor i think?
+    
+    // mini update function for editor, to be called by simulation controller
     public void UpdateRuntimeCell(Vector2Int cell, char value) // visual
     {
         RemoveRuntimeObjectAt(cell);
