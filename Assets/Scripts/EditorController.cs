@@ -31,7 +31,12 @@ public class EditorController : MonoBehaviour
     // Inspector References
     [SerializeField] private Camera sceneCamera;
 
-    [SerializeField] private ScenarioGrid grid;
+    private ScenarioGrid grid;
+
+    public void Initialise(ScenarioGrid scenarioGrid)
+    {
+        grid = scenarioGrid;
+    }
 
     [SerializeField] private GameObject emptySeekerPrefab;
     [SerializeField] private GameObject emptyHiderPrefab;
@@ -66,6 +71,15 @@ public class EditorController : MonoBehaviour
 
     private void Update()
     {
+        if (canPaint && Keyboard.current != null)
+        {
+            SimulationController simulation = GetComponentInParent<SimulationController>();
+            if (Keyboard.current.f6Key.wasPressedThisFrame)
+                simulation?.SavePaintedScenario();
+            if (Keyboard.current.f7Key.wasPressedThisFrame)
+                simulation?.LoadPaintedScenario();
+        }
+
         // was escape key pressed? 
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
@@ -199,22 +213,12 @@ public class EditorController : MonoBehaviour
         // updates data layer, change map data
         grid.SetCell(cell, cellValue);
 
-        // updates visual layer
-        Vector3 worldPosition = grid.CellToWorld(cell); // need world position to place object
-        GameObject visual = Instantiate(prefab, worldPosition, Quaternion.identity, this.GetEditorRoot());
-
-        PlaceObjectOnSurface(visual, worldPosition);
-
-        paintedVisuals[cell] = visual; // store spawned gameObject based on grid cell
+        SpawnVisual(cell, prefab);
     }
 
     // Remove Visual + Data layer
     private void EraseCell(Vector2Int cell)
     {
-        //Debug.Log($"grid null? {grid == null}");
-        //Debug.Log($"simulationController null? {simulationController == null}");
-        //Debug.Log($"worldBuilder null? {worldBuilder == null}");
-
         // remove visual
         if (paintedVisuals.TryGetValue(cell, out GameObject obj))
         {
@@ -338,6 +342,34 @@ public class EditorController : MonoBehaviour
             }
         }
         paintedVisuals.Clear();
+    }
+
+    public void RebuildVisualsFromGrid()
+    {
+        ClearEditorVisuals();
+        if (grid == null)
+            return;
+
+        foreach (Vector2Int cell in grid.GetAllCells())
+        {
+            GameObject prefab = grid.GetCell(cell) switch
+            {
+                ScenarioGrid.WallCell => obstaclePrefab,
+                ScenarioGrid.SeekerCell => emptySeekerPrefab,
+                ScenarioGrid.HiderCell => emptyHiderPrefab,
+                _ => null
+            };
+            if (prefab != null)
+                SpawnVisual(cell, prefab);
+        }
+    }
+
+    private void SpawnVisual(Vector2Int cell, GameObject prefab)
+    {
+        Vector3 worldPosition = grid.CellToWorld(cell);
+        GameObject visual = Instantiate(prefab, worldPosition, Quaternion.identity, GetEditorRoot());
+        PlaceObjectOnSurface(visual, worldPosition);
+        paintedVisuals[cell] = visual;
     }
     #endregion
 

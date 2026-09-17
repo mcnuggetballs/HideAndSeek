@@ -33,8 +33,8 @@ public class InfluenceMap : MonoBehaviour
             return;
         }
         this.grid = gridRef;
-        rows = grid.Width;
-        cols = grid.Height;
+        rows = grid.Height;
+        cols = grid.Width;
 
         InitialiseLayers();
     }
@@ -139,7 +139,7 @@ public class InfluenceMap : MonoBehaviour
 
             if (!grid.IsInsideGrid(cell)) continue;
 
-            data[cell.x, cell.y] = 1f; // cols, rows
+            data[cell.y, cell.x] = 1f;
         }
     }
 
@@ -163,9 +163,5 @@ public class InfluenceMap : MonoBehaviour
                 layer[y, x] = 0f;
     }
 
-    public Vector2Int WorldToCell(Vector3 worldPosition)
-    {
-        return grid.WorldToCell(worldPosition);
-    }
     #endregion
 }

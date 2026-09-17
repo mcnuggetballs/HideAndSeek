@@ -46,18 +46,20 @@ public class SeekerAgent : Agent
     #region Public API
     private void Awake()
     {
-        seekerAgent.updateRotation = false; // disable agent rotation
-
         if (seekerAgent == null)
         {
             seekerAgent = GetComponent<NavMeshAgent>();
         }
 
+        if (seekerAgent != null)
+            seekerAgent.updateRotation = false;
+
         simulationController = GetComponentInParent<SimulationController>();
     }
 
-    public void Initialize(InfluenceMap map)
+    public void Initialize(SimulationController controller, InfluenceMap map)
     {
+        simulationController = controller;
         influenceMap = map;
     }
     
@@ -111,7 +113,8 @@ public class SeekerAgent : Agent
             return;
         }
         // no destruction, no rebuilding
-        simulationController.ResetEnvironment();
+        if (simulationController != null)
+            simulationController.ResetEnvironment();
         
 
         prevDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);

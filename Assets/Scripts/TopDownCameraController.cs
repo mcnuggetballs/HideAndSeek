@@ -25,6 +25,18 @@ public class TopDownCameraController : MonoBehaviour
         }
     }
 
+    public void FrameGrid(ScenarioGrid grid)
+    {
+        if (grid == null || targetCamera == null || !targetCamera.orthographic)
+            return;
+
+        Vector3 position = transform.position;
+        transform.position = new Vector3(grid.Origin.x, position.y, grid.Origin.z);
+        float visibleHeight = Mathf.Max(grid.Height * grid.CellSize,
+            grid.Width * grid.CellSize / Mathf.Max(targetCamera.aspect, 0.01f));
+        targetCamera.orthographicSize = Mathf.Clamp(visibleHeight * 0.6f, minZoom, maxZoom);
+    }
+
     // Update is called once per frame
     void Update()
     {

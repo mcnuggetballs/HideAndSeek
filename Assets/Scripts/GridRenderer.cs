@@ -3,10 +3,11 @@ using UnityEngine;
 using static InfluenceMap;
 
 // reads influenceMap output to visalise layers
+// debug only -> for influencemap + editor
 public class GridRenderer : MonoBehaviour
 {
     [SerializeField] private GameObject tilePrefab;
-    [SerializeField] private ScenarioGrid grid;
+    private ScenarioGrid grid;
    
     [SerializeField] Color seenColor;
     [SerializeField] Color unseenColor;
@@ -21,14 +22,18 @@ public class GridRenderer : MonoBehaviour
     private static readonly int ColorID = Shader.PropertyToID("_BaseColor"); // convert string to int ID
     private List<GameObject> spawnedTiles = new();
 
-    public void BuildVisualGrid(ScenarioGrid grid)
+    public void Initialise(ScenarioGrid grid)
+    {
+        this.grid = grid;
+    }
+    public void BuildVisualGrid()
 
     {
         ClearTiles();
         this.width = grid.Width; 
         this.height = grid.Height;
 
-        float size = grid.CellSize;
+        //float size = grid.CellSize;
         tiles = new Renderer[width, height];
 
         for (int x = 0; x < width; x++)
@@ -41,14 +46,13 @@ public class GridRenderer : MonoBehaviour
                 spawnedTiles.Add(tile);
 
                 tile.transform.position = worldPos + Vector3.up * 0.05f;
-                tile.transform.localScale = new Vector3(grid.CellSize, 1f, grid.CellSize);
+                float tileSize = grid.CellSize * 0.98f;
+                tile.transform.localScale = new Vector3(tileSize, 1f, tileSize);
 
                 var r = tile.GetComponent<Renderer>();
-                if (r == null)
-                {
-                    continue;
-                }
-                tiles[x, y] = r;
+
+                if (r != null)
+                    tiles[x, y] = r;
             }
         }
     }
@@ -71,7 +75,7 @@ public class GridRenderer : MonoBehaviour
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
             {
-                float v = data[x,y];
+                float v = data[y,x];
 
                 Color col;
 

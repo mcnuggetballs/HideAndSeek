@@ -195,12 +195,12 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 25a0ca2004e9fd34ebeefbb2a9516c78, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnvironmentManager
+  m_EditorClassIdentifier: Assembly-CSharp::SimulationController
   seekerPrefab: {fileID: 4382439110685233668, guid: 59799930b7016594399014949c3ff5c7, type: 3}
   hiderPrefab: {fileID: 8698921351780613049, guid: d6cb008445346c34ab861c9ebd502ba1, type: 3}
   obstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
   simulationMode: 0
-  scenarioType: 0
+  scenarioType: 2
   mapFile: {fileID: 0}
   runtimeRoot: {fileID: 6915711254132362047}
   editorRoot: {fileID: 4063549694382856132}
@@ -211,6 +211,9 @@ MonoBehaviour:
   influenceMap: {fileID: 1857127274825101901}
   gridRenderer: {fileID: 8163546873113851806}
   debugLayer: 0
+  width: 10
+  height: 10
+  cellSize: 5
 --- !u!114 &6634240702757956815
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -224,6 +227,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RandomScenarioGenerator
   obstacleCount: 30
+  savedScenarioName: painted_scenario
   seekerCount: 1
   hiderCount: 1
 --- !u!1 &3239805398566306805

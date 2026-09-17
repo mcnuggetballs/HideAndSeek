@@ -3,6 +3,8 @@ using UnityEngine;
 using UnityEngine.AI;
 
 // a runtime system component that builds and mutates world
+// real objects -> walls, agents
+
 public class WorldBuilder : MonoBehaviour
 {
     private ScenarioGrid grid;
@@ -38,14 +40,13 @@ public class WorldBuilder : MonoBehaviour
         this.grid = grid;
         this.obstaclePrefab = obstaclePrefab;
         this.runtimeRoot = runtimeRoot;
+        Debug.Log(
+            $"[WorldBuilder] USING GRID: {grid.Width}x{grid.Height}, " +
+            $"cellSize={grid.CellSize}, origin={grid.Origin}"
+        );
 
-        // initalise runtime state FIRST
-        runtimeMap = new Dictionary<Vector2Int, GameObject>();
-        seekers = new List<SeekerAgent>();
-        hiders = new List<NavMeshAgent>();
 
-        // now safe to clear
-        ClearRuntimeObjects(); // clean old world
+        ClearRuntimeObjects(); // clear the objects tracked by the previous build
 
         // build
         BuildObstaclesOnly();
@@ -54,7 +55,7 @@ public class WorldBuilder : MonoBehaviour
     // build agent after navmesh is done
     public void BuildAgents(GameObject seekerPrefab, GameObject hiderPrefab)
     {
-        if(grid == null)
+        if (grid == null)
         {
             Debug.LogError("[WorldBuilder]: BuildGeometry must be called before BuildAgents");
             return;
@@ -65,7 +66,7 @@ public class WorldBuilder : MonoBehaviour
         BuildAgentsOnly();
         AssignRuntimeTargets();
     }
-    
+
     // mini update function for editor, to be called by simulation controller
     public void UpdateRuntimeCell(Vector2Int cell, char value) // visual
     {
@@ -104,8 +105,10 @@ public class WorldBuilder : MonoBehaviour
 
         runtimeMap.Clear();
 
-        seekers.Clear();
-        hiders.Clear();
+        seekers?.Clear();
+        hiders?.Clear();
+        seekers ??= new List<SeekerAgent>();
+        hiders ??= new List<NavMeshAgent>();
     }
 
     public void GetSeekerTransforms(List<Transform> output)
@@ -129,7 +132,9 @@ public class WorldBuilder : MonoBehaviour
                 continue;
 
             SpawnRuntimeObject(cell, obstaclePrefab);
+            Debug.Log($"Placing obstacle at {cell} -> world {grid.CellToWorld(cell)}");
         }
+
     }
 
     // Split building function cos NavMeshAgent needs NavMesh to exist
