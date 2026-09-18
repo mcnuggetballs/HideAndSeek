@@ -1,36 +1,41 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
-using System.Collections.Generic;
-public class EnvironmentInstance
+
+// All references and runtime state for one independently built environment.
+public sealed class EnvironmentInstance
 {
-    // ROOT
-    public GameObject root; // Environment_0, Environment_1 
-    public Transform runtimeRoot; // where all spawned objects go
-    //public Transform editorRoot; // where all spawned objects go
+    public GameObject Root { get; }
+    public Transform RuntimeRoot { get; }
+    public WorldBuilder WorldBuilder { get; }
+    public RuntimeNavMeshBuilder NavMeshBuilder { get; }
+    public InfluenceMap InfluenceMap { get; }
+    public GridRenderer GridRenderer { get; }
+    public bool OwnsRoot { get; }
+    public ScenarioGrid Grid { get; private set; }
+    public bool IsBuilt { get; internal set; }
+    public bool NavMeshReady { get; internal set; }
+    public IReadOnlyList<SeekerAgent> Seekers => WorldBuilder.GetSeekers();
+    public IReadOnlyList<NavMeshAgent> Hiders => WorldBuilder.GetHiders();
 
-    // DATA
-    public ScenarioGrid grid;
-
-    // WORLD STATE
-    public bool isBuilt;
-    public bool navMeshReady;
-
-    // AGENTS
-    public List<SeekerAgent> seekers = new();
-    public List<NavMeshAgent> hiders = new();
-
-    // HELPERS
-    public Vector3 GetOrigin()
+    public EnvironmentInstance(GameObject root, Transform runtimeRoot, ScenarioGrid grid,
+        WorldBuilder worldBuilder, RuntimeNavMeshBuilder navMeshBuilder,
+        InfluenceMap influenceMap, GridRenderer gridRenderer, bool ownsRoot)
     {
-        return grid != null ? grid.Origin : root.transform.position;  
+        Root = root;
+        RuntimeRoot = runtimeRoot;
+        Grid = grid;
+        WorldBuilder = worldBuilder;
+        NavMeshBuilder = navMeshBuilder;
+        InfluenceMap = influenceMap;
+        GridRenderer = gridRenderer;
+        OwnsRoot = ownsRoot;
     }
 
-    public void Clear()
+    public void SetGrid(ScenarioGrid grid)
     {
-        seekers.Clear();
-        hiders.Clear();
-        isBuilt = false;
-        navMeshReady = false;
+        Grid = grid;
+        IsBuilt = false;
+        NavMeshReady = false;
     }
-
 }

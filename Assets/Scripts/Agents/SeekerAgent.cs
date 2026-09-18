@@ -27,7 +27,8 @@ public class SeekerAgent : Agent
     [SerializeField] private float eyeHeight = 0.5f;
     [SerializeField] private float catchDistance = 1.5f;
 
-    private SimulationController simulationController;
+    private EnvironmentManager environmentManager;
+    private EnvironmentInstance environment;
 
     [Header("Reward Settings")]
     private float visibleDistanceRewardScale = 0.04f;
@@ -54,12 +55,12 @@ public class SeekerAgent : Agent
         if (seekerAgent != null)
             seekerAgent.updateRotation = false;
 
-        simulationController = GetComponentInParent<SimulationController>();
     }
 
-    public void Initialize(SimulationController controller, InfluenceMap map)
+    public void Initialize(EnvironmentManager manager, EnvironmentInstance instance, InfluenceMap map)
     {
-        simulationController = controller;
+        environmentManager = manager;
+        environment = instance;
         influenceMap = map;
     }
     
@@ -113,8 +114,8 @@ public class SeekerAgent : Agent
             return;
         }
         // no destruction, no rebuilding
-        if (simulationController != null)
-            simulationController.ResetEnvironment();
+        if (environmentManager != null && environment != null)
+            environmentManager.ResetEpisode(environment);
         
 
         prevDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);

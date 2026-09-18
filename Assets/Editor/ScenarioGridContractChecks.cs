@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
+// test file to ensure scenariogrid.cs is working as required and kept to ensure future code doesnt break how scenariogrid.cs handles data
 public static class ScenarioGridContractChecks
 {
     [MenuItem("Tools/Hide And Seek/Check Scenario Grid")]

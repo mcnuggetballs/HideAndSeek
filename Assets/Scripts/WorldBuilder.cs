@@ -40,11 +40,6 @@ public class WorldBuilder : MonoBehaviour
         this.grid = grid;
         this.obstaclePrefab = obstaclePrefab;
         this.runtimeRoot = runtimeRoot;
-        Debug.Log(
-            $"[WorldBuilder] USING GRID: {grid.Width}x{grid.Height}, " +
-            $"cellSize={grid.CellSize}, origin={grid.Origin}"
-        );
-
 
         ClearRuntimeObjects(); // clear the objects tracked by the previous build
 
@@ -57,14 +52,12 @@ public class WorldBuilder : MonoBehaviour
     {
         if (grid == null)
         {
-            Debug.LogError("[WorldBuilder]: BuildGeometry must be called before BuildAgents");
             return;
         }
 
         this.seekerPrefab = seekerPrefab;
         this.hiderPrefab = hiderPrefab;
         BuildAgentsOnly();
-        AssignRuntimeTargets();
     }
 
     // mini update function for editor, to be called by simulation controller
@@ -101,7 +94,11 @@ public class WorldBuilder : MonoBehaviour
         }
 
         foreach (var obj in runtimeMap.Values)
+        {
+            if (obj == null) continue;
+            obj.SetActive(false); // Destroy is deferred; exclude old colliders from the next NavMesh bake.
             Destroy(obj);
+        }
 
         runtimeMap.Clear();
 
@@ -132,7 +129,6 @@ public class WorldBuilder : MonoBehaviour
                 continue;
 
             SpawnRuntimeObject(cell, obstaclePrefab);
-            Debug.Log($"Placing obstacle at {cell} -> world {grid.CellToWorld(cell)}");
         }
 
     }

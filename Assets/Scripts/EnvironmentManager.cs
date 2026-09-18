@@ -1,88 +1,110 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-
+// Owns the build order and lifetime of every environment in this simulation.
 public class EnvironmentManager : MonoBehaviour
 {
-    [Header("Prefabs")]
-    [SerializeField] private GameObject environmentPrefab;
-    [SerializeField] private GameObject seekerPrefab;
-    [SerializeField] private GameObject hiderPrefab;
-    [SerializeField] private GameObject obstaclePrefab;
-
-    [Header("Scene References (Shared Systems)")]
-    [SerializeField] private WorldBuilder worldBuilder;
-    [SerializeField] private RuntimeNavMeshBuilder runtimeNavMeshBuilder;
-    [SerializeField] private InfluenceMap influenceMap;
-    [SerializeField] private GridRenderer gridRenderer;
-
     private readonly List<EnvironmentInstance> environments = new();
+    private GameObject seekerPrefab;
+    private GameObject hiderPrefab;
+    private GameObject obstaclePrefab;
+
     public IReadOnlyList<EnvironmentInstance> Environments => environments;
 
-    //  ENTRY POINT
-    public void CreateEnvironments(List<ScenarioGrid> grids)
+    public void Configure(GameObject seeker, GameObject hider, GameObject obstacle)
     {
-        ClearExisting();
-
-        foreach (var grid in grids)
-        {
-            CreateSingleEnvironment(grid);
-        }
-
-        Debug.Log("[EnvironmeentManager] Create {environments.Count} environments");
+        seekerPrefab = seeker;
+        hiderPrefab = hider;
+        obstaclePrefab = obstacle;
     }
 
-    // SINGLE ENVIRONMENT BUILD
-    private void CreateSingleEnvironment(ScenarioGrid grid)
+    public EnvironmentInstance CreateEnvironment(ScenarioGrid grid, GameObject environmentPrefab)
     {
-        // 1. create root to store all instantiated environments
-        GameObject envRoot = Instantiate(environmentPrefab, transform);
-        envRoot.name = $"Environment_{environments.Count}";
-
-        Transform runtimeRoot = envRoot.transform.Find("RuntimeRoot");
-        //Transform editorRoot = envRoot.transform.Find("EditorRoot");
-
-        // 2. create instance
-        EnvironmentInstance env = new EnvironmentInstance
-        {
-            root = envRoot,
-            runtimeRoot = runtimeRoot,
-            grid = grid,
-
-            //worldBuilder = worldBuilder, 
-            //runtimeNavMeshBuilder = runtimeNavMeshBuilder,
-            //influenceMap = influenceMap,
-            //gridRenderer = gridRenderer,
-
-            //isBuilt Built = false,
-            //navMeshReady = false,
-        };
-
-        // 3. build world
-        BuildEnvironment(env);
-        environments.Add(env);
-
+        if (grid == null) throw new ArgumentNullException(nameof(grid));
+        if (environmentPrefab == null) throw new ArgumentNullException(nameof(environmentPrefab));
+        GameObject root = Instantiate(environmentPrefab, grid.Origin, Quaternion.identity, transform);
+        root.name = $"Environment_{environments.Count}";
+        try { return RegisterEnvironment(grid, root, true); }
+        catch { Destroy(root); throw; }
     }
 
-    // BUILD PIPELINE
-    private void BuildEnvironment(EnvironmentInstance env)
+    // The testing scene already contains its environment root and editor UI.
+    public EnvironmentInstance RegisterEnvironment(ScenarioGrid grid, GameObject root, bool ownsRoot = false)
     {
-        // 1. build geometry
+        if (grid == null) throw new ArgumentNullException(nameof(grid));
+        if (root == null) throw new ArgumentNullException(nameof(root));
+        if (environments.Exists(item => item.Root == root))
+            throw new InvalidOperationException("This environment root is already registered.");
 
-        // 2. navmesh
+        Transform runtimeRoot = root.transform.Find("RuntimeRoot");
+        RuntimeNavMeshBuilder navigation = root.GetComponentInChildren<RuntimeNavMeshBuilder>(true);
+        if (runtimeRoot == null || navigation == null)
+            throw new InvalidOperationException($"{root.name} needs a RuntimeRoot and RuntimeNavMeshBuilder.");
 
-        // 3. analysis layers
+        WorldBuilder world = root.GetComponentInChildren<WorldBuilder>(true) ?? root.AddComponent<WorldBuilder>();
+        InfluenceMap influence = root.GetComponentInChildren<InfluenceMap>(true) ?? root.AddComponent<InfluenceMap>();
+        GridRenderer renderer = root.GetComponentInChildren<GridRenderer>(true);
+        var instance = new EnvironmentInstance(root, runtimeRoot, grid, world, navigation,
+            influence, renderer, ownsRoot);
+        environments.Add(instance);
+        return instance;
     }
 
-    // CLEAN UP 
-    private void ClearExisting()
+    public void BuildEnvironment(EnvironmentInstance environment)
     {
-        foreach (var env in environments)
-        {
-            if (env.root != null)
-                Destroy(env.root);
-        }
+        RequireOwned(environment);
+        if (seekerPrefab == null || hiderPrefab == null || obstaclePrefab == null)
+            throw new InvalidOperationException("Environment prefabs must be configured before building.");
 
-        environments.Clear();
+        environment.RuntimeRoot.gameObject.SetActive(true);
+        environment.IsBuilt = false;
+        environment.NavMeshReady = false;
+        environment.WorldBuilder.BuildGeometry(environment.Grid, obstaclePrefab, environment.RuntimeRoot);
+        Physics.SyncTransforms();
+        environment.NavMeshReady = environment.NavMeshBuilder.RebuildNavMesh();
+        if (!environment.NavMeshReady)
+            throw new InvalidOperationException($"NavMesh build failed for {environment.Root.name}.");
+
+        environment.WorldBuilder.BuildAgents(seekerPrefab, hiderPrefab);
+        environment.WorldBuilder.AssignRuntimeTargets();
+        environment.InfluenceMap.Initialise(environment.Grid);
+        foreach (SeekerAgent seeker in environment.Seekers)
+            seeker.Initialize(this, environment, environment.InfluenceMap);
+
+        environment.Grid.ClearDirty();
+        environment.IsBuilt = true;
+    }
+
+    public void ResetEpisode(EnvironmentInstance environment)
+    {
+        RequireOwned(environment);
+        if (!environment.IsBuilt) return;
+        environment.WorldBuilder.ResetAgentsOnly();
+        environment.WorldBuilder.AssignRuntimeTargets();
+    }
+
+    public void ClearRuntime(EnvironmentInstance environment)
+    {
+        RequireOwned(environment);
+        environment.WorldBuilder.ClearRuntimeObjects();
+        environment.NavMeshBuilder.ClearNavMesh();
+        environment.IsBuilt = false;
+        environment.NavMeshReady = false;
+    }
+
+    public void RemoveEnvironment(EnvironmentInstance environment)
+    {
+        RequireOwned(environment);
+        ClearRuntime(environment);
+        environments.Remove(environment);
+        if (environment.OwnsRoot && environment.Root != null)
+            Destroy(environment.Root);
+    }
+
+    private void RequireOwned(EnvironmentInstance environment)
+    {
+        if (environment == null || !environments.Contains(environment))
+            throw new ArgumentException("Environment is not registered with this manager.", nameof(environment));
     }
 }

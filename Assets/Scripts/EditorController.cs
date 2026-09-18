@@ -10,6 +10,8 @@ using UnityEngine.Rendering;
 //           asks scenariogrid what cell was clicked and
 //           tells scenariogrid to paint the cell
 
+// in testing scenes, f6 saves painted scenario and f7 loads it 
+
 public class EditorController : MonoBehaviour
 {
     // Enums
