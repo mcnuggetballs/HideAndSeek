@@ -38,9 +38,7 @@
 	 ```
 
 ## Architecture
-game manager
-- start/stop game sessions
-- select influence map config
+save - f6
 
 ## ML Agent Documentation
 https://docs.unity3d.com/Packages/com.unity.ml-agents@1.0/api/Unity.MLAgents.Agent.html

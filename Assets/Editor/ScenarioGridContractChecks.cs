@@ -16,7 +16,9 @@ public static class ScenarioGridContractChecks
 
         var origin = new Vector3(10f, 1f, -4f);
         grid.Initialise(3, 2, 2f, origin);
-        Require(!grid.IsDirty, "A new grid should be clean.");
+        Require(grid.LayoutRevision == 0, "A new grid should start at layout revision zero.");
+        Require(grid.SavedRevision == 0, "A new grid should start at saved revision zero.");
+        Require(!grid.HasUnsavedChanges, "A new grid should have no unsaved changes.");
         Require(grid.GetAllCells().Count() == 6, "A 3x2 grid must have six cells.");
 
         foreach (var cell in grid.GetAllCells())
@@ -37,29 +39,37 @@ public static class ScenarioGridContractChecks
 
         var lastCell = new Vector2Int(2, 1);
         Require(grid.SetCell(lastCell, ScenarioGrid.WallCell), "Valid writes must succeed.");
-        Require(grid.IsDirty, "A changed cell must mark the grid dirty.");
-        grid.ClearDirty();
+        Require(grid.LayoutRevision == 1 && grid.HasUnsavedChanges,
+            "A changed cell must advance the layout revision.");
+        grid.MarkSaved();
+        Require(grid.SavedRevision == 1 && !grid.HasUnsavedChanges,
+            "MarkSaved must record the current layout revision.");
         grid.SetCell(lastCell, ScenarioGrid.WallCell);
-        Require(!grid.IsDirty, "Writing the same value must not mark the grid dirty.");
+        Require(grid.LayoutRevision == 1 && !grid.HasUnsavedChanges,
+            "Writing the same value must not advance the layout revision.");
         RequireThrows<ArgumentException>(() => grid.SetCell(lastCell, '?'));
         Require(!grid.SetCell(new Vector2Int(3, 1), ScenarioGrid.WallCell),
             "Out-of-bounds writes must fail.");
 
         grid.Resize(5, 4);
-        Require(grid.IsDirty, "A resize must mark the grid dirty.");
+        Require(grid.LayoutRevision == 2 && grid.HasUnsavedChanges,
+            "A resize must advance the layout revision.");
         Require(grid.GetCell(lastCell) == ScenarioGrid.WallCell, "Resize must preserve overlapping cells.");
         Require(grid.GetCell(new Vector2Int(4, 3)) == ScenarioGrid.EmptyCell,
             "New cells after resize must be empty.");
-        grid.ClearDirty();
+        grid.MarkSaved();
         grid.Resize(5, 4);
-        Require(!grid.IsDirty, "Resizing to the same dimensions must not mark the grid dirty.");
+        Require(grid.LayoutRevision == 2 && !grid.HasUnsavedChanges,
+            "Resizing to the same dimensions must not advance the layout revision.");
 
         grid.ClearGrid();
-        Require(grid.IsDirty && grid.GetCell(lastCell) == ScenarioGrid.EmptyCell,
-            "Clearing a nonempty grid must clear values and mark it dirty.");
-        grid.ClearDirty();
+        Require(grid.LayoutRevision == 3 && grid.HasUnsavedChanges &&
+                grid.GetCell(lastCell) == ScenarioGrid.EmptyCell,
+            "Clearing a nonempty grid must clear values and advance the layout revision once.");
+        grid.MarkSaved();
         grid.ClearGrid();
-        Require(!grid.IsDirty, "Clearing an empty grid must leave it clean.");
+        Require(grid.LayoutRevision == 3 && !grid.HasUnsavedChanges,
+            "Clearing an empty grid must not advance the layout revision.");
 
         Debug.Log("ScenarioGrid contract checks passed.");
     }

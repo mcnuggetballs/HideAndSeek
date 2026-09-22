@@ -5,10 +5,7 @@ using UnityEngine;
 using static SimulationController;
 
 // only create, fill and return grid
-// grid factory that produces configured grid
-
-
-// see it as a pure generator
+// uses unity randomness, logging and storage
 
 public class ScenarioSystem : MonoBehaviour
 {

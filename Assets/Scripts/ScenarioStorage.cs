@@ -3,7 +3,8 @@ using System.IO;
 using System.Text;
 using UnityEngine;
 
-/// <summary>Stores scenarios in the same location for testing and training.</summary>
+// saves and loads text layouts under unity's persistent data directory, validate scenario filenames
+
 public static class ScenarioStorage
 {
     public static string GetPath(string scenarioName)
@@ -23,6 +24,7 @@ public static class ScenarioStorage
         string path = GetPath(scenarioName);
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         File.WriteAllText(path, ScenarioTextFormat.Serialize(grid), new UTF8Encoding(false));
+        grid.MarkSaved();
         return path;
     }
 

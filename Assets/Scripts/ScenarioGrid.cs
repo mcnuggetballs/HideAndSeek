@@ -19,13 +19,16 @@ public class ScenarioGrid
     private int gridHeight;
     private float cellSize;
     private Vector3 origin;
-    private bool isDirty;
+    private long layoutRevision;
+    private long savedRevision;
 
     public int Width => gridWidth;
     public int Height => gridHeight;
     public float CellSize => cellSize;
     public Vector3 Origin => origin;
-    public bool IsDirty => isDirty;
+    public long LayoutRevision => layoutRevision;
+    public long SavedRevision => savedRevision;
+    public bool HasUnsavedChanges => layoutRevision != savedRevision;
 
     public void Initialise(int width, int height, float size, Vector3 origin)
     {
@@ -40,7 +43,8 @@ public class ScenarioGrid
         cellSize = size;
         this.origin = origin;
         cells = CreateEmptyCells(width, height);
-        isDirty = false;
+        layoutRevision = 0;
+        savedRevision = 0;
     }
     public bool IsInsideGrid(Vector2Int cell)
     {
@@ -90,12 +94,13 @@ public class ScenarioGrid
         cells = resized;
         gridWidth = width;
         gridHeight = height;
-        isDirty = true;
+        layoutRevision++;
     }
 
     public void ClearGrid()
     {
         EnsureInitialised();
+        bool changed = false;
         for (int x = 0; x < gridWidth; x++)
             for (int y = 0; y < gridHeight; y++)
             {
@@ -103,8 +108,11 @@ public class ScenarioGrid
                     continue;
 
                 cells[x, y] = EmptyCell;
-                isDirty = true;
+                changed = true;
             }
+
+        if (changed)
+            layoutRevision++;
     }
 
     /// <summary>Out-of-bounds reads return EmptyCell; writes return false.</summary>
@@ -125,7 +133,7 @@ public class ScenarioGrid
         if (cells[cell.x, cell.y] != value)
         {
             cells[cell.x, cell.y] = value;
-            isDirty = true;
+            layoutRevision++;
         }
         return true;
     }
@@ -138,8 +146,8 @@ public class ScenarioGrid
                 yield return new Vector2Int(x, y);
     }
 
-    public void MarkDirty() => isDirty = true;
-    public void ClearDirty() => isDirty = false;
+    /// <summary>Records that the current layout is the version persisted to storage.</summary>
+    public void MarkSaved() => savedRevision = layoutRevision;
 
     private void EnsureInitialised()
     {

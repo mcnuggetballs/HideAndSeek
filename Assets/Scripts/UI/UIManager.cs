@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 // this file mainly detects button clicks, publishes event through GameEvents, and TestingScenarioEditor or SimulationManager reacts
@@ -8,7 +9,11 @@ public class UIManager : MonoBehaviour
 {
     public Button playButton;
     public Button pauseButton;
-    public Button resetButton;
+    [FormerlySerializedAs("resetButton")]
+    public Button stopButton;
+    public Button restartEpisodeButton;
+    public Button clearScenarioButton;
+    public Button loadScenarioButton;
     public Button spawnSeekerButton;
     public Button spawnHiderButton;
     public Button spawnObstacleButton;
@@ -25,7 +30,13 @@ public class UIManager : MonoBehaviour
     {
         AddButtonListener(playButton, OnPlayClicked, nameof(playButton));
         AddButtonListener(pauseButton, OnPauseClicked, nameof(pauseButton));
-        AddButtonListener(resetButton, OnResetClicked, nameof(resetButton));
+        AddButtonListener(stopButton, OnStopClicked, nameof(stopButton));
+        AddButtonListener(restartEpisodeButton, OnRestartEpisodeClicked,
+            nameof(restartEpisodeButton), false);
+        AddButtonListener(clearScenarioButton, OnClearScenarioClicked,
+            nameof(clearScenarioButton), false);
+        AddButtonListener(loadScenarioButton, OnLoadScenarioClicked,
+            nameof(loadScenarioButton), false);
         AddButtonListener(spawnSeekerButton, OnSpawnSeekerClicked, nameof(spawnSeekerButton));
         AddButtonListener(spawnHiderButton, OnSpawnHiderClicked, nameof(spawnHiderButton));
         AddButtonListener(spawnObstacleButton, OnSpawnObstacleClicked, nameof(spawnObstacleButton));
@@ -38,7 +49,10 @@ public class UIManager : MonoBehaviour
     {
         RemoveButtonListener(playButton, OnPlayClicked);
         RemoveButtonListener(pauseButton, OnPauseClicked);
-        RemoveButtonListener(resetButton, OnResetClicked);
+        RemoveButtonListener(stopButton, OnStopClicked);
+        RemoveButtonListener(restartEpisodeButton, OnRestartEpisodeClicked);
+        RemoveButtonListener(clearScenarioButton, OnClearScenarioClicked);
+        RemoveButtonListener(loadScenarioButton, OnLoadScenarioClicked);
         RemoveButtonListener(spawnSeekerButton, OnSpawnSeekerClicked);
         RemoveButtonListener(spawnHiderButton, OnSpawnHiderClicked);
         RemoveButtonListener(spawnObstacleButton, OnSpawnObstacleClicked);
@@ -52,9 +66,21 @@ public class UIManager : MonoBehaviour
     {
         GameEvents.RequestPause();
     }
-    private void OnResetClicked()
+    private void OnStopClicked()
     {
-        GameEvents.RequestReset();
+        GameEvents.RequestStopSimulation();
+    }
+    private void OnRestartEpisodeClicked()
+    {
+        GameEvents.RequestRestartEpisode();
+    }
+    private void OnClearScenarioClicked()
+    {
+        GameEvents.RequestClearScenario();
+    }
+    private void OnLoadScenarioClicked()
+    {
+        GameEvents.RequestLoadScenario();
     }
     private void OnSpawnSeekerClicked()
     {
@@ -74,11 +100,13 @@ public class UIManager : MonoBehaviour
         GameEvents.RequestErase();
     }
 
-    private void AddButtonListener(Button button, UnityEngine.Events.UnityAction action, string fieldName)
+    private void AddButtonListener(Button button, UnityEngine.Events.UnityAction action,
+        string fieldName, bool required = true)
     {
         if (button == null)
         {
-            Debug.LogWarning($"UIManager is missing a reference for {fieldName}.");
+            if (required)
+                Debug.LogWarning($"UIManager is missing a reference for {fieldName}.");
             return;
         }
 

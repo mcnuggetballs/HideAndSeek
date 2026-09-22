@@ -26,8 +26,6 @@ public class SeekerAgent : Agent
     [SerializeField] private float viewAngle = 90f;
     [SerializeField] private float eyeHeight = 0.5f;
     [SerializeField] private float catchDistance = 1.5f;
-
-    private EnvironmentManager environmentManager;
     private EnvironmentInstance environment;
 
     [Header("Reward Settings")]
@@ -57,50 +55,43 @@ public class SeekerAgent : Agent
 
     }
 
-    public void Initialize(EnvironmentManager manager, EnvironmentInstance instance, InfluenceMap map)
+    public void Initialize(EnvironmentInstance instance, InfluenceMap map)
     {
-        environmentManager = manager;
         environment = instance;
         influenceMap = map;
     }
-    
-    void Update()
-    {
-
-
-    }
 
     // Agent reset
-    public void ResetMovement(Vector3 spawnPosition)
+    public void ResetMovement(Vector3 spawnPosition, Quaternion spawnRotation)
     {
-        if (seekerAgent != null)
+        if (seekerAgent != null && seekerAgent.isActiveAndEnabled && seekerAgent.isOnNavMesh)
         {
-            seekerAgent.Warp(spawnPosition); // set to spawn position
-            seekerAgent.ResetPath(); // navmesh path
+            seekerAgent.Warp(spawnPosition);
+            seekerAgent.ResetPath();
             seekerAgent.velocity = Vector3.zero;
-
         }
         else
         {
             transform.position = spawnPosition;
         }
 
-        transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+        transform.rotation = spawnRotation;
         targetAgent = null;
     }
 
     // this function stores all hiders and chooses nearest one as current targetAgent
     // also linked environment to agents
-    public void SetTargets(List<NavMeshAgent> targets)
+    public void SetTargets(IReadOnlyList<NavMeshAgent> targets)
     {
         targetAgents.Clear();
-        targetAgents.AddRange(targets); // must only receive local hider agents
+        if (targets != null)
+            targetAgents.AddRange(targets);
         targetAgent = FindNearestTarget();
 
         if (targetAgent != null && seekerAgent != null)
         {
             prevDistance = Vector3.Distance(
-                seekerAgent.nextPosition, // changed to get navigation simulation position instead of visual transform
+                seekerAgent.nextPosition,
                 targetAgent.nextPosition);
         }
     }
@@ -109,16 +100,12 @@ public class SeekerAgent : Agent
     #region ML Lifecycle
     public override void OnEpisodeBegin()
     {
-        if (!HasTargetAndNavAgent())
-        {
-            return;
-        }
-        // no destruction, no rebuilding
-        if (environmentManager != null && environment != null)
-            environmentManager.ResetEpisode(environment);
-        
+        environment?.EpisodeCoordinator.OnAgentEpisodeBegin(this);
 
-        prevDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);
+        if (HasTargetAndNavAgent())
+            prevDistance = Vector3.Distance(
+                seekerAgent.transform.position,
+                targetAgent.transform.position);
     }
 
     public override void CollectObservations(VectorSensor sensor)
@@ -180,9 +167,7 @@ public class SeekerAgent : Agent
     public override void OnActionReceived(ActionBuffers actions)
     {
         if (!HasTargetAndNavAgent())
-        {
             return;
-        }
 
         float rotate = actions.ContinuousActions[0];
         float move = Mathf.Clamp01(actions.ContinuousActions[1]);
@@ -191,15 +176,17 @@ public class SeekerAgent : Agent
         Vector3 moveDirection = transform.forward * move * moveSpeed * Time.deltaTime;
         seekerAgent.Move(moveDirection);
 
-        // catch logic
-        float dist = Vector3.Distance(seekerAgent.nextPosition, targetAgent.nextPosition);
+        float distance = Vector3.Distance(seekerAgent.nextPosition, targetAgent.nextPosition);
         float combinedRadius = seekerAgent.radius + targetAgent.radius;
         float effectiveCatchDistance = Mathf.Max(catchDistance, combinedRadius);
 
-        if (dist < effectiveCatchDistance)
+        if (distance < effectiveCatchDistance)
         {
             AddReward(catchReward);
-            EndEpisode();
+            if (environment != null)
+                environment.EpisodeCoordinator.ReportCapture(this);
+            else
+                EndEpisode();
             return;
         }
 
@@ -271,13 +258,11 @@ public class SeekerAgent : Agent
     // safety check
     private bool HasTargetAndNavAgent()
     {
-        if (targetAgent == null || !targetAgent.isOnNavMesh)
-        {
-            if (targetAgents.Count == 0)
-            { targetAgent = FindNearestTarget(); }
-        }
+        if (targetAgent == null || !targetAgent.isActiveAndEnabled || !targetAgent.isOnNavMesh)
+            targetAgent = FindNearestTarget();
 
         return targetAgent != null
+            && targetAgent.isOnNavMesh
             && seekerAgent != null
             && seekerAgent.isOnNavMesh;
     }

@@ -7,6 +7,12 @@ using static InfluenceMap;
 using static ScenarioSystem;
 
 // Scene-level controls and scenario selection. EnvironmentManager builds each runtime world.
+
+// selects mode/scenario,
+// initialises environments, frames camera,
+// handles play/pause/reset and persistence
+// updates influence and rendering
+
 public class SimulationController : MonoBehaviour
 {
     [Header("Prefabs")]
@@ -67,8 +73,11 @@ public class SimulationController : MonoBehaviour
 
     private void Start()
     {
+        EnvironmentSpawner spawner = GetComponent<EnvironmentSpawner>();
+        bool useSpawner = IsTrainingMode && spawner != null && spawner.enabled;
         if (scenarioSystem == null || seekerPrefab == null || hiderPrefab == null || obstaclePrefab == null ||
-            (IsTrainingMode && trainingEnvironmentPrefab == null))
+            (IsTrainingMode && trainingEnvironmentPrefab == null &&
+             (!useSpawner || spawner.environmentPrefab == null)))
         {
             Debug.LogError("SimulationController is missing scenario or prefab references.", this);
             enabled = false;
@@ -85,11 +94,27 @@ public class SimulationController : MonoBehaviour
 
         environmentManager = GetComponent<EnvironmentManager>() ?? gameObject.AddComponent<EnvironmentManager>();
         environmentManager.Configure(seekerPrefab, hiderPrefab, obstaclePrefab);
+        environmentManager.LayoutChanged -= HandleLayoutChanged;
+        environmentManager.LayoutChanged += HandleLayoutChanged;
         try
         {
-            environment = IsTrainingMode
-                ? environmentManager.CreateEnvironment(grid, trainingEnvironmentPrefab)
-                : environmentManager.RegisterEnvironment(grid, gameObject);
+            if (useSpawner)
+            {
+                IReadOnlyList<EnvironmentInstance> batch = spawner.SpawnEnvironments(
+                    environmentManager, trainingEnvironmentPrefab, grid, origin =>
+                    {
+                        WorldConfig config = Config;
+                        config.origin = origin;
+                        return scenarioSystem.Generate(scenarioType, mapFile, config);
+                    });
+                environment = batch[0]; // Primary environment for camera focus and existing callers.
+            }
+            else
+            {
+                environment = IsTrainingMode
+                    ? environmentManager.CreateEnvironment(grid, trainingEnvironmentPrefab)
+                    : environmentManager.RegisterEnvironment(grid, gameObject);
+            }
         }
         catch (Exception exception)
         {
@@ -98,57 +123,42 @@ public class SimulationController : MonoBehaviour
             return;
         }
 
-        FitFloorToGrid();
-        Camera.main?.GetComponent<TopDownCameraController>()?.FrameGrid(grid);
-
         if (IsTrainingMode)
         {
-            BuildWorld();
+            Camera.main?.GetComponent<TopDownCameraController>()?.FrameGrid(grid);
+            if (!useSpawner) BuildWorld();
             isStarted = environment.IsBuilt;
         }
         else
         {
-            scenarioEditor?.Initialise(grid);
-            scenarioEditor?.RebuildVisualsFromGrid();
+            HandleLayoutChanged(environment);
             environment.RuntimeRoot.gameObject.SetActive(false);
-        }
-
-        if (environment.GridRenderer != null)
-        {
-            environment.GridRenderer.Initialise(grid);
-            environment.GridRenderer.BuildVisualGrid();
         }
     }
 
-    private void BuildWorld()
+    private bool BuildWorld()
     {
-        try { environmentManager.BuildEnvironment(environment); }
+        try
+        {
+            environmentManager.BuildEnvironment(environment);
+            return true;
+        }
         catch (Exception exception)
         {
             Debug.LogError($"Could not build environment: {exception.Message}", this);
-            enabled = false;
+            isStarted = false;
+
+            if (environment != null)
+                environment.RuntimeRoot.gameObject.SetActive(false);
+            if (!IsTrainingMode)
+            {
+                if (editorRoot != null) editorRoot.SetActive(true);
+                scenarioEditor?.ResetEditorState();
+                scenarioEditor?.RebuildVisualsFromGrid();
+            }
+
+            return false;
         }
-    }
-
-    // Both prefabs use a Unity plane, ten units wide at scale one.
-    private void FitFloorToGrid()
-    {
-        Transform floor = environment.Root.transform.Find("Plane");
-        if (floor == null)
-        {
-            Debug.LogWarning("Environment has no Plane child to size to the scenario.", this);
-            return;
-        }
-
-        ScenarioGrid grid = environment.Grid;
-        floor.localRotation = Quaternion.identity;
-        floor.localScale = new Vector3(grid.Width * grid.CellSize / 10f, floor.localScale.y,
-            grid.Height * grid.CellSize / 10f);
-
-        Transform placementArea = environment.Root.transform.Find("Placement Area");
-        if (placementArea != null && placementArea.TryGetComponent(out BoxCollider placementCollider))
-            placementCollider.size = new Vector3(grid.Width * grid.CellSize, placementCollider.size.y,
-                grid.Height * grid.CellSize);
     }
 
     public void SavePaintedScenario()
@@ -157,7 +167,9 @@ public class SimulationController : MonoBehaviour
         try
         {
             string path = scenarioSystem.SavePainted(environment.Grid);
-            Debug.Log($"Saved scenario {environment.Grid.Width}x{environment.Grid.Height} to {path}", this);
+            Debug.Log(
+                $"Saved scenario revision {environment.Grid.SavedRevision} " +
+                $"({environment.Grid.Width}x{environment.Grid.Height}) to {path}", this);
         }
         catch (Exception exception) when (exception is ArgumentException || exception is IOException ||
                                           exception is UnauthorizedAccessException)
@@ -168,24 +180,18 @@ public class SimulationController : MonoBehaviour
 
     public void LoadPaintedScenario()
     {
-        if (IsTrainingMode || isStarted || environment == null) return;
+        if (IsTrainingMode || environment == null) return;
         try
         {
             ScenarioGrid loaded = scenarioSystem.LoadPainted(environment.Grid.CellSize, environment.Grid.Origin);
-            environmentManager.ClearRuntime(environment);
-            environment.RuntimeRoot.gameObject.SetActive(false);
-            environment.SetGrid(loaded);
-            loaded.MarkDirty();
-            FitFloorToGrid();
-            Camera.main?.GetComponent<TopDownCameraController>()?.FrameGrid(loaded);
-            scenarioEditor?.Initialise(loaded);
-            scenarioEditor?.RebuildVisualsFromGrid();
-            if (environment.GridRenderer != null)
-            {
-                environment.GridRenderer.Initialise(loaded);
-                environment.GridRenderer.BuildVisualGrid();
-            }
-            Debug.Log($"Loaded scenario {loaded.Width}x{loaded.Height} from {ScenarioStorage.GetPath(scenarioSystem.SavedScenarioName)}", this);
+            Time.timeScale = 1f;
+            isStarted = false;
+            environmentManager.ReplaceLayout(environment, loaded);
+            EnterEditingMode(false);
+            Debug.Log(
+                $"Loaded saved revision {loaded.SavedRevision} " +
+                $"({loaded.Width}x{loaded.Height}) from " +
+                ScenarioStorage.GetPath(scenarioSystem.SavedScenarioName), this);
         }
         catch (Exception exception) when (exception is ArgumentException || exception is FormatException ||
                                           exception is IOException || exception is UnauthorizedAccessException)
@@ -200,10 +206,13 @@ public class SimulationController : MonoBehaviour
         foreach (EnvironmentInstance instance in environmentManager.Environments)
         {
             if (!instance.IsBuilt || instance.InfluenceMap == null) continue;
-            instance.WorldBuilder.GetSeekerTransforms(seekerBuffer);
+            instance.GetSeekerTransforms(seekerBuffer);
             instance.InfluenceMap.UpdateAgentPositions(seekerBuffer);
-            if (instance.GridRenderer != null && instance.InfluenceMap.TryGetLayer(debugLayer, out var data))
+            if (instance.GridRenderer != null &&
+                instance.InfluenceMap.TryGetLayer(debugLayer, out var data))
+            {
                 instance.GridRenderer.Render(data, debugLayer);
+            }
         }
     }
 
@@ -211,40 +220,131 @@ public class SimulationController : MonoBehaviour
     {
         GameEvents.PlayRequested += PlaySimulation;
         GameEvents.PauseRequested += PauseSimulation;
-        GameEvents.ResetRequested += ResetSimulation;
+        GameEvents.RestartEpisodeRequested += RestartEpisode;
+        GameEvents.StopSimulationRequested += StopAndReturnToEditing;
+        GameEvents.ClearScenarioRequested += ClearScenario;
+        GameEvents.LoadScenarioRequested += LoadPaintedScenario;
+        if (environmentManager != null)
+        {
+            environmentManager.LayoutChanged -= HandleLayoutChanged;
+            environmentManager.LayoutChanged += HandleLayoutChanged;
+        }
     }
 
     private void OnDisable()
     {
         GameEvents.PlayRequested -= PlaySimulation;
         GameEvents.PauseRequested -= PauseSimulation;
-        GameEvents.ResetRequested -= ResetSimulation;
+        GameEvents.RestartEpisodeRequested -= RestartEpisode;
+        GameEvents.StopSimulationRequested -= StopAndReturnToEditing;
+        GameEvents.ClearScenarioRequested -= ClearScenario;
+        GameEvents.LoadScenarioRequested -= LoadPaintedScenario;
+        if (environmentManager != null)
+            environmentManager.LayoutChanged -= HandleLayoutChanged;
     }
 
     private void PlaySimulation()
     {
         if (environment == null) return;
+        if (IsTrainingMode)
+        {
+            try
+            {
+                foreach (EnvironmentInstance instance in environmentManager.Environments)
+                {
+                    if (instance.NeedsBuild)
+                        environmentManager.BuildEnvironment(instance);
+                    instance.RuntimeRoot.gameObject.SetActive(true);
+                }
+                isStarted = true;
+                Time.timeScale = 1f;
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError($"Could not start training environments: {exception.Message}", this);
+            }
+            return;
+        }
+
         environment.RuntimeRoot.gameObject.SetActive(true);
-        if (!IsTrainingMode && editorRoot != null) editorRoot.SetActive(false);
-        if (!environment.IsBuilt || environment.Grid.IsDirty) BuildWorld();
+        if (editorRoot != null) editorRoot.SetActive(false);
+        if (environment.NeedsBuild && !BuildWorld())
+            return;
         if (!environment.IsBuilt) return;
+
         isStarted = true;
         Time.timeScale = 1f;
     }
 
     private void PauseSimulation() => Time.timeScale = 0f;
 
-    private void ResetSimulation()
+    public void RestartEpisode()
+    {
+        if (environment == null || !isStarted)
+            return;
+
+        Time.timeScale = 1f;
+        if (IsTrainingMode)
+        {
+            foreach (EnvironmentInstance instance in environmentManager.Environments)
+                if (instance.IsBuilt) environmentManager.RestartEpisode(instance);
+            return;
+        }
+
+        if (environment.IsBuilt)
+            environmentManager.RestartEpisode(environment);
+    }
+
+    public void StopAndReturnToEditing()
     {
         if (environment == null) return;
         Time.timeScale = 1f;
+
+        if (IsTrainingMode)
+        {
+            foreach (EnvironmentInstance instance in environmentManager.Environments)
+            {
+                environmentManager.ClearRuntime(instance);
+                instance.RuntimeRoot.gameObject.SetActive(false);
+            }
+            isStarted = false;
+            return;
+        }
+
         environmentManager.ClearRuntime(environment);
-        scenarioEditor?.ClearEditorVisuals();
-        scenarioEditor?.ResetEditorState();
-        environment.Grid.ClearGrid();
-        environment.Grid.ClearDirty();
         isStarted = false;
+        EnterEditingMode();
+    }
+
+    public void ClearScenario()
+    {
+        if (IsTrainingMode || environment == null)
+            return;
+
+        Time.timeScale = 1f;
+        isStarted = false;
+        environmentManager.ClearScenario(environment);
+        EnterEditingMode(false);
+    }
+
+    private void EnterEditingMode(bool rebuildVisuals = true)
+    {
         if (editorRoot != null) editorRoot.SetActive(true);
         environment.RuntimeRoot.gameObject.SetActive(false);
+        scenarioEditor?.ResetEditorState();
+        if (rebuildVisuals)
+            scenarioEditor?.RebuildVisualsFromGrid();
+    }
+
+    private void HandleLayoutChanged(EnvironmentInstance changedEnvironment)
+    {
+        if (IsTrainingMode || changedEnvironment == null || changedEnvironment != environment)
+            return;
+
+        ScenarioGrid grid = changedEnvironment.Grid;
+        Camera.main?.GetComponent<TopDownCameraController>()?.FrameGrid(grid);
+        scenarioEditor?.Initialise(grid);
+        scenarioEditor?.ResetEditorState();
+        scenarioEditor?.RebuildVisualsFromGrid();
     }
 }

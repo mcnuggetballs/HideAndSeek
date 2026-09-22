@@ -15,7 +15,10 @@ public static class GameEvents
     public static event Action EraseRequested;
     public static event Action PlayRequested;
     public static event Action PauseRequested;
-    public static event Action ResetRequested;
+    public static event Action RestartEpisodeRequested;
+    public static event Action StopSimulationRequested;
+    public static event Action ClearScenarioRequested;
+    public static event Action LoadScenarioRequested;
     public static event Action<GameObject> AgentSpawned;
 
     public static void RequestSpawnSeeker()
@@ -43,9 +46,21 @@ public static class GameEvents
     {
         PauseRequested?.Invoke();
     }
-    public static void RequestReset()
+    public static void RequestRestartEpisode()
     {
-        ResetRequested?.Invoke();
+        RestartEpisodeRequested?.Invoke();
+    }
+    public static void RequestStopSimulation()
+    {
+        StopSimulationRequested?.Invoke();
+    }
+    public static void RequestClearScenario()
+    {
+        ClearScenarioRequested?.Invoke();
+    }
+    public static void RequestLoadScenario()
+    {
+        LoadScenarioRequested?.Invoke();
     }
     public static void NotifyAgentSpawned(GameObject agent)
     {

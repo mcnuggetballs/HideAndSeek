@@ -399,7 +399,7 @@ MonoBehaviour:
   targetCamera: {fileID: 664401186}
   zoomSpeed: 10
   minZoom: 10
-  maxZoom: 200
+  maxZoom: 500
 --- !u!1 &1281126694
 GameObject:
   m_ObjectHideFlags: 0
@@ -490,6 +490,7 @@ GameObject:
   - component: {fileID: 2144339858}
   - component: {fileID: 2144339859}
   - component: {fileID: 2144339860}
+  - component: {fileID: 2144339861}
   m_Layer: 0
   m_Name: SimulationController
   m_TagString: Untagged
@@ -528,17 +529,12 @@ MonoBehaviour:
   seekerPrefab: {fileID: 4382439110685233668, guid: 59799930b7016594399014949c3ff5c7, type: 3}
   hiderPrefab: {fileID: 8698921351780613049, guid: d6cb008445346c34ab861c9ebd502ba1, type: 3}
   obstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
+  scenarioSystem: {fileID: 2144339860}
   simulationMode: 1
   scenarioType: 0
   mapFile: {fileID: 4900000, guid: 91604c8b035e32b4db72c09978a7e9fa, type: 3}
-  runtimeRoot: {fileID: 0}
   editorRoot: {fileID: 0}
-  runtimeNavMeshBuilder: {fileID: 0}
-  scenarioSystem: {fileID: 2144339860}
-  worldBuilder: {fileID: 0}
   scenarioEditor: {fileID: 0}
-  influenceMap: {fileID: 0}
-  gridRenderer: {fileID: 0}
   debugLayer: 0
   width: 33
   height: 20
@@ -559,6 +555,22 @@ MonoBehaviour:
   seekerCount: 2
   hiderCount: 2
   savedScenarioName: painted_scenario
+--- !u!114 &2144339861
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2144339857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75310e26523077640a04b99c9b1184a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnvironmentSpawner
+  environmentPrefab: {fileID: 7066587739052165337, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
+  environmentCount: 20
+  maxCount: 50
+  environmentGap: 100
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

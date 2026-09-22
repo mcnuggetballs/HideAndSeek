@@ -164,4 +164,14 @@ public class InfluenceMap : MonoBehaviour
     }
 
     #endregion
+
+
+    public void ResetEpisode()
+    {
+        if (layers == null)
+            return;
+
+        foreach (float[,] layer in layers.Values)
+            ClearLayer(layer);
+    }
 }

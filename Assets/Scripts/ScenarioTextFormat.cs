@@ -2,7 +2,9 @@ using System;
 using System.Text;
 using UnityEngine;
 
-/// <summary>Plain-text scenario format: the first line is the top grid row.</summary>
+// parses and serialises rectangular text layouts
+// converts top to bottom text rows into grid coordinates and rejects invalid character/row length
+
 public static class ScenarioTextFormat
 {
     public static ScenarioGrid Parse(string text, float cellSize, Vector3 origin)
@@ -38,7 +40,8 @@ public static class ScenarioTextFormat
             }
         }
 
-        grid.ClearDirty();
+        // Parsed text is already a persisted/source layout, not an unsaved edit.
+        grid.MarkSaved();
         return grid;
     }
 

@@ -14,6 +14,9 @@ public static class ScenarioGenerationChecks
 
         ScenarioGrid fixedGrid = ScenarioTextFormat.Parse(map.text, 1f, Vector3.zero);
         Require(fixedGrid.Width == 33 && fixedGrid.Height == 20, "Fixed map dimensions are wrong.");
+        Require(!fixedGrid.HasUnsavedChanges &&
+                fixedGrid.LayoutRevision == fixedGrid.SavedRevision,
+            "A parsed layout must begin at its saved revision.");
         Require(Count(fixedGrid, ScenarioGrid.SeekerCell) == 2, "Fixed map must have two seekers.");
         Require(Count(fixedGrid, ScenarioGrid.HiderCell) == 2, "Fixed map must have two hiders.");
 

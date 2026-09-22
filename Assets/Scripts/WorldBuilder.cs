@@ -1,241 +1,98 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-// a runtime system component that builds and mutates world
-// real objects -> walls, agents
-
+// Converts ScenarioGrid data into runtime GameObjects. It does not own runtime state.
 public class WorldBuilder : MonoBehaviour
 {
-    private ScenarioGrid grid;
-
-    private GameObject obstaclePrefab;
-    private GameObject seekerPrefab;
-    private GameObject hiderPrefab;
-
-    private Transform runtimeRoot;
-
-    private List<SeekerAgent> seekers;
-    private List<NavMeshAgent> hiders;
-    private Dictionary<Vector2Int, GameObject> runtimeMap;
-
-    // getter and setters
-    public List<SeekerAgent> GetSeekers() => seekers;
-    public List<NavMeshAgent> GetHiders() => hiders;
-
-    #region Public API
-    // build world, build agent later
-    public void BuildGeometry(
-        ScenarioGrid grid,
-        GameObject obstaclePrefab,
-        Transform runtimeRoot)
+    public void BuildGeometry(ScenarioGrid grid, GameObject obstaclePrefab,
+        Transform runtimeRoot, IDictionary<Vector2Int, GameObject> runtimeObjects)
     {
-        if (grid == null)
-        {
-            Debug.LogError("[WorldBuilder]: Grid is null!");
-            return;
-        }
+        ValidateBuildArguments(grid, obstaclePrefab, runtimeRoot, runtimeObjects);
 
-        // cache references FIRST
-        this.grid = grid;
-        this.obstaclePrefab = obstaclePrefab;
-        this.runtimeRoot = runtimeRoot;
-
-        ClearRuntimeObjects(); // clear the objects tracked by the previous build
-
-        // build
-        BuildObstaclesOnly();
-    }
-
-    // build agent after navmesh is done
-    public void BuildAgents(GameObject seekerPrefab, GameObject hiderPrefab)
-    {
-        if (grid == null)
-        {
-            return;
-        }
-
-        this.seekerPrefab = seekerPrefab;
-        this.hiderPrefab = hiderPrefab;
-        BuildAgentsOnly();
-    }
-
-    // mini update function for editor, to be called by simulation controller
-    public void UpdateRuntimeCell(Vector2Int cell, char value) // visual
-    {
-        RemoveRuntimeObjectAt(cell);
-
-        if (value == ScenarioGrid.EmptyCell)
-            return;
-
-        GameObject obj = null;
-
-        if (value == ScenarioGrid.WallCell)
-        {
-            obj = SpawnRuntimeObject(cell, obstaclePrefab);
-        }
-        else if (value == ScenarioGrid.SeekerCell)
-        {
-            obj = SpawnRuntimeObject(cell, seekerPrefab);
-            AddSeeker(obj.GetComponent<SeekerAgent>());
-        }
-        else if (value == ScenarioGrid.HiderCell)
-        {
-            obj = SpawnRuntimeObject(cell, hiderPrefab);
-            AddHider(obj.GetComponent<NavMeshAgent>());
-        }
-    }
-    // full reset of runtime objects
-    public void ClearRuntimeObjects()
-    {
-        if (runtimeMap == null)
-        {
-            runtimeMap = new Dictionary<Vector2Int, GameObject>();
-        }
-
-        foreach (var obj in runtimeMap.Values)
-        {
-            if (obj == null) continue;
-            obj.SetActive(false); // Destroy is deferred; exclude old colliders from the next NavMesh bake.
-            Destroy(obj);
-        }
-
-        runtimeMap.Clear();
-
-        seekers?.Clear();
-        hiders?.Clear();
-        seekers ??= new List<SeekerAgent>();
-        hiders ??= new List<NavMeshAgent>();
-    }
-
-    public void GetSeekerTransforms(List<Transform> output)
-    {
-        output.Clear();
-
-        foreach (var seeker in seekers)
-        {
-            if (seeker != null)
-                output.Add(seeker.transform);
-        }
-    }
-    #endregion
-
-    #region Helper Functions
-    private void BuildObstaclesOnly()
-    {
-        foreach (var cell in grid.GetAllCells())
+        foreach (Vector2Int cell in grid.GetAllCells())
         {
             if (grid.GetCell(cell) != ScenarioGrid.WallCell)
                 continue;
 
-            SpawnRuntimeObject(cell, obstaclePrefab);
+            SpawnRuntimeObject(grid, cell, obstaclePrefab, runtimeRoot, runtimeObjects);
         }
-
     }
 
-    // Split building function cos NavMeshAgent needs NavMesh to exist
-    private void BuildAgentsOnly()
+    // Agents are built only after the NavMesh exists.
+    public WorldBuildAgentsResult BuildAgents(ScenarioGrid grid, GameObject seekerPrefab,
+        GameObject hiderPrefab, Transform runtimeRoot,
+        IDictionary<Vector2Int, GameObject> runtimeObjects)
     {
-        foreach (var cell in grid.GetAllCells())
+        ValidateBuildArguments(grid, seekerPrefab, runtimeRoot, runtimeObjects);
+        if (hiderPrefab == null) throw new ArgumentNullException(nameof(hiderPrefab));
+        if (seekerPrefab.GetComponent<SeekerAgent>() == null ||
+            seekerPrefab.GetComponent<NavMeshAgent>() == null)
+            throw new InvalidOperationException("The seeker prefab needs SeekerAgent and NavMeshAgent components.");
+        if (hiderPrefab.GetComponent<NavMeshAgent>() == null)
+            throw new InvalidOperationException("The hider prefab needs a NavMeshAgent component.");
+
+        var seekers = new List<SeekerAgent>();
+        var hiders = new List<NavMeshAgent>();
+
+        foreach (Vector2Int cell in grid.GetAllCells())
         {
             char value = grid.GetCell(cell);
-
             if (value == ScenarioGrid.SeekerCell)
             {
-                var obj = SpawnRuntimeObject(cell, seekerPrefab);
-                AddSeeker(obj.GetComponent<SeekerAgent>());
+                GameObject obj = SpawnRuntimeObject(
+                    grid, cell, seekerPrefab, runtimeRoot, runtimeObjects);
+                SeekerAgent seeker = obj.GetComponent<SeekerAgent>();
+                if (seeker == null)
+                    throw new InvalidOperationException($"{obj.name} has no SeekerAgent.");
+                seekers.Add(seeker);
             }
             else if (value == ScenarioGrid.HiderCell)
             {
-                var obj = SpawnRuntimeObject(cell, hiderPrefab);
-                AddHider(obj.GetComponent<NavMeshAgent>());
+                GameObject obj = SpawnRuntimeObject(
+                    grid, cell, hiderPrefab, runtimeRoot, runtimeObjects);
+                NavMeshAgent hider = obj.GetComponent<NavMeshAgent>();
+                if (hider == null)
+                    throw new InvalidOperationException($"{obj.name} has no NavMeshAgent.");
+                hiders.Add(hider);
             }
         }
+
+        return new WorldBuildAgentsResult(seekers, hiders);
     }
 
-    // Converts emptySeekerPrefab to RuntimeSeekerPrefab
-    private GameObject SpawnRuntimeObject(
-        Vector2Int cell,
-        GameObject prefab)
+    private static GameObject SpawnRuntimeObject(ScenarioGrid grid, Vector2Int cell,
+        GameObject prefab, Transform runtimeRoot,
+        IDictionary<Vector2Int, GameObject> runtimeObjects)
     {
-        Vector3 worldPos = grid.CellToWorld(cell);
-        GameObject obj = Instantiate(prefab, worldPos, Quaternion.identity, runtimeRoot);
-        runtimeMap[cell] = obj; // update
+        if (runtimeObjects.ContainsKey(cell))
+            throw new InvalidOperationException($"Cell {cell} already has a runtime object.");
 
+        GameObject obj = Instantiate(prefab, grid.CellToWorld(cell), Quaternion.identity, runtimeRoot);
+        runtimeObjects.Add(cell, obj);
         return obj;
-
     }
 
-    // Targetted handling of destruction of runtime objects
-    private void RemoveRuntimeObjectAt(Vector2Int cell)
+    private static void ValidateBuildArguments(ScenarioGrid grid, GameObject prefab,
+        Transform runtimeRoot, IDictionary<Vector2Int, GameObject> runtimeObjects)
     {
-        if (runtimeMap.TryGetValue(cell, out GameObject obj))
-        {
-            var seeker = obj.GetComponent<SeekerAgent>();
-            if (seeker != null)
-            {
-                seekers.Remove(seeker);
-            }
-            var hider = obj.GetComponent<NavMeshAgent>();
-            if (hider != null)
-            {
-                hiders.Remove(hider);
-            }
-            Destroy(obj);
-            runtimeMap.Remove(cell);
-        }
+        if (grid == null) throw new ArgumentNullException(nameof(grid));
+        if (prefab == null) throw new ArgumentNullException(nameof(prefab));
+        if (runtimeRoot == null) throw new ArgumentNullException(nameof(runtimeRoot));
+        if (runtimeObjects == null) throw new ArgumentNullException(nameof(runtimeObjects));
     }
+}
 
-    private void AddSeeker(SeekerAgent agent)
+public sealed class WorldBuildAgentsResult
+{
+    public IReadOnlyList<SeekerAgent> Seekers { get; }
+    public IReadOnlyList<NavMeshAgent> Hiders { get; }
+
+    public WorldBuildAgentsResult(IReadOnlyList<SeekerAgent> seekers,
+        IReadOnlyList<NavMeshAgent> hiders)
     {
-        if (agent == null) return;
-        if (!seekers.Contains(agent))
-            seekers.Add(agent);
+        Seekers = seekers ?? throw new ArgumentNullException(nameof(seekers));
+        Hiders = hiders ?? throw new ArgumentNullException(nameof(hiders));
     }
-
-    private void AddHider(NavMeshAgent agent)
-    {
-        if (agent == null) return;
-        if (!hiders.Contains(agent))
-            hiders.Add(agent);
-    }
-
-    // Agent Movement Reset
-    public void ResetAgentsOnly() // maybe private
-    {
-        foreach (var seeker in seekers)
-        {
-            if (seeker != null)
-            {
-                seeker.ResetMovement(seeker.transform.position);
-
-            }
-        }
-    }
-
-    // Agent Relationship Reset
-    public void AssignRuntimeTargets() // maybe private
-    {
-        if (seekers == null || hiders == null)
-        {
-            Debug.LogWarning("[WorldBuilder]: Both seeker and hider needs to exist");
-            return;
-        }
-
-        foreach (SeekerAgent seeker in seekers)
-        {
-            if (seeker == null) continue;
-
-            //ensure seeker belongs to the environment
-            if (!seeker.transform.IsChildOf(runtimeRoot))
-            {
-                Debug.LogWarning("Seeker not part of this environment");
-                continue;
-            }
-
-            seeker.SetTargets(hiders); // pass copy
-        }
-    }
-
-    #endregion
 }

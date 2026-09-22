@@ -5,12 +5,13 @@ using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 
 // edits paint scenario data                                                                                                                                                           
-// this file handles mouse clicks,
+// this file handles input,
 //           brush selection,
-//           asks scenariogrid what cell was clicked and
-//           tells scenariogrid to paint the cell
-
-// in testing scenes, f6 saves painted scenario and f7 loads it 
+//           hit testing,
+//           grid edits
+//           preview creation
+//           preview visibility
+//           forwards saveload shortcut to controller
 
 public class EditorController : MonoBehaviour
 {
@@ -56,7 +57,7 @@ public class EditorController : MonoBehaviour
         GameEvents.EraseRequested += SelectEraseBrush;
 
         GameEvents.PlayRequested += HidePaintedVisuals;
-        GameEvents.ResetRequested += ShowPaintedVisuals;
+        GameEvents.StopSimulationRequested += ShowPaintedVisuals;
 
         Debug.Log("TestingScenarioEditor is listening for object placement requests.");
     }
@@ -68,7 +69,7 @@ public class EditorController : MonoBehaviour
         GameEvents.EraseRequested -= SelectEraseBrush;
 
         GameEvents.PlayRequested -= HidePaintedVisuals;
-        GameEvents.ResetRequested -= ShowPaintedVisuals;
+        GameEvents.StopSimulationRequested -= ShowPaintedVisuals;
     }
 
     private void Update()
