@@ -40,6 +40,19 @@ public class SimulationController : MonoBehaviour
     [SerializeField] private int height;
     [SerializeField] private float cellSize;
 
+    [Header("Team Episode Rules")]
+    [SerializeField] private EpisodeRules episodeRules = new();
+
+    [Header("Training Curriculum")]
+    [SerializeField] private bool useAdaptiveSpawnCurriculum = true;
+    [SerializeField, Min(1)] private int minimumHiderDistance = 2;
+    [SerializeField, Min(1)] private int startingMaximumHiderDistance = 4;
+    [SerializeField, Min(1)] private int curriculumDistanceIncrement = 1;
+    [SerializeField, Min(1)] private int curriculumWindowSize = 20;
+    [SerializeField, Range(0f, 1f)] private float curriculumSuccessThreshold = 0.8f;
+    [SerializeField] private int curriculumRandomSeed = 12345;
+    [SerializeField] private string curriculumProgressFile = "curriculum_progress_v2.json";
+
     public struct WorldConfig
     {
         public int width;
@@ -58,7 +71,6 @@ public class SimulationController : MonoBehaviour
 
     private EnvironmentManager environmentManager;
     private EnvironmentInstance environment;
-    private readonly List<Transform> seekerBuffer = new();
     private bool isStarted;
 
     public bool IsStarted => isStarted;
@@ -94,6 +106,21 @@ public class SimulationController : MonoBehaviour
 
         environmentManager = GetComponent<EnvironmentManager>() ?? gameObject.AddComponent<EnvironmentManager>();
         environmentManager.Configure(seekerPrefab, hiderPrefab, obstaclePrefab);
+        ITrainingCurriculum curriculum = null;
+        if (IsTrainingMode && useAdaptiveSpawnCurriculum)
+        {
+            string progressPath = Path.Combine(Application.dataPath, "..", curriculumProgressFile);
+            int minimumDistance = Mathf.Max(1, minimumHiderDistance);
+            curriculum = new AdaptiveSpawnCurriculum(
+                minimumDistance,
+                Mathf.Max(minimumDistance, startingMaximumHiderDistance),
+                curriculumDistanceIncrement,
+                curriculumWindowSize,
+                curriculumSuccessThreshold,
+                progressPath,
+                curriculumRandomSeed);
+        }
+        environmentManager.ConfigureTraining(episodeRules ?? new EpisodeRules(), curriculum);
         environmentManager.LayoutChanged -= HandleLayoutChanged;
         environmentManager.LayoutChanged += HandleLayoutChanged;
         try
@@ -206,14 +233,20 @@ public class SimulationController : MonoBehaviour
         foreach (EnvironmentInstance instance in environmentManager.Environments)
         {
             if (!instance.IsBuilt || instance.InfluenceMap == null) continue;
-            instance.GetSeekerTransforms(seekerBuffer);
-            instance.InfluenceMap.UpdateAgentPositions(seekerBuffer);
             if (instance.GridRenderer != null &&
                 instance.InfluenceMap.TryGetLayer(debugLayer, out var data))
             {
                 instance.GridRenderer.Render(data, debugLayer);
             }
         }
+    }
+
+    private void FixedUpdate()
+    {
+        if (environmentManager == null || Time.timeScale <= 0f) return;
+        foreach (EnvironmentInstance instance in environmentManager.Environments)
+            if (instance.IsBuilt)
+                instance.EpisodeCoordinator.Step();
     }
 
     private void OnEnable()

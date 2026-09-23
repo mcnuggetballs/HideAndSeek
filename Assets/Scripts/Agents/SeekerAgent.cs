@@ -1,67 +1,59 @@
+using System;
 using System.Collections.Generic;
-using TMPro;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 using UnityEngine.AI;
 
-// agents should only report state,not modify global systems directly
-
-public class SeekerAgent : Agent
+/// <summary>
+/// Police policy shell. It senses and acts, while EnvironmentEpisodeCoordinator
+/// owns rewards, outcomes and resets.
+/// </summary>
+public sealed class SeekerAgent : Agent
 {
+    private static readonly float[] MoveSpeedBuckets = { -0.5f, 0f, 0.5f, 1f };
+    private static readonly float[] TurnBuckets = { -1f, -0.5f, 0f, 0.5f, 1f };
+    private const int MaxTeammates = 4;
+    private const int MaxHiders = 4;
+    public const int VectorObservationSize = 40;
+
     [Header("Agent Setup")]
     [SerializeField] private NavMeshAgent seekerAgent;
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float rotateSpeed = 180f;
 
-    // runtime state
-    private NavMeshAgent targetAgent;
-    private readonly List<NavMeshAgent> targetAgents = new List<NavMeshAgent>();
-    private float prevDistance = 0f;
-    private Vector2Int previousCell; // for wasSeen layer, mark when cell changes
-
-    [Header("Perception Settings")]
+    [Header("Perception")]
     [SerializeField] private float viewDistance = 50f;
-    [SerializeField] private float viewAngle = 90f;
+    [SerializeField, Range(1f, 360f)] private float viewAngle = 90f;
     [SerializeField] private float eyeHeight = 0.5f;
     [SerializeField] private float catchDistance = 1.5f;
+    [SerializeField, Min(1)] private int hostileMemorySteps = 512;
+
+    private readonly List<NavMeshAgent> targetAgents = new();
     private EnvironmentInstance environment;
+    private InfluenceMap influenceMap;
+    private NavMeshAgent targetAgent;
 
-    [Header("Reward Settings")]
-    private float visibleDistanceRewardScale = 0.04f;
-    private float generalDistanceRewardScale = 0.005f;
-    private float maintainSightReward = 0.001f;
-    private float unseenPenalty = -0.0001f;
-    private float searchMoveReward = 0.0001f;
-    private float rotationPenaltyScale = 0.00005f;
-    private float timePenalty = -0.0002f;
-    private float catchReward = 10f;
-
-    [Header("InfluenceMap Settings")]
-    [SerializeField] private bool useInfluenceMap;
-    [SerializeField] private InfluenceMap influenceMap;
-
-    #region Public API
-    private void Awake()
+    protected override void Awake()
     {
-        if (seekerAgent == null)
-        {
-            seekerAgent = GetComponent<NavMeshAgent>();
-        }
-
-        if (seekerAgent != null)
-            seekerAgent.updateRotation = false;
-
+        base.Awake();
+        if (seekerAgent == null) seekerAgent = GetComponent<NavMeshAgent>();
+        if (seekerAgent != null) seekerAgent.updateRotation = false;
     }
 
     public void Initialize(EnvironmentInstance instance, InfluenceMap map)
     {
-        environment = instance;
+        environment = instance ?? throw new ArgumentNullException(nameof(instance));
         influenceMap = map;
+        GetComponent<LocalGridSensorComponent>()?.Configure(instance.Grid);
+
+        if (environment.Seekers.Count - 1 > MaxTeammates)
+            throw new InvalidOperationException($"The policy supports at most {MaxTeammates + 1} seekers.");
+        if (environment.Hiders.Count > MaxHiders)
+            throw new InvalidOperationException($"The policy supports at most {MaxHiders} hiders.");
     }
 
-    // Agent reset
     public void ResetMovement(Vector3 spawnPosition, Quaternion spawnRotation)
     {
         if (seekerAgent != null && seekerAgent.isActiveAndEnabled && seekerAgent.isOnNavMesh)
@@ -79,273 +71,164 @@ public class SeekerAgent : Agent
         targetAgent = null;
     }
 
-    // this function stores all hiders and chooses nearest one as current targetAgent
-    // also linked environment to agents
     public void SetTargets(IReadOnlyList<NavMeshAgent> targets)
     {
         targetAgents.Clear();
         if (targets != null)
-            targetAgents.AddRange(targets);
+            foreach (NavMeshAgent target in targets)
+                if (target != null && target.gameObject.activeInHierarchy)
+                    targetAgents.Add(target);
         targetAgent = FindNearestTarget();
-
-        if (targetAgent != null && seekerAgent != null)
-        {
-            prevDistance = Vector3.Distance(
-                seekerAgent.nextPosition,
-                targetAgent.nextPosition);
-        }
     }
-    #endregion
 
-    #region ML Lifecycle
     public override void OnEpisodeBegin()
     {
         environment?.EpisodeCoordinator.OnAgentEpisodeBegin(this);
+    }
 
-        if (HasTargetAndNavAgent())
-            prevDistance = Vector3.Distance(
-                seekerAgent.transform.position,
-                targetAgent.transform.position);
+    /// <summary>Called for every teammate in a coordinator pass before observations are consumed.</summary>
+    public void UpdateTeamSightings()
+    {
+        if (environment == null) return;
+        foreach (NavMeshAgent hider in environment.Hiders)
+        {
+            if (hider == null || !hider.gameObject.activeInHierarchy) continue;
+            if (CanSee(hider))
+                environment.TeamSightings.Record(hider, hider.transform.position,
+                    environment.EpisodeCoordinator.CurrentStep);
+        }
+        influenceMap?.MarkWasSeen(transform.position);
     }
 
     public override void CollectObservations(VectorSensor sensor)
     {
-        // target observations //
-        if (targetAgent == null)
+        if (environment == null)
         {
-            sensor.AddObservation(0);
-            sensor.AddObservation(Vector3.zero);
-            sensor.AddObservation(1f);
+            for (int i = 0; i < VectorObservationSize; i++) sensor.AddObservation(0f);
             return;
         }
-        else
+
+        ScenarioGrid grid = environment.Grid;
+        float halfWidth = Mathf.Max(grid.CellSize, grid.Width * grid.CellSize * 0.5f);
+        float halfHeight = Mathf.Max(grid.CellSize, grid.Height * grid.CellSize * 0.5f);
+        Vector3 fromCenter = transform.position - grid.Origin;
+        Vector3 localForward = environment.Root.transform.InverseTransformDirection(transform.forward);
+
+        sensor.AddObservation(Mathf.Clamp(fromCenter.x / halfWidth, -1f, 1f));
+        sensor.AddObservation(Mathf.Clamp(fromCenter.z / halfHeight, -1f, 1f));
+        sensor.AddObservation(localForward.x);
+        sensor.AddObservation(localForward.z);
+
+        int teammateSlots = 0;
+        foreach (SeekerAgent teammate in environment.Seekers)
         {
-            Vector3 localDir;
-            float normalisedDistance;
+            if (teammate == null || teammate == this) continue;
+            WriteTeammate(sensor, teammate.transform, halfWidth, halfHeight);
+            teammateSlots++;
+        }
+        while (teammateSlots++ < MaxTeammates)
+            for (int value = 0; value < 5; value++) sensor.AddObservation(0f);
 
-            bool visible = GetTargetInfo(out localDir, out normalisedDistance);
-            sensor.AddObservation(visible ? 1 : 0); // target visible?
-
-            if (visible)
+        for (int index = 0; index < MaxHiders; index++)
+        {
+            if (index >= environment.Hiders.Count)
             {
-                sensor.AddObservation(localDir);
-                sensor.AddObservation(normalisedDistance);
+                for (int value = 0; value < 4; value++) sensor.AddObservation(0f);
+                continue;
             }
-            else
-            { // need to return same amount of observations
-                sensor.AddObservation(Vector3.zero);
-                sensor.AddObservation(1f);
+
+            NavMeshAgent hider = environment.Hiders[index];
+            if (!environment.TeamSightings.TryGet(hider, out TeamSightingMemory.Sighting sighting))
+            {
+                for (int value = 0; value < 4; value++) sensor.AddObservation(0f);
+                continue;
             }
+
+            int memorySteps = Mathf.Max(1, hostileMemorySteps);
+            int age = environment.EpisodeCoordinator.CurrentStep - sighting.Step;
+            if (age > memorySteps)
+            {
+                for (int value = 0; value < 4; value++) sensor.AddObservation(0f);
+                continue;
+            }
+
+            Vector3 relative = transform.InverseTransformPoint(sighting.WorldPosition);
+            sensor.AddObservation(1f);
+            sensor.AddObservation(Mathf.Clamp01((float)age / memorySteps));
+            sensor.AddObservation(Mathf.Clamp(relative.x / halfWidth, -1f, 1f));
+            sensor.AddObservation(Mathf.Clamp(relative.z / halfHeight, -1f, 1f));
         }
-
-        // influence map observations //
-        if (useInfluenceMap && influenceMap != null)
-        {
-            // basic 
-            //float influence = influenceMap.GetCombinedInfluence(transform.position);
-            //sensor.AddObservation(influence);
-
-            // spatial awareness
-            //Vector2Int cell = influenceMap.WorldToCell(transform.position);
-
-            //sensor.AddObservation(influenceMap.GetValue(cell));
-            //sensor.AddObservation(influenceMap.GetValue(cell + Vector2Int.up));
-            //sensor.AddObservation(influenceMap.GetValue(cell + Vector2Int.right));
-            //sensor.AddObservation(influenceMap.GetValue(cell + Vector2Int.down));
-            //sensor.AddObservation(influenceMap.GetValue(cell + Vector2Int.left));
-
-
-        }
-        else
-        {
-            sensor.AddObservation(0f);
-        }
-
     }
 
-    // Catch Logic
     public override void OnActionReceived(ActionBuffers actions)
     {
-        if (!HasTargetAndNavAgent())
-            return;
+        if (seekerAgent == null || !seekerAgent.isOnNavMesh) return;
+        ActionSegment<int> discrete = actions.DiscreteActions;
+        if (discrete.Length < 2) return;
 
-        float rotate = actions.ContinuousActions[0];
-        float move = Mathf.Clamp01(actions.ContinuousActions[1]);
+        int moveIndex = Mathf.Clamp(discrete[0], 0, MoveSpeedBuckets.Length - 1);
+        int turnIndex = Mathf.Clamp(discrete[1], 0, TurnBuckets.Length - 1);
+        float move = MoveSpeedBuckets[moveIndex];
+        float turn = TurnBuckets[turnIndex];
 
-        transform.Rotate(0f, rotate * rotateSpeed * Time.deltaTime, 0f);
-        Vector3 moveDirection = transform.forward * move * moveSpeed * Time.deltaTime;
-        seekerAgent.Move(moveDirection);
+        transform.Rotate(0f, turn * rotateSpeed * Time.fixedDeltaTime, 0f);
+        seekerAgent.Move(transform.forward * move * moveSpeed * Time.fixedDeltaTime);
 
-        float distance = Vector3.Distance(seekerAgent.nextPosition, targetAgent.nextPosition);
+        targetAgent = FindNearestTarget();
+        if (targetAgent == null) return;
+
         float combinedRadius = seekerAgent.radius + targetAgent.radius;
         float effectiveCatchDistance = Mathf.Max(catchDistance, combinedRadius);
-
-        if (distance < effectiveCatchDistance)
-        {
-            AddReward(catchReward);
-            if (environment != null)
-                environment.EpisodeCoordinator.ReportCapture(this);
-            else
-                EndEpisode();
-            return;
-        }
-
-        ApplyVisibilityBasedRewards(rotate, move);
+        if (Vector3.Distance(seekerAgent.nextPosition, targetAgent.nextPosition) <= effectiveCatchDistance)
+            environment?.EpisodeCoordinator.ReportCapture(this, targetAgent);
     }
-    #endregion
 
-    #region Helper Functions
-    // uses distance for perception
-    private bool GetTargetInfo(out Vector3 localDir, out float normalisedDistance)
+    public override void Heuristic(in ActionBuffers actionsOut)
     {
-        if (targetAgent == null)
-        {
-            localDir = Vector3.zero;
-            normalisedDistance = 1f;
+        ActionSegment<int> discrete = actionsOut.DiscreteActions;
+        discrete[0] = 1;
+        discrete[1] = 2;
+    }
+
+    private void WriteTeammate(VectorSensor sensor, Transform teammate,
+        float halfWidth, float halfHeight)
+    {
+        Vector3 relative = transform.InverseTransformPoint(teammate.position);
+        Vector3 heading = transform.InverseTransformDirection(teammate.forward);
+        sensor.AddObservation(1f);
+        sensor.AddObservation(Mathf.Clamp(relative.x / halfWidth, -1f, 1f));
+        sensor.AddObservation(Mathf.Clamp(relative.z / halfHeight, -1f, 1f));
+        sensor.AddObservation(heading.x);
+        sensor.AddObservation(heading.z);
+    }
+
+    private bool CanSee(NavMeshAgent hider)
+    {
+        Vector3 direction = hider.transform.position - transform.position;
+        float distance = direction.magnitude;
+        if (distance > viewDistance || distance < 0.001f) return false;
+        if (Vector3.Angle(transform.forward, direction) > viewAngle * 0.5f) return false;
+
+        float forwardOffset = seekerAgent != null ? seekerAgent.radius + 0.05f : 0.55f;
+        Vector3 origin = transform.position + Vector3.up * eyeHeight + transform.forward * forwardOffset;
+        if (!Physics.Raycast(origin, direction.normalized, out RaycastHit hit, distance + 0.25f))
             return false;
-        }
-
-        // calculate for distance check
-        Vector3 dir = targetAgent.transform.position - transform.position; // get the dir vector from current position to target position
-        float distance = dir.magnitude;
-
-        localDir = transform.InverseTransformDirection(dir).normalized; // localised dir
-        normalisedDistance = Mathf.Clamp01(distance / viewDistance); // normalised dist
-
-        // calculate for direction check
-        float angle = Vector3.Angle(transform.forward, dir); // measure angle between hider and seeker, every game object has its own forward direction
-
-        // calculate if target in FOV/Dist
-        bool insideFOV = angle <= viewAngle * 0.5f;
-        bool insideDist = distance <= viewDistance;
-
-        // if can see target, give target info to agent
-        if (!insideFOV || !insideDist) { return false; }
-
-        // 
-        Vector3 rayOrigin = transform.position + Vector3.up * eyeHeight; // shoot ray from seeker's eye level
-
-        if (Physics.Raycast(rayOrigin, dir.normalized, out RaycastHit hit, viewDistance))
-        {
-            return hit.transform == targetAgent || hit.transform.IsChildOf(targetAgent.transform); // if ray hits target OR child of target first, means can see
-        }
-
-        return false;
+        return hit.transform == hider.transform || hit.transform.IsChildOf(hider.transform);
     }
 
     private NavMeshAgent FindNearestTarget()
     {
-        NavMeshAgent nearestTarget = null;
+        NavMeshAgent nearest = null;
         float nearestDistance = float.MaxValue;
-
-        foreach (NavMeshAgent possibleTarget in targetAgents)
+        foreach (NavMeshAgent possible in targetAgents)
         {
-            if (possibleTarget == null) // skip function if there are no possible targets
-            {
+            if (possible == null || !possible.gameObject.activeInHierarchy || !possible.isOnNavMesh)
                 continue;
-            }
-
-            float distance = Vector3.Distance(transform.position, possibleTarget.transform.position);
-            if (distance < nearestDistance)
-            {
-                nearestDistance = distance;
-                nearestTarget = possibleTarget;
-            }
+            float distance = (transform.position - possible.transform.position).sqrMagnitude;
+            if (distance >= nearestDistance) continue;
+            nearestDistance = distance;
+            nearest = possible;
         }
-
-        return nearestTarget;
+        return nearest;
     }
-    // safety check
-    private bool HasTargetAndNavAgent()
-    {
-        if (targetAgent == null || !targetAgent.isActiveAndEnabled || !targetAgent.isOnNavMesh)
-            targetAgent = FindNearestTarget();
-
-        return targetAgent != null
-            && targetAgent.isOnNavMesh
-            && seekerAgent != null
-            && seekerAgent.isOnNavMesh;
-    }
-
-    private void OnDrawGizmos()
-    {
-        if (targetAgent == null) return;
-
-        Gizmos.color = Color.red;
-        Gizmos.DrawLine(transform.position, targetAgent.transform.position);
-    }
-    #endregion
-
-    #region Reward System
-    // uses distance for reward shaping
-    private void ApplyVisibilityBasedRewards(float rotate, float move)
-    {
-        if (targetAgent == null || seekerAgent == null)
-        {
-            return;
-        }
-
-        Vector3 localDir;
-        float normalisedDist;
-
-        bool currentlyCanSeeTarget = GetTargetInfo(out localDir, out normalisedDist);
-
-        float currentDistance = Vector3.Distance(seekerAgent.transform.position, targetAgent.transform.position);
-
-        // Positive if seeker got closer.
-        // Negative if seeker moved farther away.
-        float distanceDiff = prevDistance - currentDistance;
-
-        /*
-            Small general progress reward.
-
-            This helps learning because the agent still gets feedback when it
-            accidentally moves closer, even if the target is not visible yet.
-
-            If you want stricter realism later, reduce this or remove it.
-        */
-        AddReward(distanceDiff * generalDistanceRewardScale);
-
-        if (currentlyCanSeeTarget)
-        {
-            ApplyChaseRewards(distanceDiff);
-        }
-        else
-        {
-            ApplySearchRewards(rotate, move);
-        }
-
-        AddReward(timePenalty);
-
-        prevDistance = currentDistance;
-    }
-
-    // chase behaviour separation
-    private void ApplyChaseRewards(float distanceDiff)
-    {
-        // Stronger reward for getting closer while the hider is visible.
-        AddReward(distanceDiff * visibleDistanceRewardScale);
-
-        // Small reward for keeping the hider in sight.
-        AddReward(maintainSightReward);
-    }
-
-    // search behaviour separation
-    private void ApplySearchRewards(float rotate, float move)
-    {
-        // Small penalty because the seeker does not currently see the hider.
-        AddReward(unseenPenalty);
-
-        // Tiny reward for meaningful movement during search.
-        // This discourages spinning in place forever.
-        if (move > 0.1f)
-        {
-            AddReward(searchMoveReward);
-        }
-
-        // Very small penalty for excessive spinning.
-        // Keep this tiny because the seeker still needs to rotate to scan with rays.
-        AddReward(-Mathf.Abs(rotate) * rotationPenaltyScale);
-    }
-    #endregion
 }

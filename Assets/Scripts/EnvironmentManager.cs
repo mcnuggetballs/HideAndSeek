@@ -10,6 +10,8 @@ public class EnvironmentManager : MonoBehaviour
     private GameObject seekerPrefab;
     private GameObject hiderPrefab;
     private GameObject obstaclePrefab;
+    private EpisodeRules episodeRules = new();
+    private ITrainingCurriculum trainingCurriculum;
 
     public IReadOnlyList<EnvironmentInstance> Environments => environments;
     public event Action<EnvironmentInstance> LayoutChanged;
@@ -19,6 +21,13 @@ public class EnvironmentManager : MonoBehaviour
         seekerPrefab = seeker;
         hiderPrefab = hider;
         obstaclePrefab = obstacle;
+    }
+
+    public void ConfigureTraining(EpisodeRules rules, ITrainingCurriculum curriculum)
+    {
+        episodeRules = rules ?? throw new ArgumentNullException(nameof(rules));
+        episodeRules.Validate();
+        trainingCurriculum = curriculum;
     }
 
     public EnvironmentInstance CreateEnvironment(ScenarioGrid grid, GameObject environmentPrefab)
@@ -61,7 +70,7 @@ public class EnvironmentManager : MonoBehaviour
             ?? root.AddComponent<InfluenceMap>();
         GridRenderer renderer = root.GetComponentInChildren<GridRenderer>(true);
 
-        var instance = new EnvironmentInstance(root, runtimeRoot, grid, world, navigation,
+        var instance = new EnvironmentInstance(environments.Count, root, runtimeRoot, grid, world, navigation,
             influence, renderer, ownsRoot);
         environments.Add(instance);
         RefreshLayoutDependents(instance);
@@ -111,6 +120,7 @@ public class EnvironmentManager : MonoBehaviour
                 seeker.Initialize(environment, environment.InfluenceMap);
 
             environment.MarkBuilt();
+            environment.EpisodeCoordinator.Configure(episodeRules, trainingCurriculum);
             environment.EpisodeCoordinator.Activate();
         }
         catch (Exception exception)

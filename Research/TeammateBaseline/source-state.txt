@@ -1,0 +1,216 @@
+Captured: 2026-09-23T15:11:43.8812425+08:00
+Source: C:\Users\Duality1\Desktop\Eshlyne\RedVsBlue_20260904_final\RedVsBlue
+
+683b3d3bdbad7d601638be25fdc124706e866856
+
+git status --short:
+ M .gitignore
+ M Assets/ML-Agents.meta
+ M Assets/ML-Agents/Timers.meta
+ D Assets/ML-Agents/Timers/SampleScene_timers.json.meta
+ D "Assets/Materials/Goal Material.mat"
+ D "Assets/Materials/Goal Material.mat.meta"
+ D "Assets/Materials/Waypoint Material.mat"
+ D "Assets/Materials/Waypoint Material.mat.meta"
+ D Assets/Prefabs/Agents.meta
+ D Assets/Prefabs/Agents/BlueAgent.prefab
+ D Assets/Prefabs/Agents/BlueAgent.prefab.meta
+ D Assets/Prefabs/Agents/BlueAgentTeam.prefab
+ D Assets/Prefabs/Agents/BlueAgentTeam.prefab.meta
+ D Assets/Prefabs/Environments.meta
+ D Assets/Prefabs/Environments/GridEnvironment.prefab
+ D Assets/Prefabs/Environments/GridEnvironment.prefab.meta
+ D Assets/Prefabs/Goal.prefab
+ D Assets/Prefabs/Goal.prefab.meta
+ D Assets/Prefabs/GoalDetector.prefab
+ D Assets/Prefabs/GoalDetector.prefab.meta
+ D Assets/Prefabs/GridTile.prefab
+ D Assets/Prefabs/GridTile.prefab.meta
+ D Assets/Prefabs/Ground.prefab
+ D Assets/Prefabs/Ground.prefab.meta
+ D "Assets/Prefabs/Main Camera.prefab"
+ D "Assets/Prefabs/Main Camera.prefab.meta"
+ D "Assets/Prefabs/Training Area.prefab"
+ D "Assets/Prefabs/Training Area.prefab.meta"
+ D Assets/Prefabs/Wall.prefab
+ D Assets/Prefabs/Wall.prefab.meta
+ D Assets/Prefabs/Waypoint.prefab
+ D Assets/Prefabs/Waypoint.prefab.meta
+ D Assets/Scenes/CortexTrainingScene.unity
+ D Assets/Scenes/CortexTrainingScene.unity.meta
+ D Assets/Scenes/MultiAgentTrainingScene.unity
+ D Assets/Scenes/MultiAgentTrainingScene.unity.meta
+ M Assets/Scenes/TrainingScene.unity
+ D "Assets/Scripts/Agent Controllers.meta"
+ D "Assets/Scripts/Agent Controllers/AgentController.cs"
+ D "Assets/Scripts/Agent Controllers/AgentController.cs.meta"
+ D "Assets/Scripts/Environment Managers.meta"
+ D "Assets/Scripts/Environment Managers/CurriculumManager.cs"
+ D "Assets/Scripts/Environment Managers/CurriculumManager.cs.meta"
+ D "Assets/Scripts/Environment Managers/CurriculumMapStrategy.cs"
+ D "Assets/Scripts/Environment Managers/CurriculumMapStrategy.cs.meta"
+ D "Assets/Scripts/Environment Managers/FixedMapStrategy.cs"
+ D "Assets/Scripts/Environment Managers/FixedMapStrategy.cs.meta"
+ D "Assets/Scripts/Environment Managers/GridEnvironmentManager.cs"
+ D "Assets/Scripts/Environment Managers/GridEnvironmentManager.cs.meta"
+ D "Assets/Scripts/Environment Managers/IMapSelectionStrategy.cs"
+ D "Assets/Scripts/Environment Managers/IMapSelectionStrategy.cs.meta"
+ D "Assets/Scripts/Environment Managers/MultiAgentEnvironmentManager.cs"
+ D "Assets/Scripts/Environment Managers/MultiAgentEnvironmentManager.cs.meta"
+ D "Assets/Scripts/Environment Managers/RandomMapStrategy.cs"
+ D "Assets/Scripts/Environment Managers/RandomMapStrategy.cs.meta"
+ D "Assets/Scripts/Environment Managers/SingleAgentEnvironmentManager.cs"
+ D "Assets/Scripts/Environment Managers/SingleAgentEnvironmentManager.cs.meta"
+ D Assets/Scripts/GoalDetector.cs
+ D Assets/Scripts/GoalDetector.cs.meta
+ D "Assets/Scripts/Influence Map.meta"
+ D "Assets/Scripts/Influence Map/AgentPositionsLayer.cs"
+ D "Assets/Scripts/Influence Map/AgentPositionsLayer.cs.meta"
+ D "Assets/Scripts/Influence Map/DistanceToGoalLayer.cs"
+ D "Assets/Scripts/Influence Map/DistanceToGoalLayer.cs.meta"
+ D "Assets/Scripts/Influence Map/HeatMapLayer.cs"
+ D "Assets/Scripts/Influence Map/HeatMapLayer.cs.meta"
+ D "Assets/Scripts/Influence Map/InfluenceMap.cs"
+ D "Assets/Scripts/Influence Map/InfluenceMap.cs.meta"
+ D "Assets/Scripts/Influence Map/InfluenceMapLayer.cs"
+ D "Assets/Scripts/Influence Map/InfluenceMapLayer.cs.meta"
+ D "Assets/Scripts/Influence Map/ManualColourLayer.cs"
+ D "Assets/Scripts/Influence Map/ManualColourLayer.cs.meta"
+ D "Assets/Scripts/Influence Map/RoomsLayer.cs"
+ D "Assets/Scripts/Influence Map/RoomsLayer.cs.meta"
+ D "Assets/Scripts/Influence Map/TimeSinceLastSeenLayer.cs"
+ D "Assets/Scripts/Influence Map/TimeSinceLastSeenLayer.cs.meta"
+ D "Assets/Scripts/Influence Map/WasSeenLayer.cs"
+ D "Assets/Scripts/Influence Map/WasSeenLayer.cs.meta"
+ D "Assets/Scripts/ML-Agents Scripts.meta"
+ D "Assets/Scripts/ML-Agents Scripts/BlueAgentNavigation.cs"
+ D "Assets/Scripts/ML-Agents Scripts/BlueAgentNavigation.cs.meta"
+ D "Assets/Scripts/ML-Agents Scripts/GlobalGridSensor.cs"
+ D "Assets/Scripts/ML-Agents Scripts/GlobalGridSensor.cs.meta"
+ D "Assets/Scripts/ML-Agents Scripts/GlobalGridSensorComponent.cs"
+ D "Assets/Scripts/ML-Agents Scripts/GlobalGridSensorComponent.cs.meta"
+ D "Assets/Scripts/ML-Agents Scripts/IRewardableAgent.cs"
+ D "Assets/Scripts/ML-Agents Scripts/IRewardableAgent.cs.meta"
+ D "Assets/Scripts/ML-Agents Scripts/LocalGridSensor.cs"
+ D "Assets/Scripts/ML-Agents Scripts/LocalGridSensor.cs.meta"
+ D "Assets/Scripts/ML-Agents Scripts/LocalGridSensorComponent.cs"
+ D "Assets/Scripts/ML-Agents Scripts/LocalGridSensorComponent.cs.meta"
+ D "Assets/Scripts/ML-Agents Scripts/MultiBlueAgentSearch.cs"
+ D "Assets/Scripts/ML-Agents Scripts/MultiBlueAgentSearch.cs.meta"
+D  Assets/Scripts/SimulationManager.cs
+D  Assets/Scripts/SimulationManager.cs.meta
+ M ProjectSettings/NavMeshAreas.asset
+ M README.md
+ D Tools/define_entrances.py
+ D Tools/define_rooms.py
+ D config/BlueAgentNavigation.yaml
+ M config/MultiBlueAgentSearch.yaml
+?? Assets/Prefabs/New.meta
+?? Assets/Prefabs/New/
+?? Assets/Scenes/TestingScene.unity
+?? Assets/Scenes/TestingScene.unity.meta
+?? Assets/Scripts/New.meta
+?? Assets/Scripts/New/
+?? activate_env.bat
+
+git diff --stat:
+ .gitignore                                         |    4 +-
+ Assets/ML-Agents.meta                              |    2 +-
+ Assets/ML-Agents/Timers.meta                       |    2 +-
+ .../ML-Agents/Timers/SampleScene_timers.json.meta  |    7 -
+ Assets/Materials/Goal Material.mat                 |  137 ---
+ Assets/Materials/Goal Material.mat.meta            |    8 -
+ Assets/Materials/Waypoint Material.mat             |  137 ---
+ Assets/Materials/Waypoint Material.mat.meta        |    8 -
+ Assets/Prefabs/Agents.meta                         |    8 -
+ Assets/Prefabs/Agents/BlueAgent.prefab             | 1038 ------------------
+ Assets/Prefabs/Agents/BlueAgent.prefab.meta        |    7 -
+ Assets/Prefabs/Agents/BlueAgentTeam.prefab         | 1118 --------------------
+ Assets/Prefabs/Agents/BlueAgentTeam.prefab.meta    |    7 -
+ Assets/Prefabs/Environments.meta                   |    8 -
+ Assets/Prefabs/Environments/GridEnvironment.prefab |   56 -
+ .../Environments/GridEnvironment.prefab.meta       |    7 -
+ Assets/Prefabs/Goal.prefab                         |  114 --
+ Assets/Prefabs/Goal.prefab.meta                    |    7 -
+ Assets/Prefabs/GoalDetector.prefab                 |   98 --
+ Assets/Prefabs/GoalDetector.prefab.meta            |    7 -
+ Assets/Prefabs/GridTile.prefab                     |  183 ----
+ Assets/Prefabs/GridTile.prefab.meta                |    7 -
+ Assets/Prefabs/Ground.prefab                       |  115 --
+ Assets/Prefabs/Ground.prefab.meta                  |    7 -
+ Assets/Prefabs/Main Camera.prefab                  |  139 ---
+ Assets/Prefabs/Main Camera.prefab.meta             |    7 -
+ Assets/Prefabs/Training Area.prefab                |  200 ----
+ Assets/Prefabs/Training Area.prefab.meta           |    7 -
+ Assets/Prefabs/Wall.prefab                         |  114 --
+ Assets/Prefabs/Wall.prefab.meta                    |    7 -
+ Assets/Prefabs/Waypoint.prefab                     |   92 --
+ Assets/Prefabs/Waypoint.prefab.meta                |    7 -
+ Assets/Scenes/CortexTrainingScene.unity            |  581 ----------
+ Assets/Scenes/CortexTrainingScene.unity.meta       |    7 -
+ Assets/Scenes/MultiAgentTrainingScene.unity        |  581 ----------
+ Assets/Scenes/MultiAgentTrainingScene.unity.meta   |    7 -
+ Assets/Scenes/TrainingScene.unity                  |  206 ++--
+ Assets/Scripts/Agent Controllers.meta              |    8 -
+ .../Scripts/Agent Controllers/AgentController.cs   |  379 -------
+ .../Agent Controllers/AgentController.cs.meta      |    2 -
+ Assets/Scripts/Environment Managers.meta           |    8 -
+ .../Environment Managers/CurriculumManager.cs      |  101 --
+ .../Environment Managers/CurriculumManager.cs.meta |    2 -
+ .../Environment Managers/CurriculumMapStrategy.cs  |   50 -
+ .../CurriculumMapStrategy.cs.meta                  |    2 -
+ .../Environment Managers/FixedMapStrategy.cs       |   17 -
+ .../Environment Managers/FixedMapStrategy.cs.meta  |    2 -
+ .../Environment Managers/GridEnvironmentManager.cs |  524 ---------
+ .../GridEnvironmentManager.cs.meta                 |    2 -
+ .../Environment Managers/IMapSelectionStrategy.cs  |   12 -
+ .../IMapSelectionStrategy.cs.meta                  |    2 -
+ .../MultiAgentEnvironmentManager.cs                |  251 -----
+ .../MultiAgentEnvironmentManager.cs.meta           |    2 -
+ .../Environment Managers/RandomMapStrategy.cs      |   21 -
+ .../Environment Managers/RandomMapStrategy.cs.meta |    2 -
+ .../SingleAgentEnvironmentManager.cs               |   59 --
+ .../SingleAgentEnvironmentManager.cs.meta          |    2 -
+ Assets/Scripts/GoalDetector.cs                     |   16 -
+ Assets/Scripts/GoalDetector.cs.meta                |    2 -
+ Assets/Scripts/Influence Map.meta                  |    8 -
+ .../Scripts/Influence Map/AgentPositionsLayer.cs   |   72 --
+ .../Influence Map/AgentPositionsLayer.cs.meta      |    2 -
+ .../Scripts/Influence Map/DistanceToGoalLayer.cs   |   43 -
+ .../Influence Map/DistanceToGoalLayer.cs.meta      |    2 -
+ Assets/Scripts/Influence Map/HeatMapLayer.cs       |   86 --
+ Assets/Scripts/Influence Map/HeatMapLayer.cs.meta  |    2 -
+ Assets/Scripts/Influence Map/InfluenceMap.cs       |  285 -----
+ Assets/Scripts/Influence Map/InfluenceMap.cs.meta  |    2 -
+ Assets/Scripts/Influence Map/InfluenceMapLayer.cs  |    7 -
+ .../Influence Map/InfluenceMapLayer.cs.meta        |    2 -
+ Assets/Scripts/Influence Map/ManualColourLayer.cs  |  178 ----
+ .../Influence Map/ManualColourLayer.cs.meta        |    2 -
+ Assets/Scripts/Influence Map/RoomsLayer.cs         |  191 ----
+ Assets/Scripts/Influence Map/RoomsLayer.cs.meta    |    2 -
+ .../Influence Map/TimeSinceLastSeenLayer.cs        |  225 ----
+ .../Influence Map/TimeSinceLastSeenLayer.cs.meta   |    7 -
+ Assets/Scripts/Influence Map/WasSeenLayer.cs       |   55 -
+ Assets/Scripts/Influence Map/WasSeenLayer.cs.meta  |    2 -
+ Assets/Scripts/ML-Agents Scripts.meta              |    8 -
+ .../ML-Agents Scripts/BlueAgentNavigation.cs       |  311 ------
+ .../ML-Agents Scripts/BlueAgentNavigation.cs.meta  |    2 -
+ .../Scripts/ML-Agents Scripts/GlobalGridSensor.cs  |   43 -
+ .../ML-Agents Scripts/GlobalGridSensor.cs.meta     |    2 -
+ .../ML-Agents Scripts/GlobalGridSensorComponent.cs |   16 -
+ .../GlobalGridSensorComponent.cs.meta              |    2 -
+ .../Scripts/ML-Agents Scripts/IRewardableAgent.cs  |   12 -
+ .../ML-Agents Scripts/IRewardableAgent.cs.meta     |    2 -
+ .../Scripts/ML-Agents Scripts/LocalGridSensor.cs   |   63 --
+ .../ML-Agents Scripts/LocalGridSensor.cs.meta      |    2 -
+ .../ML-Agents Scripts/LocalGridSensorComponent.cs  |   16 -
+ .../LocalGridSensorComponent.cs.meta               |    2 -
+ .../ML-Agents Scripts/MultiBlueAgentSearch.cs      |  534 ----------
+ .../ML-Agents Scripts/MultiBlueAgentSearch.cs.meta |    2 -
+ ProjectSettings/NavMeshAreas.asset                 |    2 +-
+ README.md                                          |   46 +-
+ Tools/define_entrances.py                          |  277 -----
+ Tools/define_rooms.py                              |  209 ----
+ config/BlueAgentNavigation.yaml                    |   54 -
+ config/MultiBlueAgentSearch.yaml                   |    7 +-
+ 99 files changed, 117 insertions(+), 9181 deletions(-)

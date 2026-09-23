@@ -539,6 +539,19 @@ MonoBehaviour:
   width: 33
   height: 20
   cellSize: 5
+  episodeRules:
+    maxEnvironmentSteps: 2048
+    totalTimePenalty: 2
+    hiderCaughtGroupReward: 5
+    individualCatchRewardFraction: 0.5
+  useAdaptiveSpawnCurriculum: 1
+  minimumHiderDistance: 2
+  startingMaximumHiderDistance: 4
+  curriculumDistanceIncrement: 1
+  curriculumWindowSize: 20
+  curriculumSuccessThreshold: 0.8
+  curriculumRandomSeed: 12345
+  curriculumProgressFile: curriculum_progress_v2.json
 --- !u!114 &2144339860
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -568,7 +581,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnvironmentSpawner
   environmentPrefab: {fileID: 7066587739052165337, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
-  environmentCount: 20
+  environmentCount: 4
   maxCount: 50
   environmentGap: 100
 --- !u!1660057539 &9223372036854775807
