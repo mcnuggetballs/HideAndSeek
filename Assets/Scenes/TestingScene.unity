@@ -3550,7 +3550,7 @@ PrefabInstance:
       objectReference: {fileID: 5549726802747261794}
     - target: {fileID: 6474338889623940484, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
       propertyPath: debugLayer
-      value: 2
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6474338889623940484, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
       propertyPath: gridRenderer
