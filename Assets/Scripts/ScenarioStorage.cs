@@ -31,8 +31,16 @@ public static class ScenarioStorage
     public static ScenarioGrid Load(string scenarioName, float cellSize, Vector3 origin)
     {
         string path = GetPath(scenarioName);
+        return LoadFile(path, cellSize, origin);
+    }
+
+    // Imports the same map format from a user-selected file without copying or modifying it.
+    public static ScenarioGrid LoadFile(string path, float cellSize, Vector3 origin)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("Select a scenario text file.", nameof(path));
         if (!File.Exists(path))
-            throw new FileNotFoundException($"Saved scenario does not exist: {path}", path);
+            throw new FileNotFoundException($"Scenario file does not exist: {path}", path);
         return ScenarioTextFormat.Parse(File.ReadAllText(path), cellSize, origin);
     }
 }

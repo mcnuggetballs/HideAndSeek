@@ -36,12 +36,15 @@ public sealed class AdaptiveSpawnCurriculum : ITrainingCurriculum
     private readonly float successThreshold;
     private readonly string savePath;
     private readonly System.Random random;
+    private readonly bool faceTargetsInFirstLesson;
+    private readonly int maximumCaptureSteps;
     private readonly Dictionary<(int layout, int x, int y), CatchCount> catchIndex = new();
     private PersistedState state;
 
     public AdaptiveSpawnCurriculum(int minHiderDistance, int startingMaxHiderDistance,
         int distanceIncrement, int successWindowSize, float successThreshold,
-        string savePath, int randomSeed)
+        string savePath, int randomSeed, bool resumeProgress = true, bool faceTargetsInFirstLesson = false,
+        int maximumCaptureSteps = 0)
     {
         if (minHiderDistance < 1) throw new ArgumentOutOfRangeException(nameof(minHiderDistance));
         if (startingMaxHiderDistance < minHiderDistance)
@@ -54,7 +57,9 @@ public sealed class AdaptiveSpawnCurriculum : ITrainingCurriculum
         this.successThreshold = Mathf.Clamp01(successThreshold);
         this.savePath = savePath;
         random = new System.Random(randomSeed);
-        Load();
+        this.faceTargetsInFirstLesson = faceTargetsInFirstLesson;
+        this.maximumCaptureSteps = Mathf.Max(0, maximumCaptureSteps);
+        Load(resumeProgress);
     }
 
     public EpisodeSpecification CreateInitialEpisode(EnvironmentInstance environment) =>
@@ -80,21 +85,21 @@ public sealed class AdaptiveSpawnCurriculum : ITrainingCurriculum
         if (walkable.Count < seekerCount + hiderCount)
             throw new InvalidOperationException("The scenario has too few walkable cells for all participants.");
 
-        Vector2Int[] seekers = DrawUniformWithoutReplacement(walkable, seekerCount);
-        HashSet<Vector2Int> occupied = new(seekers);
-        List<Vector2Int> band = ComputeDistanceBand(grid, seekers,
-            minHiderDistance, state.maxHiderDistance);
-        band.RemoveAll(occupied.Contains);
-
-        if (band.Count < hiderCount)
+        Vector2Int[] seekers = null;
+        List<Vector2Int> band = null;
+        // Retry seeker placements instead of silently spawning at unlimited difficulty.
+        for (int attempt = 0; attempt < 64; attempt++)
         {
-            // Relax the difficulty band while keeping every hider reachable from a seeker.
-            band = ComputeDistanceBand(grid, seekers, 1, int.MaxValue);
+            seekers = DrawUniformWithoutReplacement(walkable, seekerCount);
+            HashSet<Vector2Int> occupied = new(seekers);
+            band = ComputeDistanceBand(grid, seekers, minHiderDistance, state.maxHiderDistance);
             band.RemoveAll(occupied.Contains);
+            if (band.Count >= hiderCount) break;
         }
         if (band.Count < hiderCount)
             throw new InvalidOperationException(
-                "The scenario has too few reachable cells for all hiders.");
+                "Could not place all hiders inside the curriculum distance band after 64 attempts. " +
+                "Use a larger/open map or adjust team counts and the distance band.");
 
         int layoutHash = ComputeLayoutHash(grid);
         float[] weights = new float[band.Count];
@@ -109,7 +114,8 @@ public sealed class AdaptiveSpawnCurriculum : ITrainingCurriculum
 
         Vector2Int[] hiders = DrawWeightedWithoutReplacement(band, weights, hiderCount);
         state.sequence++;
-        return new EpisodeSpecification(state.sequence, state.maxHiderDistance, seekers, hiders);
+        return new EpisodeSpecification(state.sequence, state.maxHiderDistance, seekers, hiders,
+            faceTargetsInFirstLesson && state.maxHiderDistance == startingMaxHiderDistance);
     }
 
     private void RecordOutcome(ScenarioGrid grid, EpisodeOutcome outcome)
@@ -127,7 +133,12 @@ public sealed class AdaptiveSpawnCurriculum : ITrainingCurriculum
             entry.count++;
         }
 
-        state.successWindow.Add(outcome.WasSuccessful ? 1 : 0);
+        // Other arenas may finish old lessons after a pooled advancement.
+        // Their catches still update sampling history, but cannot advance the new lesson.
+        if (outcome.Difficulty != state.maxHiderDistance) return;
+        bool mastered = outcome.WasSuccessful &&
+            (maximumCaptureSteps == 0 || outcome.Steps <= maximumCaptureSteps);
+        state.successWindow.Add(mastered ? 1 : 0);
         while (state.successWindow.Count > successWindowSize)
             state.successWindow.RemoveAt(0);
 
@@ -246,12 +257,12 @@ public sealed class AdaptiveSpawnCurriculum : ITrainingCurriculum
         }
     }
 
-    private void Load()
+    private void Load(bool resumeProgress)
     {
         state = null;
         try
         {
-            if (!string.IsNullOrWhiteSpace(savePath) && File.Exists(savePath))
+            if (resumeProgress && !string.IsNullOrWhiteSpace(savePath) && File.Exists(savePath))
                 state = JsonUtility.FromJson<PersistedState>(File.ReadAllText(savePath));
         }
         catch (Exception exception)

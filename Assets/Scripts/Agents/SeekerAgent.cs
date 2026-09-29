@@ -30,6 +30,16 @@ public sealed class SeekerAgent : Agent
     [SerializeField] private float catchDistance = 1.5f;
     [SerializeField, Min(1)] private int hostileMemorySteps = 512;
 
+    [Header("Runtime Diagnostics")]
+    [SerializeField] private int lastMoveAction;
+    [SerializeField] private int lastTurnAction;
+    [SerializeField] private float displacementSinceLastAction;
+    [SerializeField] private int currentlyVisibleHiders;
+
+    private readonly RaycastHit[] sightHits = new RaycastHit[32];
+    private Vector3 previousActionPosition;
+    private bool hasPreviousActionPosition;
+
     private readonly List<NavMeshAgent> targetAgents = new();
     private EnvironmentInstance environment;
     private InfluenceMap influenceMap;
@@ -69,6 +79,9 @@ public sealed class SeekerAgent : Agent
 
         transform.rotation = spawnRotation;
         targetAgent = null;
+        hasPreviousActionPosition = false;
+        displacementSinceLastAction = 0f;
+        currentlyVisibleHiders = 0;
     }
 
     public void SetTargets(IReadOnlyList<NavMeshAgent> targets)
@@ -90,12 +103,16 @@ public sealed class SeekerAgent : Agent
     public void UpdateTeamSightings()
     {
         if (environment == null) return;
+        currentlyVisibleHiders = 0;
         foreach (NavMeshAgent hider in environment.Hiders)
         {
             if (hider == null || !hider.gameObject.activeInHierarchy) continue;
             if (CanSee(hider))
+            {
+                currentlyVisibleHiders++;
                 environment.TeamSightings.Record(hider, hider.transform.position,
                     environment.EpisodeCoordinator.CurrentStep);
+            }
         }
         influenceMap?.MarkWasSeen(transform.position);
     }
@@ -138,7 +155,8 @@ public sealed class SeekerAgent : Agent
             }
 
             NavMeshAgent hider = environment.Hiders[index];
-            if (!environment.TeamSightings.TryGet(hider, out TeamSightingMemory.Sighting sighting))
+            if (hider == null || !hider.gameObject.activeInHierarchy ||
+                !environment.TeamSightings.TryGet(hider, out TeamSightingMemory.Sighting sighting))
             {
                 for (int value = 0; value < 4; value++) sensor.AddObservation(0f);
                 continue;
@@ -152,7 +170,7 @@ public sealed class SeekerAgent : Agent
                 continue;
             }
 
-            Vector3 relative = transform.InverseTransformPoint(sighting.WorldPosition);
+            Vector3 relative = transform.InverseTransformDirection(sighting.WorldPosition - transform.position);
             sensor.AddObservation(1f);
             sensor.AddObservation(Mathf.Clamp01((float)age / memorySteps));
             sensor.AddObservation(Mathf.Clamp(relative.x / halfWidth, -1f, 1f));
@@ -168,6 +186,12 @@ public sealed class SeekerAgent : Agent
 
         int moveIndex = Mathf.Clamp(discrete[0], 0, MoveSpeedBuckets.Length - 1);
         int turnIndex = Mathf.Clamp(discrete[1], 0, TurnBuckets.Length - 1);
+        lastMoveAction = moveIndex;
+        lastTurnAction = turnIndex;
+        displacementSinceLastAction = hasPreviousActionPosition
+            ? Vector3.Distance(transform.position, previousActionPosition) : 0f;
+        previousActionPosition = transform.position;
+        hasPreviousActionPosition = true;
         float move = MoveSpeedBuckets[moveIndex];
         float turn = TurnBuckets[turnIndex];
 
@@ -193,7 +217,7 @@ public sealed class SeekerAgent : Agent
     private void WriteTeammate(VectorSensor sensor, Transform teammate,
         float halfWidth, float halfHeight)
     {
-        Vector3 relative = transform.InverseTransformPoint(teammate.position);
+        Vector3 relative = transform.InverseTransformDirection(teammate.position - transform.position);
         Vector3 heading = transform.InverseTransformDirection(teammate.forward);
         sensor.AddObservation(1f);
         sensor.AddObservation(Mathf.Clamp(relative.x / halfWidth, -1f, 1f));
@@ -204,16 +228,58 @@ public sealed class SeekerAgent : Agent
 
     private bool CanSee(NavMeshAgent hider)
     {
+        if (hider == null || !hider.gameObject.activeInHierarchy) return false;
         Vector3 direction = hider.transform.position - transform.position;
         float distance = direction.magnitude;
         if (distance > viewDistance || distance < 0.001f) return false;
         if (Vector3.Angle(transform.forward, direction) > viewAngle * 0.5f) return false;
 
-        float forwardOffset = seekerAgent != null ? seekerAgent.radius + 0.05f : 0.55f;
-        Vector3 origin = transform.position + Vector3.up * eyeHeight + transform.forward * forwardOffset;
-        if (!Physics.Raycast(origin, direction.normalized, out RaycastHit hit, distance + 0.25f))
-            return false;
-        return hit.transform == hider.transform || hit.transform.IsChildOf(hider.transform);
+        Vector3 origin = transform.position + Vector3.up * eyeHeight;
+        Collider targetCollider = hider.GetComponent<Collider>();
+        Vector3 targetPoint = targetCollider != null
+            ? targetCollider.bounds.center : hider.transform.position + Vector3.up * eyeHeight;
+        Vector3 eyeDirection = targetPoint - origin;
+        float rayDistance = eyeDirection.magnitude;
+        if (rayDistance < 0.001f) return true;
+        int count = Physics.RaycastNonAlloc(origin, eyeDirection / rayDistance, sightHits,
+            rayDistance + 0.01f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+
+        // NonAlloc hits are unordered. A full buffer may omit the nearest blocker;
+        // use an allocating fallback only in that exceptional crowded case.
+        RaycastHit[] hits = sightHits;
+        if (count == sightHits.Length)
+        {
+            hits = Physics.RaycastAll(origin, eyeDirection / rayDistance,
+                rayDistance + 0.01f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            count = hits.Length;
+        }
+        float nearestDistance = float.PositiveInfinity;
+        Transform nearest = null;
+        for (int index = 0; index < count; index++)
+        {
+            Transform hitTransform = hits[index].transform;
+            if (hitTransform == transform || hitTransform.IsChildOf(transform)) continue;
+            if (hits[index].distance >= nearestDistance) continue;
+            nearestDistance = hits[index].distance;
+            nearest = hitTransform;
+        }
+        return nearest != null && (nearest == hider.transform || nearest.IsChildOf(hider.transform));
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Vector3 origin = transform.position + Vector3.up * eyeHeight;
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawRay(origin, Quaternion.Euler(0f, -viewAngle * 0.5f, 0f) * transform.forward * viewDistance);
+        Gizmos.DrawRay(origin, Quaternion.Euler(0f, viewAngle * 0.5f, 0f) * transform.forward * viewDistance);
+        if (environment == null) return;
+        foreach (NavMeshAgent hider in environment.Hiders)
+        {
+            if (hider == null || !hider.gameObject.activeInHierarchy) continue;
+            Collider collider = hider.GetComponent<Collider>();
+            Gizmos.color = CanSee(hider) ? Color.green : Color.red;
+            Gizmos.DrawLine(origin, collider != null ? collider.bounds.center : hider.transform.position);
+        }
     }
 
     private NavMeshAgent FindNearestTarget()

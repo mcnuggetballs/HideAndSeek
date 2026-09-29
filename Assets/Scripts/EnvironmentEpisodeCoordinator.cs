@@ -134,6 +134,12 @@ public sealed class EnvironmentEpisodeCoordinator
                 groupReward,
                 captureCells.ToArray());
 
+            Academy.Instance.StatsRecorder.Add("Evaluation/CaptureSuccess", success ? 1f : 0f);
+            Academy.Instance.StatsRecorder.Add("Evaluation/EpisodePhysicsSteps", step);
+            Academy.Instance.StatsRecorder.Add("Evaluation/CapturedFraction",
+                (float)caughtHiders.Count / Mathf.Max(1, environment.Hiders.Count));
+            Academy.Instance.StatsRecorder.Add("Evaluation/CurriculumDistance", outcome.Difficulty);
+
             // Close the trajectory before any participant is repositioned.
             if (interrupted) group.GroupEpisodeInterrupted();
             else group.EndGroupEpisode();

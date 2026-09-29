@@ -21,17 +21,22 @@ public sealed class TeamSightingMemory
 
     public void Record(NavMeshAgent hider, Vector3 worldPosition, int step)
     {
-        if (hider != null)
+        if (hider != null && hider.gameObject.activeInHierarchy)
             sightings[hider] = new Sighting(worldPosition, step);
     }
 
     public bool TryGet(NavMeshAgent hider, out Sighting sighting)
     {
-        if (hider != null)
+        if (hider != null && hider.gameObject.activeInHierarchy)
             return sightings.TryGetValue(hider, out sighting);
         sighting = default;
         return false;
     }
 
     public void ResetEpisode() => sightings.Clear();
+
+    public void Forget(NavMeshAgent hider)
+    {
+        if (hider != null) sightings.Remove(hider);
+    }
 }

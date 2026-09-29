@@ -11,13 +11,15 @@ public sealed class EpisodeSpecification
     public int Difficulty { get; }
     public Vector2Int[] SeekerSpawnCells { get; }
     public Vector2Int[] HiderSpawnCells { get; }
+    public bool FaceNearestHider { get; }
 
     public EpisodeSpecification(int sequence, int difficulty,
-        Vector2Int[] seekerSpawnCells, Vector2Int[] hiderSpawnCells)
+        Vector2Int[] seekerSpawnCells, Vector2Int[] hiderSpawnCells, bool faceNearestHider = false)
     {
         Sequence = sequence;
         Difficulty = difficulty;
         SeekerSpawnCells = seekerSpawnCells ?? throw new ArgumentNullException(nameof(seekerSpawnCells));
         HiderSpawnCells = hiderSpawnCells ?? throw new ArgumentNullException(nameof(hiderSpawnCells));
+        FaceNearestHider = faceNearestHider;
     }
 }

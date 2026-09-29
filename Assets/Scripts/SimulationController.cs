@@ -52,6 +52,12 @@ public class SimulationController : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float curriculumSuccessThreshold = 0.8f;
     [SerializeField] private int curriculumRandomSeed = 12345;
     [SerializeField] private string curriculumProgressFile = "curriculum_progress_v2.json";
+    [Tooltip("Resume a saved lesson only when continuing its matching policy. Disable for a fresh policy.")]
+    [SerializeField] private bool resumeCurriculumProgress;
+    [Tooltip("Face targets during the initial lesson; later lessons retain random headings.")]
+    [SerializeField] private bool faceTargetsInFirstLesson;
+    [Tooltip("Maximum physics steps for a successful episode to count toward advancement. Zero disables this limit.")]
+    [SerializeField, Min(0)] private int curriculumMaximumCaptureSteps;
 
     public struct WorldConfig
     {
@@ -110,6 +116,14 @@ public class SimulationController : MonoBehaviour
         if (IsTrainingMode && useAdaptiveSpawnCurriculum)
         {
             string progressPath = Path.Combine(Application.dataPath, "..", curriculumProgressFile);
+            if (!resumeCurriculumProgress)
+            {
+                string directory = Path.GetDirectoryName(progressPath);
+                string stem = Path.GetFileNameWithoutExtension(progressPath);
+                progressPath = Path.Combine(directory,
+                    $"{stem}_{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N").Substring(0, 8)}.json");
+            }
+            Debug.Log($"[Curriculum] {(resumeCurriculumProgress ? "Resuming" : "Fresh")} progress: {progressPath}", this);
             int minimumDistance = Mathf.Max(1, minimumHiderDistance);
             curriculum = new AdaptiveSpawnCurriculum(
                 minimumDistance,
@@ -118,7 +132,10 @@ public class SimulationController : MonoBehaviour
                 curriculumWindowSize,
                 curriculumSuccessThreshold,
                 progressPath,
-                curriculumRandomSeed);
+                curriculumRandomSeed,
+                resumeCurriculumProgress,
+                faceTargetsInFirstLesson,
+                curriculumMaximumCaptureSteps);
         }
         environmentManager.ConfigureTraining(episodeRules ?? new EpisodeRules(), curriculum);
         environmentManager.LayoutChanged -= HandleLayoutChanged;
@@ -227,6 +244,55 @@ public class SimulationController : MonoBehaviour
         }
     }
 
+    // The testing scene's existing Load button opens a file picker. F7 still reloads
+    // the named saved scenario through LoadPaintedScenario.
+    public void ImportScenario()
+    {
+        if (IsTrainingMode || environment == null) return;
+
+        float previousTimeScale = Time.timeScale;
+        Time.timeScale = 0f;
+        try
+        {
+            string path = ScenarioFilePicker.Open(Application.dataPath);
+            if (string.IsNullOrEmpty(path)) return; // Cancel keeps the current world.
+            LoadScenarioFromFile(path);
+        }
+        catch (Exception exception) when (exception is IOException ||
+                                          exception is NotSupportedException)
+        {
+            Debug.LogError($"Could not select a scenario: {exception.Message}", this);
+        }
+        finally
+        {
+            Time.timeScale = previousTimeScale;
+        }
+    }
+
+    public bool LoadScenarioFromFile(string path)
+    {
+        if (IsTrainingMode || environment == null) return false;
+        try
+        {
+            // Parse completely before stopping or replacing the existing scenario.
+            ScenarioGrid loaded = ScenarioStorage.LoadFile(
+                path, environment.Grid.CellSize, environment.Grid.Origin);
+            environmentManager.ReplaceLayout(environment, loaded);
+            isStarted = false;
+            EnterEditingMode(false);
+            Debug.Log($"Imported {loaded.Width}x{loaded.Height} scenario from {path}. " +
+                      "Review the layout, then press Play.", this);
+            return true;
+        }
+        catch (Exception exception) when (exception is ArgumentException ||
+                                          exception is FormatException || exception is IOException ||
+                                          exception is UnauthorizedAccessException)
+        {
+            Debug.LogError($"Could not import scenario: {exception.Message}", this);
+            return false;
+        }
+    }
+
     private void Update()
     {
         if (environmentManager == null) return;
@@ -256,7 +322,7 @@ public class SimulationController : MonoBehaviour
         GameEvents.RestartEpisodeRequested += RestartEpisode;
         GameEvents.StopSimulationRequested += StopAndReturnToEditing;
         GameEvents.ClearScenarioRequested += ClearScenario;
-        GameEvents.LoadScenarioRequested += LoadPaintedScenario;
+        GameEvents.LoadScenarioRequested += ImportScenario;
         if (environmentManager != null)
         {
             environmentManager.LayoutChanged -= HandleLayoutChanged;
@@ -271,7 +337,7 @@ public class SimulationController : MonoBehaviour
         GameEvents.RestartEpisodeRequested -= RestartEpisode;
         GameEvents.StopSimulationRequested -= StopAndReturnToEditing;
         GameEvents.ClearScenarioRequested -= ClearScenario;
-        GameEvents.LoadScenarioRequested -= LoadPaintedScenario;
+        GameEvents.LoadScenarioRequested -= ImportScenario;
         if (environmentManager != null)
             environmentManager.LayoutChanged -= HandleLayoutChanged;
     }
