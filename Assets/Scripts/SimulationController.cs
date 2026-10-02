@@ -13,6 +13,7 @@ using static ScenarioSystem;
 // handles play/pause/reset and persistence
 // updates influence and rendering
 
+[DefaultExecutionOrder(-20)]
 public class SimulationController : MonoBehaviour
 {
     [Header("Prefabs")]

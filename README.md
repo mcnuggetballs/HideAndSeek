@@ -2,6 +2,10 @@
 
 This guide explains how to prepare Python and train the seekers in Unity, including GPU training on an NVIDIA RTX 5090. Commands below are for **Windows Command Prompt (CMD)** unless stated otherwise. Run them from the Unity project directory containing `Assets` and `config`.
 
+## Quick CPU Training ##
+mlagents_env\Scripts\activate
+python -m mlagents.trainers.learn config/config.yaml --run-id=hide_seek_v1
+
 ## 1. What the computer and software do
 
 | Term | Meaning | Role in this project |

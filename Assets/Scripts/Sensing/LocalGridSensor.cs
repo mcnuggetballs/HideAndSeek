@@ -23,7 +23,7 @@ public sealed class LocalGridSensor : ISensor
         this.radius = Mathf.Max(1, radius);
         this.supersample = Mathf.Max(1, supersample);
         size = 2 * this.radius * this.supersample + 1;
-        specification = ObservationSpec.Visual(1, size, size);
+        specification = ObservationSpec.Visual(2, size, size);
     }
 
     public ObservationSpec GetObservationSpec() => specification;
@@ -49,13 +49,14 @@ public sealed class LocalGridSensor : ISensor
                 float rightDistance = (column - half) * sampleSpacing;
                 Vector3 sample = agent.position + forward * forwardDistance + right * rightDistance;
                 Vector2Int cell = grid != null ? grid.WorldToCell(sample) : new Vector2Int(-1, -1);
-                bool wall = grid == null || !grid.IsInsideGrid(cell) ||
-                    grid.GetCell(cell) == ScenarioGrid.WallCell;
-                writer[0, row, column] = wall ? 1f : 0f;
+                bool outside = grid == null || !grid.IsInsideGrid(cell);
+                writer[0, row, column] = !outside &&
+                    grid.GetCell(cell) == ScenarioGrid.WallCell ? 1f : 0f;
+                writer[1, row, column] = outside ? 1f : 0f;
             }
         }
 
-        return size * size;
+        return 2 * size * size;
     }
 
     public byte[] GetCompressedObservation() => null;

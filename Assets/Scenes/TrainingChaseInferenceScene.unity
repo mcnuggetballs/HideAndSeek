@@ -526,7 +526,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationController
   trainingEnvironmentPrefab: {fileID: 7066587739052165337, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
-  seekerPrefab: {fileID: 4382439110685233668, guid: cbe7a28ec7234abd89e78b30c0f333ca, type: 3}
+  seekerPrefab: {fileID: 6030541279102192880, guid: 474d8699d6499e74c9b2c2aaef424777, type: 3}
   hiderPrefab: {fileID: 8698921351780613049, guid: d6cb008445346c34ab861c9ebd502ba1, type: 3}
   obstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
   scenarioSystem: {fileID: 2144339860}
@@ -548,10 +548,10 @@ MonoBehaviour:
   minimumHiderDistance: 1
   startingMaximumHiderDistance: 1
   curriculumDistanceIncrement: 1
-  curriculumWindowSize: 100
+  curriculumWindowSize: 1000
   curriculumSuccessThreshold: 0.95
   curriculumRandomSeed: 12345
-  curriculumProgressFile: quick_chase_progress.json
+  curriculumProgressFile: chase_inference_progress.json
   resumeCurriculumProgress: 0
   faceTargetsInFirstLesson: 1
   curriculumMaximumCaptureSteps: 150
@@ -584,7 +584,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnvironmentSpawner
   environmentPrefab: {fileID: 7066587739052165337, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
-  environmentCount: 40
+  environmentCount: 1
   maxCount: 50
   environmentGap: 100
 --- !u!1660057539 &9223372036854775807

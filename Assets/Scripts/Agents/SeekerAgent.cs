@@ -16,7 +16,7 @@ public sealed class SeekerAgent : Agent
     private static readonly float[] TurnBuckets = { -1f, -0.5f, 0f, 0.5f, 1f };
     private const int MaxTeammates = 4;
     private const int MaxHiders = 4;
-    public const int VectorObservationSize = 40;
+    public const int VectorObservationSize = 52;
 
     [Header("Agent Setup")]
     [SerializeField] private NavMeshAgent seekerAgent;
@@ -37,6 +37,7 @@ public sealed class SeekerAgent : Agent
     [SerializeField] private int currentlyVisibleHiders;
 
     private readonly RaycastHit[] sightHits = new RaycastHit[32];
+    private readonly HashSet<NavMeshAgent> visibleHiders = new();
     private Vector3 previousActionPosition;
     private bool hasPreviousActionPosition;
 
@@ -82,6 +83,7 @@ public sealed class SeekerAgent : Agent
         hasPreviousActionPosition = false;
         displacementSinceLastAction = 0f;
         currentlyVisibleHiders = 0;
+        visibleHiders.Clear();
     }
 
     public void SetTargets(IReadOnlyList<NavMeshAgent> targets)
@@ -104,12 +106,14 @@ public sealed class SeekerAgent : Agent
     {
         if (environment == null) return;
         currentlyVisibleHiders = 0;
+        visibleHiders.Clear();
         foreach (NavMeshAgent hider in environment.Hiders)
         {
             if (hider == null || !hider.gameObject.activeInHierarchy) continue;
             if (CanSee(hider))
             {
                 currentlyVisibleHiders++;
+                visibleHiders.Add(hider);
                 environment.TeamSightings.Record(hider, hider.transform.position,
                     environment.EpisodeCoordinator.CurrentStep);
             }
@@ -128,7 +132,8 @@ public sealed class SeekerAgent : Agent
         ScenarioGrid grid = environment.Grid;
         float halfWidth = Mathf.Max(grid.CellSize, grid.Width * grid.CellSize * 0.5f);
         float halfHeight = Mathf.Max(grid.CellSize, grid.Height * grid.CellSize * 0.5f);
-        Vector3 fromCenter = transform.position - grid.Origin;
+        Vector3 fromCenter = environment.Root.transform.InverseTransformDirection(
+            transform.position - grid.Origin);
         Vector3 localForward = environment.Root.transform.InverseTransformDirection(transform.forward);
 
         sensor.AddObservation(Mathf.Clamp(fromCenter.x / halfWidth, -1f, 1f));
@@ -150,29 +155,35 @@ public sealed class SeekerAgent : Agent
         {
             if (index >= environment.Hiders.Count)
             {
-                for (int value = 0; value < 4; value++) sensor.AddObservation(0f);
+                for (int value = 0; value < 7; value++) sensor.AddObservation(0f);
                 continue;
             }
 
             NavMeshAgent hider = environment.Hiders[index];
-            if (hider == null || !hider.gameObject.activeInHierarchy ||
-                !environment.TeamSightings.TryGet(hider, out TeamSightingMemory.Sighting sighting))
+            if (hider == null || !hider.gameObject.activeInHierarchy)
             {
-                for (int value = 0; value < 4; value++) sensor.AddObservation(0f);
+                for (int value = 0; value < 7; value++) sensor.AddObservation(0f);
                 continue;
             }
 
             int memorySteps = Mathf.Max(1, hostileMemorySteps);
-            int age = environment.EpisodeCoordinator.CurrentStep - sighting.Step;
-            if (age > memorySteps)
-            {
-                for (int value = 0; value < 4; value++) sensor.AddObservation(0f);
-                continue;
-            }
-
-            Vector3 relative = transform.InverseTransformDirection(sighting.WorldPosition - transform.position);
+            bool hasSighting = environment.TeamSightings.TryGet(hider,
+                out TeamSightingMemory.Sighting sighting);
+            int age = hasSighting ? Mathf.Max(0,
+                environment.EpisodeCoordinator.CurrentStep - sighting.Step) : memorySteps + 1;
+            hasSighting &= age <= memorySteps;
+            bool visibleNow = visibleHiders.Contains(hider);
+            bool teamVisibleNow = hasSighting && age == 0;
+            Vector3 relative = hasSighting
+                ? transform.InverseTransformDirection(sighting.WorldPosition - transform.position)
+                : Vector3.zero;
+            // Active, known position, personally visible now, teammate visible now,
+            // normalized age, and last-known X/Z. Zero position means unknown when known=0.
             sensor.AddObservation(1f);
-            sensor.AddObservation(Mathf.Clamp01((float)age / memorySteps));
+            sensor.AddObservation(hasSighting ? 1f : 0f);
+            sensor.AddObservation(visibleNow ? 1f : 0f);
+            sensor.AddObservation(teamVisibleNow && !visibleNow ? 1f : 0f);
+            sensor.AddObservation(hasSighting ? Mathf.Clamp01((float)age / memorySteps) : 1f);
             sensor.AddObservation(Mathf.Clamp(relative.x / halfWidth, -1f, 1f));
             sensor.AddObservation(Mathf.Clamp(relative.z / halfHeight, -1f, 1f));
         }
@@ -201,8 +212,14 @@ public sealed class SeekerAgent : Agent
         targetAgent = FindNearestTarget();
         if (targetAgent == null) return;
 
-        float combinedRadius = seekerAgent.radius + targetAgent.radius;
-        float effectiveCatchDistance = Mathf.Max(catchDistance, combinedRadius);
+        // NavMeshAgent radii are expressed in each object's local scale. Both character
+        // prefab roots are scaled by two, so comparing centers to the unscaled radii
+        // leaves an unreachable capture threshold while avoidance keeps them apart.
+        float seekerScale = Mathf.Max(Mathf.Abs(transform.lossyScale.x), Mathf.Abs(transform.lossyScale.z));
+        float targetScale = Mathf.Max(Mathf.Abs(targetAgent.transform.lossyScale.x),
+            Mathf.Abs(targetAgent.transform.lossyScale.z));
+        float combinedRadius = seekerAgent.radius * seekerScale + targetAgent.radius * targetScale;
+        float effectiveCatchDistance = Mathf.Max(catchDistance, combinedRadius + 0.1f);
         if (Vector3.Distance(seekerAgent.nextPosition, targetAgent.nextPosition) <= effectiveCatchDistance)
             environment?.EpisodeCoordinator.ReportCapture(this, targetAgent);
     }
@@ -210,8 +227,22 @@ public sealed class SeekerAgent : Agent
     public override void Heuristic(in ActionBuffers actionsOut)
     {
         ActionSegment<int> discrete = actionsOut.DiscreteActions;
-        discrete[0] = 1;
-        discrete[1] = 2;
+        NavMeshAgent target = FindNearestTarget();
+        if (target == null || environment == null ||
+            !environment.TeamSightings.TryGet(target, out TeamSightingMemory.Sighting sighting))
+        {
+            discrete[0] = 1;
+            discrete[1] = 3;
+            return;
+        }
+
+        Vector3 direction = sighting.WorldPosition - transform.position;
+        direction.y = 0f;
+        float angle = Vector3.SignedAngle(transform.forward, direction, Vector3.up);
+        float absAngle = Mathf.Abs(angle);
+        discrete[0] = absAngle > 60f ? 2 : 3;
+        discrete[1] = angle < -25f ? 0 : angle < -5f ? 1 :
+            angle > 25f ? 4 : angle > 5f ? 3 : 2;
     }
 
     private void WriteTeammate(VectorSensor sensor, Transform teammate,

@@ -84,8 +84,10 @@ public sealed class EnvironmentEpisodeCoordinator
         float timeReward = -rules.totalTimePenalty / rules.maxEnvironmentSteps;
         AddGroupReward(timeReward);
 
+        // Reaching the deadline completes a failed attempt. Reserve interruption for
+        // manual restarts, which must not be scored as policy failures.
         if (step >= rules.maxEnvironmentSteps)
-            FinishEpisode(interrupted: true, reportToCurriculum: true);
+            FinishEpisode(interrupted: false, reportToCurriculum: true);
     }
 
     public void ReportCapture(SeekerAgent capturingAgent, NavMeshAgent hider)
@@ -134,11 +136,14 @@ public sealed class EnvironmentEpisodeCoordinator
                 groupReward,
                 captureCells.ToArray());
 
-            Academy.Instance.StatsRecorder.Add("Evaluation/CaptureSuccess", success ? 1f : 0f);
-            Academy.Instance.StatsRecorder.Add("Evaluation/EpisodePhysicsSteps", step);
-            Academy.Instance.StatsRecorder.Add("Evaluation/CapturedFraction",
-                (float)caughtHiders.Count / Mathf.Max(1, environment.Hiders.Count));
-            Academy.Instance.StatsRecorder.Add("Evaluation/CurriculumDistance", outcome.Difficulty);
+            if (reportToCurriculum)
+            {
+                Academy.Instance.StatsRecorder.Add("Evaluation/CaptureSuccess", success ? 1f : 0f);
+                Academy.Instance.StatsRecorder.Add("Evaluation/EpisodePhysicsSteps", step);
+                Academy.Instance.StatsRecorder.Add("Evaluation/CapturedFraction",
+                    (float)caughtHiders.Count / Mathf.Max(1, environment.Hiders.Count));
+                Academy.Instance.StatsRecorder.Add("Evaluation/CurriculumDistance", outcome.Difficulty);
+            }
 
             // Close the trajectory before any participant is repositioned.
             if (interrupted) group.GroupEpisodeInterrupted();
