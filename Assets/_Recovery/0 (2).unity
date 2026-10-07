@@ -3561,10 +3561,6 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 971796617}
     - target: {fileID: 6474338889623940484, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
-      propertyPath: scenarioType
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6474338889623940484, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
       propertyPath: worldBuilder
       value: 
       objectReference: {fileID: 575776162}
@@ -3572,10 +3568,6 @@ PrefabInstance:
       propertyPath: scenarioSystem
       value: 
       objectReference: {fileID: 5549726802747261794}
-    - target: {fileID: 6474338889623940484, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
-      propertyPath: simulationMode
-      value: 0
-      objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 4979092101512667605, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
     m_RemovedGameObjects: []

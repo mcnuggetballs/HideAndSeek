@@ -59,6 +59,11 @@ public class SimulationController : MonoBehaviour
     [SerializeField] private bool faceTargetsInFirstLesson;
     [Tooltip("Maximum physics steps for a successful episode to count toward advancement. Zero disables this limit.")]
     [SerializeField, Min(0)] private int curriculumMaximumCaptureSteps;
+    [Header("Ordered Police Curriculum")]
+    [Tooltip("Use Capture, Chase, Detect, Search phases instead of distance-only spawning.")]
+    [SerializeField] private bool useOrderedPoliceCurriculum;
+    [SerializeField, Min(1)] private int orderedWindowSize = 100;
+    [SerializeField, Range(0f, 1f)] private float orderedSuccessThreshold = 0.8f;
 
     public struct WorldConfig
     {
@@ -126,17 +131,20 @@ public class SimulationController : MonoBehaviour
             }
             Debug.Log($"[Curriculum] {(resumeCurriculumProgress ? "Resuming" : "Fresh")} progress: {progressPath}", this);
             int minimumDistance = Mathf.Max(1, minimumHiderDistance);
-            curriculum = new AdaptiveSpawnCurriculum(
-                minimumDistance,
-                Mathf.Max(minimumDistance, startingMaximumHiderDistance),
-                curriculumDistanceIncrement,
-                curriculumWindowSize,
-                curriculumSuccessThreshold,
-                progressPath,
-                curriculumRandomSeed,
-                resumeCurriculumProgress,
-                faceTargetsInFirstLesson,
-                curriculumMaximumCaptureSteps);
+            curriculum = useOrderedPoliceCurriculum
+                ? new OrderedPoliceCurriculum(orderedWindowSize, orderedSuccessThreshold,
+                    progressPath, curriculumRandomSeed, resumeCurriculumProgress)
+                : new AdaptiveSpawnCurriculum(
+                    minimumDistance,
+                    Mathf.Max(minimumDistance, startingMaximumHiderDistance),
+                    curriculumDistanceIncrement,
+                    curriculumWindowSize,
+                    curriculumSuccessThreshold,
+                    progressPath,
+                    curriculumRandomSeed,
+                    resumeCurriculumProgress,
+                    faceTargetsInFirstLesson,
+                    curriculumMaximumCaptureSteps);
         }
         environmentManager.ConfigureTraining(episodeRules ?? new EpisodeRules(), curriculum);
         environmentManager.LayoutChanged -= HandleLayoutChanged;

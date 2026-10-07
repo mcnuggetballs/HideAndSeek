@@ -171,7 +171,15 @@ public sealed class EnvironmentInstance
         for (int i = 0; i < hiders.Count; i++)
             SetSpawnCell(hiders[i], specification.HiderSpawnCells[i], occupied);
 
-        if (specification.FaceNearestHider)
+        foreach (NavMeshAgent hider in hiders)
+        {
+            ScriptedHiderMotion motion = hider.GetComponent<ScriptedHiderMotion>();
+            if (specification.MovingHider && motion == null)
+                motion = hider.gameObject.AddComponent<ScriptedHiderMotion>();
+            if (motion != null) motion.Configure(this, specification.MovingHider);
+        }
+
+        if (specification.FaceNearestHider || specification.FaceAwayFromNearestHider)
         {
             foreach (SeekerAgent seeker in seekers)
             {
@@ -188,7 +196,9 @@ public sealed class EnvironmentInstance
                     nearestDirection = direction;
                 }
                 if (nearestDirection.sqrMagnitude > 0.001f)
-                    spawnPoses[navAgent] = new Pose(pose.position, Quaternion.LookRotation(nearestDirection));
+                    spawnPoses[navAgent] = new Pose(pose.position,
+                        Quaternion.LookRotation(specification.FaceAwayFromNearestHider
+                            ? -nearestDirection : nearestDirection));
             }
         }
 

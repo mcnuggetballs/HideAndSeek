@@ -142,7 +142,10 @@ public sealed class EnvironmentEpisodeCoordinator
                 Academy.Instance.StatsRecorder.Add("Evaluation/EpisodePhysicsSteps", step);
                 Academy.Instance.StatsRecorder.Add("Evaluation/CapturedFraction",
                     (float)caughtHiders.Count / Mathf.Max(1, environment.Hiders.Count));
-                Academy.Instance.StatsRecorder.Add("Evaluation/CurriculumDistance", outcome.Difficulty);
+                Academy.Instance.StatsRecorder.Add(
+                    curriculum is OrderedPoliceCurriculum
+                        ? "Evaluation/CurriculumStage" : "Evaluation/CurriculumDistance",
+                    outcome.Difficulty);
             }
 
             // Close the trajectory before any participant is repositioned.

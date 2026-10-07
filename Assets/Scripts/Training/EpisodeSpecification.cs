@@ -12,14 +12,20 @@ public sealed class EpisodeSpecification
     public Vector2Int[] SeekerSpawnCells { get; }
     public Vector2Int[] HiderSpawnCells { get; }
     public bool FaceNearestHider { get; }
+    public bool FaceAwayFromNearestHider { get; }
+    public bool MovingHider { get; }
 
     public EpisodeSpecification(int sequence, int difficulty,
-        Vector2Int[] seekerSpawnCells, Vector2Int[] hiderSpawnCells, bool faceNearestHider = false)
+        Vector2Int[] seekerSpawnCells, Vector2Int[] hiderSpawnCells,
+        bool faceNearestHider = false, bool faceAwayFromNearestHider = false,
+        bool movingHider = false)
     {
         Sequence = sequence;
         Difficulty = difficulty;
         SeekerSpawnCells = seekerSpawnCells ?? throw new ArgumentNullException(nameof(seekerSpawnCells));
         HiderSpawnCells = hiderSpawnCells ?? throw new ArgumentNullException(nameof(hiderSpawnCells));
         FaceNearestHider = faceNearestHider;
+        FaceAwayFromNearestHider = faceAwayFromNearestHider;
+        MovingHider = movingHider;
     }
 }
