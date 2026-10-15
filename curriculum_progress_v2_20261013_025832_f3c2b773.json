@@ -1,0 +1,81 @@
+{
+    "maxHiderDistance": 4,
+    "sequence": 45,
+    "advanceCount": 0,
+    "successWindow": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+    ],
+    "catchCounts": [
+        {
+            "layoutHash": -298687676,
+            "x": 27,
+            "y": 15,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 29,
+            "y": 16,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 24,
+            "y": 17,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 23,
+            "y": 17,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 4,
+            "y": 10,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 6,
+            "y": 9,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 26,
+            "y": 9,
+            "count": 2
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 22,
+            "y": 8,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 25,
+            "y": 10,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 6,
+            "y": 1,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 9,
+            "y": 5,
+            "count": 1
+        }
+    ]
+}

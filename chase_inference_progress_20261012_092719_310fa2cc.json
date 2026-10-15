@@ -1,0 +1,30 @@
+{
+    "maxHiderDistance": 1,
+    "sequence": 3,
+    "advanceCount": 0,
+    "successWindow": [
+        1,
+        1,
+        1
+    ],
+    "catchCounts": [
+        {
+            "layoutHash": 1439853601,
+            "x": 1,
+            "y": 1,
+            "count": 1
+        },
+        {
+            "layoutHash": 1439853601,
+            "x": 2,
+            "y": 2,
+            "count": 1
+        },
+        {
+            "layoutHash": 1439853601,
+            "x": 3,
+            "y": 3,
+            "count": 1
+        }
+    ]
+}

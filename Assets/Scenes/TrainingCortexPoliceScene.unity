@@ -544,17 +544,23 @@ MonoBehaviour:
     totalTimePenalty: 2
     hiderCaughtGroupReward: 5
     individualCatchRewardFraction: 0.5
-  useAdaptiveSpawnCurriculum: 1
+  useAdaptiveSpawnCurriculum: 0
   minimumHiderDistance: 2
   startingMaximumHiderDistance: 4
   curriculumDistanceIncrement: 1
   curriculumWindowSize: 20
   curriculumSuccessThreshold: 0.8
   curriculumRandomSeed: 12345
-  curriculumProgressFile: curriculum_progress_v2.json
+  curriculumProgressFile: cortex_police_progress.json
   resumeCurriculumProgress: 0
-  faceTargetsInFirstLesson: 0
-  curriculumMaximumCaptureSteps: 0
+  useCortexPoliceCurriculum: 1
+  cortexWindowSize: 100
+  cortexSuccessThreshold: 0.8
+  cortexFinalSearchDistance: 12
+  cortexSearchDistanceIncrement: 1
+  cortexCaptureDeadline: 512
+  cortexChaseDeadline: 768
+  cortexDetectDeadline: 1024
 --- !u!114 &2144339860
 MonoBehaviour:
   m_ObjectHideFlags: 0

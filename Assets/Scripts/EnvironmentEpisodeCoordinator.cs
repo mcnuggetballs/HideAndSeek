@@ -86,7 +86,10 @@ public sealed class EnvironmentEpisodeCoordinator
 
         // Reaching the deadline completes a failed attempt. Reserve interruption for
         // manual restarts, which must not be scored as policy failures.
-        if (step >= rules.maxEnvironmentSteps)
+        int episodeLimit = environment.CurrentEpisode?.StepLimit > 0
+            ? Mathf.Min(rules.maxEnvironmentSteps, environment.CurrentEpisode.StepLimit)
+            : rules.maxEnvironmentSteps;
+        if (step >= episodeLimit)
             FinishEpisode(interrupted: false, reportToCurriculum: true);
     }
 
@@ -142,10 +145,26 @@ public sealed class EnvironmentEpisodeCoordinator
                 Academy.Instance.StatsRecorder.Add("Evaluation/EpisodePhysicsSteps", step);
                 Academy.Instance.StatsRecorder.Add("Evaluation/CapturedFraction",
                     (float)caughtHiders.Count / Mathf.Max(1, environment.Hiders.Count));
-                Academy.Instance.StatsRecorder.Add(
-                    curriculum is OrderedPoliceCurriculum
-                        ? "Evaluation/CurriculumStage" : "Evaluation/CurriculumDistance",
-                    outcome.Difficulty);
+                if (curriculum is CortexPoliceCurriculum cortex)
+                {
+                    Academy.Instance.StatsRecorder.Add("Evaluation/CurriculumStage",
+                        (float)cortex.CurrentStage);
+                    Academy.Instance.StatsRecorder.Add("Evaluation/CurriculumDistance",
+                        cortex.CurrentDistance);
+                    Academy.Instance.StatsRecorder.Add("Evaluation/StageWindowSuccessRate",
+                        cortex.WindowSuccessRate);
+                    Academy.Instance.StatsRecorder.Add("Evaluation/StageWindowCount",
+                        cortex.WindowCount);
+                    Academy.Instance.StatsRecorder.Add("Evaluation/FinalLessonMastered",
+                        cortex.FinalLessonMastered ? 1f : 0f);
+                }
+                else
+                {
+                    Academy.Instance.StatsRecorder.Add(
+                        curriculum is OrderedPoliceCurriculum
+                            ? "Evaluation/CurriculumStage" : "Evaluation/CurriculumDistance",
+                        outcome.Difficulty);
+                }
             }
 
             // Close the trajectory before any participant is repositioned.

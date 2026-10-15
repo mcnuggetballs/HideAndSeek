@@ -3,7 +3,7 @@ using UnityEngine.AI;
 
 /// <summary>
 /// Controlled opponent for ordered training: stationary until first spotted,
-/// then takes one walkable step away from the seeker at a time. It is not an ML agent.
+/// then takes one walkable step away from the nearest seeker at a time. It is not an ML agent.
 /// </summary>
 public sealed class ScriptedHiderMotion : MonoBehaviour
 {
@@ -35,8 +35,17 @@ public sealed class ScriptedHiderMotion : MonoBehaviour
         nextReplanTime = Time.time + 0.5f;
         ScenarioGrid grid = environment.Grid;
         Vector2Int here = grid.WorldToCell(transform.position);
-        Vector3 seeker = environment.Seekers[0].transform.position;
-        float bestDistance = (transform.position - seeker).sqrMagnitude;
+        float DistanceFromNearestSeeker(Vector3 position)
+        {
+            float nearest = float.PositiveInfinity;
+            foreach (SeekerAgent seeker in environment.Seekers)
+                if (seeker != null)
+                    nearest = Mathf.Min(nearest,
+                        (position - seeker.transform.position).sqrMagnitude);
+            return nearest;
+        }
+
+        float bestDistance = DistanceFromNearestSeeker(transform.position);
         Vector3 destination = transform.position;
         Vector2Int[] directions = { Vector2Int.left, Vector2Int.right,
             Vector2Int.up, Vector2Int.down };
@@ -46,7 +55,7 @@ public sealed class ScriptedHiderMotion : MonoBehaviour
             if (!grid.IsInsideGrid(cell) || grid.GetCell(cell) == ScenarioGrid.WallCell)
                 continue;
             Vector3 proposed = grid.CellToWorld(cell);
-            float distance = (proposed - seeker).sqrMagnitude;
+            float distance = DistanceFromNearestSeeker(proposed);
             if (distance <= bestDistance || !NavMesh.SamplePosition(proposed,
                     out NavMeshHit hit, grid.CellSize * 0.4f, NavMesh.AllAreas))
                 continue;

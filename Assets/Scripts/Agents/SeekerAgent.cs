@@ -17,6 +17,7 @@ public sealed class SeekerAgent : Agent
     private const int MaxTeammates = 4;
     private const int MaxHiders = 4;
     public const int VectorObservationSize = 52;
+    public float ViewDistance => viewDistance;
 
     [Header("Agent Setup")]
     [SerializeField] private NavMeshAgent seekerAgent;

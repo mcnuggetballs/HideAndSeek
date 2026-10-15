@@ -65,6 +65,17 @@ public class SimulationController : MonoBehaviour
     [SerializeField, Min(1)] private int orderedWindowSize = 100;
     [SerializeField, Range(0f, 1f)] private float orderedSuccessThreshold = 0.8f;
 
+    [Header("Cortex Police Curriculum")]
+    [Tooltip("On a two-seeker, two-hider map, teach Capture, Chase, Detect, then progressively farther wall-hidden Search.")]
+    [SerializeField] private bool useCortexPoliceCurriculum;
+    [SerializeField, Min(1)] private int cortexWindowSize = 100;
+    [SerializeField, Range(0f, 1f)] private float cortexSuccessThreshold = 0.8f;
+    [SerializeField, Min(3)] private int cortexFinalSearchDistance = 12;
+    [SerializeField, Min(1)] private int cortexSearchDistanceIncrement = 1;
+    [SerializeField, Min(1)] private int cortexCaptureDeadline = 512;
+    [SerializeField, Min(1)] private int cortexChaseDeadline = 768;
+    [SerializeField, Min(1)] private int cortexDetectDeadline = 1024;
+
     public struct WorldConfig
     {
         public int width;
@@ -119,7 +130,8 @@ public class SimulationController : MonoBehaviour
         environmentManager = GetComponent<EnvironmentManager>() ?? gameObject.AddComponent<EnvironmentManager>();
         environmentManager.Configure(seekerPrefab, hiderPrefab, obstaclePrefab);
         ITrainingCurriculum curriculum = null;
-        if (IsTrainingMode && useAdaptiveSpawnCurriculum)
+        if (IsTrainingMode && (useCortexPoliceCurriculum ||
+            useOrderedPoliceCurriculum || useAdaptiveSpawnCurriculum))
         {
             string progressPath = Path.Combine(Application.dataPath, "..", curriculumProgressFile);
             if (!resumeCurriculumProgress)
@@ -131,10 +143,16 @@ public class SimulationController : MonoBehaviour
             }
             Debug.Log($"[Curriculum] {(resumeCurriculumProgress ? "Resuming" : "Fresh")} progress: {progressPath}", this);
             int minimumDistance = Mathf.Max(1, minimumHiderDistance);
-            curriculum = useOrderedPoliceCurriculum
-                ? new OrderedPoliceCurriculum(orderedWindowSize, orderedSuccessThreshold,
+            curriculum = useCortexPoliceCurriculum
+                ? new CortexPoliceCurriculum(cortexWindowSize, cortexSuccessThreshold,
+                    cortexFinalSearchDistance, cortexSearchDistanceIncrement,
+                    new[] { cortexCaptureDeadline, cortexChaseDeadline,
+                        cortexDetectDeadline, episodeRules.maxEnvironmentSteps },
                     progressPath, curriculumRandomSeed, resumeCurriculumProgress)
-                : new AdaptiveSpawnCurriculum(
+                : useOrderedPoliceCurriculum
+                    ? new OrderedPoliceCurriculum(orderedWindowSize, orderedSuccessThreshold,
+                        progressPath, curriculumRandomSeed, resumeCurriculumProgress)
+                    : new AdaptiveSpawnCurriculum(
                     minimumDistance,
                     Mathf.Max(minimumDistance, startingMaximumHiderDistance),
                     curriculumDistanceIncrement,

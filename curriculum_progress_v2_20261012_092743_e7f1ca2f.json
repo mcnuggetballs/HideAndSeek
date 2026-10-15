@@ -1,0 +1,395 @@
+{
+    "maxHiderDistance": 5,
+    "sequence": 95,
+    "advanceCount": 1,
+    "successWindow": [
+        1,
+        1
+    ],
+    "catchCounts": [
+        {
+            "layoutHash": -298687676,
+            "x": 29,
+            "y": 14,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 12,
+            "y": 16,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 6,
+            "y": 1,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 9,
+            "y": 5,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 2,
+            "y": 14,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 3,
+            "y": 13,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 4,
+            "y": 13,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 16,
+            "y": 16,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 23,
+            "y": 18,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 21,
+            "y": 17,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 24,
+            "y": 17,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 23,
+            "y": 17,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 19,
+            "y": 10,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 11,
+            "y": 6,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 16,
+            "y": 4,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 17,
+            "y": 4,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 10,
+            "y": 2,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 23,
+            "y": 7,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 23,
+            "y": 4,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 22,
+            "y": 13,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 5,
+            "y": 8,
+            "count": 2
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 19,
+            "y": 11,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 29,
+            "y": 17,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 25,
+            "y": 17,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 18,
+            "y": 4,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 19,
+            "y": 7,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 1,
+            "y": 15,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 2,
+            "y": 16,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 18,
+            "y": 5,
+            "count": 2
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 18,
+            "y": 6,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 12,
+            "y": 6,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 13,
+            "y": 10,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 16,
+            "y": 7,
+            "count": 2
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 15,
+            "y": 11,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 11,
+            "y": 9,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 11,
+            "y": 12,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 16,
+            "y": 6,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 16,
+            "y": 9,
+            "count": 2
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 16,
+            "y": 10,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 22,
+            "y": 8,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 26,
+            "y": 9,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 2,
+            "y": 9,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 20,
+            "y": 6,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 13,
+            "y": 3,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 10,
+            "y": 9,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 7,
+            "y": 8,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 13,
+            "y": 1,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 8,
+            "y": 4,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 15,
+            "y": 7,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 26,
+            "y": 13,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 6,
+            "y": 9,
+            "count": 2
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 23,
+            "y": 13,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 16,
+            "y": 8,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 27,
+            "y": 15,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 12,
+            "y": 14,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 3,
+            "y": 3,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 14,
+            "y": 16,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 11,
+            "y": 13,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 27,
+            "y": 5,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 13,
+            "y": 5,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 29,
+            "y": 15,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 8,
+            "y": 14,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 11,
+            "y": 7,
+            "count": 1
+        },
+        {
+            "layoutHash": -298687676,
+            "x": 15,
+            "y": 6,
+            "count": 1
+        }
+    ]
+}

@@ -14,11 +14,12 @@ public sealed class EpisodeSpecification
     public bool FaceNearestHider { get; }
     public bool FaceAwayFromNearestHider { get; }
     public bool MovingHider { get; }
+    public int StepLimit { get; }
 
     public EpisodeSpecification(int sequence, int difficulty,
         Vector2Int[] seekerSpawnCells, Vector2Int[] hiderSpawnCells,
         bool faceNearestHider = false, bool faceAwayFromNearestHider = false,
-        bool movingHider = false)
+        bool movingHider = false, int stepLimit = 0)
     {
         Sequence = sequence;
         Difficulty = difficulty;
@@ -27,5 +28,6 @@ public sealed class EpisodeSpecification
         FaceNearestHider = faceNearestHider;
         FaceAwayFromNearestHider = faceAwayFromNearestHider;
         MovingHider = movingHider;
+        StepLimit = stepLimit;
     }
 }
