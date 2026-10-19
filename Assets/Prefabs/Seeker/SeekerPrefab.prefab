@@ -283,7 +283,7 @@ MonoBehaviour:
   seekerAgent: {fileID: 7299837999761018527}
   moveSpeed: 5
   rotateSpeed: 200
-  viewDistance: 10
+  viewDistance: 20
   viewAngle: 90
   eyeHeight: 0.5
   catchDistance: 1.5
@@ -391,17 +391,17 @@ MonoBehaviour:
   m_DetectableTags:
   - Obstacle
   - Hider
-  m_RaysPerDirection: 5
+  m_RaysPerDirection: 9
   m_MaxRayDegrees: 45
   m_SphereCastRadius: 0.1
-  m_RayLength: 5
+  m_RayLength: 20
   m_RayLayerMask:
     serializedVersion: 2
     m_Bits: 4294967291
   m_ObservationStacks: 1
   m_AlternatingRayOrder: 1
   m_UseBatchedRaycasts: 0
-  rayHitColor: {r: 1, g: 0, b: 0, a: 1}
-  rayMissColor: {r: 1, g: 1, b: 1, a: 1}
+  rayHitColor: {r: 0, g: 0.037314773, b: 1, a: 1}
+  rayMissColor: {r: 1, g: 0.55099326, b: 0, a: 1}
   m_StartVerticalOffset: 0.25
   m_EndVerticalOffset: 0.25
