@@ -41,6 +41,7 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
     private readonly int distanceIncrement;
     private readonly int[] stageDeadlines;
     private readonly string savePath;
+    private readonly bool baselineMode;
     private readonly System.Random random;
     private readonly Dictionary<int, List<Pair>> pairCache = new();
     private Progress progress;
@@ -60,10 +61,15 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         }
     }
     public bool FinalLessonMastered => progress.finalLessonMastered;
+    public float SuccessThreshold => threshold;
+    public int WindowSize => windowSize;
+    public bool IsBaseline => baselineMode;
 
     public CortexPoliceCurriculum(int windowSize, float threshold,
         int finalSearchDistance, int distanceIncrement, int[] stageDeadlines,
-        string savePath, int randomSeed, bool resumeProgress)
+        string savePath, int randomSeed, bool resumeProgress,
+        bool baselineMode = false, Stage baselineStage = Stage.Capture,
+        int baselineSearchDistance = 3)
     {
         this.windowSize = Mathf.Max(1, windowSize);
         this.threshold = Mathf.Clamp01(threshold);
@@ -76,8 +82,16 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
             if (deadline < 1)
                 throw new ArgumentOutOfRangeException(nameof(stageDeadlines));
         this.savePath = savePath;
+        this.baselineMode = baselineMode;
         random = new System.Random(randomSeed);
-        Load(resumeProgress);
+        if (baselineMode)
+            progress = new Progress
+            {
+                stage = (int)baselineStage,
+                searchDistance = Mathf.Clamp(baselineSearchDistance, 3, this.finalSearchDistance)
+            };
+        else
+            Load(resumeProgress);
     }
 
     public EpisodeSpecification CreateInitialEpisode(EnvironmentInstance environment) =>
@@ -86,6 +100,7 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
     public EpisodeSpecification CreateNextEpisode(EnvironmentInstance environment,
         EpisodeOutcome outcome)
     {
+        if (baselineMode) return CreateEpisode(environment);
         // Difficulty encodes both stage and distance. Results from arenas that are
         // finishing the previous lesson cannot advance the new lesson.
         if (Academy.Instance.IsCommunicatorOn && !outcome.WasInterrupted &&

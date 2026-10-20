@@ -14,6 +14,9 @@ public sealed class EnvironmentEpisodeCoordinator
     private readonly HashSet<NavMeshAgent> caughtHiders = new();
     private readonly List<Vector2Int> captureCells = new();
     private readonly List<Transform> seekerTransforms = new();
+    private readonly Dictionary<NavMeshAgent, int> firstSightingSteps = new();
+    private readonly Dictionary<NavMeshAgent, int> lastSightingSteps = new();
+    private readonly HashSet<Vector2Int> visitedCells = new();
 
     private SimpleMultiAgentGroup group;
     private EpisodeRules rules = new();
@@ -22,10 +25,17 @@ public sealed class EnvironmentEpisodeCoordinator
     private bool transitionInProgress;
     private int step;
     private float groupReward;
+    private int firstSightingStep = -1;
+    private int firstCaptureStep = -1;
+    private int visiblePhysicsSteps;
+    private int reacquisitions;
+    private int capturesAfterSighting;
+    private int sightingToCaptureStepSum;
 
     public int EpisodeNumber { get; private set; }
     public int CurrentStep => step;
     public event Action<EpisodeOutcome> EpisodeFinished;
+    public event Action<EpisodeBaselineMetrics> EpisodeMeasured;
 
     public EnvironmentEpisodeCoordinator(EnvironmentInstance environment)
     {
@@ -81,6 +91,29 @@ public sealed class EnvironmentEpisodeCoordinator
         foreach (SeekerAgent seeker in environment.Seekers)
             seeker?.UpdateTeamSightings();
 
+        // "Visited" means occupied by a seeker, not visually cleared.
+        foreach (SeekerAgent seeker in environment.Seekers)
+            if (seeker != null)
+                visitedCells.Add(environment.Grid.WorldToCell(seeker.transform.position));
+        bool anyVisible = false;
+        foreach (NavMeshAgent hider in environment.Hiders)
+        {
+            if (hider == null || !hider.gameObject.activeInHierarchy ||
+                !environment.TeamSightings.TryGet(hider, out TeamSightingMemory.Sighting sighting) ||
+                sighting.Step != step) continue;
+            anyVisible = true;
+            if (!firstSightingSteps.ContainsKey(hider))
+            {
+                firstSightingSteps.Add(hider, step);
+                if (firstSightingStep < 0) firstSightingStep = step;
+            }
+            else if (lastSightingSteps.TryGetValue(hider, out int previous) &&
+                     step - previous > 1)
+                reacquisitions++;
+            lastSightingSteps[hider] = step;
+        }
+        if (anyVisible) visiblePhysicsSteps++;
+
         float timeReward = -rules.totalTimePenalty / rules.maxEnvironmentSteps;
         AddGroupReward(timeReward);
 
@@ -107,6 +140,12 @@ public sealed class EnvironmentEpisodeCoordinator
 
         caughtHiders.Add(hider);
         captureCells.Add(captureCell);
+        if (firstCaptureStep < 0) firstCaptureStep = step;
+        if (firstSightingSteps.TryGetValue(hider, out int seenAt))
+        {
+            capturesAfterSighting++;
+            sightingToCaptureStepSum += Mathf.Max(0, step - seenAt);
+        }
         AddGroupReward(rules.hiderCaughtGroupReward);
         capturingAgent.AddReward(
             rules.hiderCaughtGroupReward * rules.individualCatchRewardFraction);
@@ -138,6 +177,13 @@ public sealed class EnvironmentEpisodeCoordinator
                 step,
                 groupReward,
                 captureCells.ToArray());
+            EpisodeBaselineMetrics measurements = new(outcome,
+                environment.CurrentEpisode?.StepLimit > 0
+                    ? Mathf.Min(rules.maxEnvironmentSteps, environment.CurrentEpisode.StepLimit)
+                    : rules.maxEnvironmentSteps,
+                firstSightingStep, firstCaptureStep, visiblePhysicsSteps,
+                reacquisitions, visitedCells.Count, firstSightingSteps.Count,
+                capturesAfterSighting, sightingToCaptureStepSum);
 
             if (reportToCurriculum)
             {
@@ -145,6 +191,25 @@ public sealed class EnvironmentEpisodeCoordinator
                 Academy.Instance.StatsRecorder.Add("Evaluation/EpisodePhysicsSteps", step);
                 Academy.Instance.StatsRecorder.Add("Evaluation/CapturedFraction",
                     (float)caughtHiders.Count / Mathf.Max(1, environment.Hiders.Count));
+                if (curriculum is CortexPoliceCurriculum)
+                {
+                    string phase = ((CortexPoliceCurriculum.Stage)
+                        (outcome.Difficulty / 1000)).ToString();
+                    string prefix = $"Baseline/{phase}/";
+                    Academy.Instance.StatsRecorder.Add(prefix + "FullCapture", success ? 1f : 0f);
+                    Academy.Instance.StatsRecorder.Add(prefix + "CapturedFraction",
+                        (float)caughtHiders.Count / Mathf.Max(1, environment.Hiders.Count));
+                    Academy.Instance.StatsRecorder.Add(prefix + "EpisodePhysicsSteps", step);
+                    Academy.Instance.StatsRecorder.Add(prefix + "FirstSightingRate",
+                        firstSightingStep >= 0 ? 1f : 0f);
+                    if (firstSightingStep >= 0)
+                        Academy.Instance.StatsRecorder.Add(prefix + "FirstSightingSteps", firstSightingStep);
+                    if (capturesAfterSighting > 0)
+                        Academy.Instance.StatsRecorder.Add(prefix + "SightingToCaptureSteps",
+                            measurements.MeanSightingToCaptureSteps);
+                    Academy.Instance.StatsRecorder.Add(prefix + "Reacquisitions", reacquisitions);
+                    Academy.Instance.StatsRecorder.Add(prefix + "VisitedCells", visitedCells.Count);
+                }
                 if (curriculum is CortexPoliceCurriculum cortex)
                 {
                     Academy.Instance.StatsRecorder.Add("Evaluation/CurriculumStage",
@@ -172,6 +237,7 @@ public sealed class EnvironmentEpisodeCoordinator
             else group.EndGroupEpisode();
 
             EpisodeFinished?.Invoke(outcome);
+            EpisodeMeasured?.Invoke(measurements);
             if (reportToCurriculum && curriculum != null)
                 environment.ApplyEpisodeSpecification(
                     curriculum.CreateNextEpisode(environment, outcome));
@@ -191,10 +257,22 @@ public sealed class EnvironmentEpisodeCoordinator
         groupReward = 0f;
         caughtHiders.Clear();
         captureCells.Clear();
+        firstSightingSteps.Clear();
+        lastSightingSteps.Clear();
+        visitedCells.Clear();
+        firstSightingStep = -1;
+        firstCaptureStep = -1;
+        visiblePhysicsSteps = 0;
+        reacquisitions = 0;
+        capturesAfterSighting = 0;
+        sightingToCaptureStepSum = 0;
         environment.TeamSightings.ResetEpisode();
         environment.InfluenceMap.ResetEpisode();
         environment.ResetParticipantsToSpawn();
         environment.AssignTargets();
+        foreach (SeekerAgent seeker in environment.Seekers)
+            if (seeker != null)
+                visitedCells.Add(environment.Grid.WorldToCell(seeker.transform.position));
     }
 
     private void AddGroupReward(float reward)

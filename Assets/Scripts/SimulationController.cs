@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Unity.MLAgents.Policies;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using static InfluenceMap;
@@ -75,6 +76,16 @@ public class SimulationController : MonoBehaviour
     [SerializeField, Min(1)] private int cortexCaptureDeadline = 512;
     [SerializeField, Min(1)] private int cortexChaseDeadline = 768;
     [SerializeField, Min(1)] private int cortexDetectDeadline = 1024;
+    [Header("Cortex Baseline Evaluation")]
+    [Tooltip("Hold one Cortex lesson fixed for a repeatable inference evaluation. " +
+        "Use an exported model in Inference Only mode.")]
+    [SerializeField] private bool runCortexBaseline;
+    [SerializeField] private CortexPoliceCurriculum.Stage baselineStage =
+        CortexPoliceCurriculum.Stage.Capture;
+    [SerializeField, Min(3)] private int baselineSearchDistance = 3;
+    [SerializeField, Min(1)] private int baselineCompletedEpisodes = 100;
+    [SerializeField] private string baselineModelLabel = "checkpoint-name";
+    [SerializeField] private bool showCortexTrainingDashboard = true;
 
     public struct WorldConfig
     {
@@ -108,6 +119,8 @@ public class SimulationController : MonoBehaviour
 
     private void Start()
     {
+        if (runCortexBaseline && useCortexPoliceCurriculum)
+            Time.timeScale = 1f;
         EnvironmentSpawner spawner = GetComponent<EnvironmentSpawner>();
         bool useSpawner = IsTrainingMode && spawner != null && spawner.enabled;
         if (scenarioSystem == null || seekerPrefab == null || hiderPrefab == null || obstaclePrefab == null ||
@@ -148,7 +161,8 @@ public class SimulationController : MonoBehaviour
                     cortexFinalSearchDistance, cortexSearchDistanceIncrement,
                     new[] { cortexCaptureDeadline, cortexChaseDeadline,
                         cortexDetectDeadline, episodeRules.maxEnvironmentSteps },
-                    progressPath, curriculumRandomSeed, resumeCurriculumProgress)
+                    progressPath, curriculumRandomSeed, resumeCurriculumProgress,
+                    runCortexBaseline, baselineStage, baselineSearchDistance)
                 : useOrderedPoliceCurriculum
                     ? new OrderedPoliceCurriculum(orderedWindowSize, orderedSuccessThreshold,
                         progressPath, curriculumRandomSeed, resumeCurriculumProgress)
@@ -199,6 +213,36 @@ public class SimulationController : MonoBehaviour
             Camera.main?.GetComponent<TopDownCameraController>()?.FrameGrid(grid);
             if (!useSpawner) BuildWorld();
             isStarted = environment.IsBuilt;
+            if (runCortexBaseline && curriculum is CortexPoliceCurriculum)
+            {
+                bool validInferenceSetup = true;
+                foreach (EnvironmentInstance instance in environmentManager.Environments)
+                {
+                    foreach (SeekerAgent seeker in instance.Seekers)
+                    {
+                        BehaviorParameters behavior = seeker.GetComponent<BehaviorParameters>();
+                        if (behavior != null && behavior.BehaviorType == BehaviorType.InferenceOnly &&
+                            behavior.Model != null) continue;
+                        validInferenceSetup = false;
+                        break;
+                    }
+                    if (!validInferenceSetup) break;
+                }
+                if (!validInferenceSetup)
+                {
+                    Debug.LogError("Cortex baseline requires an exported model and " +
+                        "Inference Only on every seeker. Simulation paused.", this);
+                    Time.timeScale = 0f;
+                }
+            }
+            if (showCortexTrainingDashboard && curriculum is CortexPoliceCurriculum cortex)
+            {
+                TrainingBaselineDashboard dashboard =
+                    GetComponent<TrainingBaselineDashboard>() ??
+                    gameObject.AddComponent<TrainingBaselineDashboard>();
+                dashboard.Configure(cortex, environmentManager.Environments,
+                    runCortexBaseline, baselineCompletedEpisodes, baselineModelLabel);
+            }
         }
         else
         {

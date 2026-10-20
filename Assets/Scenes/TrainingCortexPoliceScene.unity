@@ -561,6 +561,12 @@ MonoBehaviour:
   cortexCaptureDeadline: 512
   cortexChaseDeadline: 768
   cortexDetectDeadline: 1024
+  runCortexBaseline: 0
+  baselineStage: 0
+  baselineSearchDistance: 3
+  baselineCompletedEpisodes: 100
+  baselineModelLabel: checkpoint-name
+  showCortexTrainingDashboard: 1
 --- !u!114 &2144339860
 MonoBehaviour:
   m_ObjectHideFlags: 0

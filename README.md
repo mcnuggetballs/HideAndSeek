@@ -4,7 +4,8 @@ This guide explains how to prepare Python and train the seekers in Unity, includ
 
 ## Quick CPU Training ##
 mlagents_env\Scripts\activate
-python -m mlagents.trainers.learn config/config.yaml --run-id=hide_seek_v1
+  python -m mlagents.trainers.learn config/config.yaml --run-id=hide_seek_v1
+  python -m mlagents.trainers.learn config/config.yaml --run-id=hide_seek_v111 --resume
 
 ## 1. What the computer and software do
 
