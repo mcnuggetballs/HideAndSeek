@@ -553,6 +553,11 @@ MonoBehaviour:
   curriculumRandomSeed: 12345
   curriculumProgressFile: cortex_police_progress.json
   resumeCurriculumProgress: 0
+  faceTargetsInFirstLesson: 0
+  curriculumMaximumCaptureSteps: 0
+  useOrderedPoliceCurriculum: 0
+  orderedWindowSize: 100
+  orderedSuccessThreshold: 0.8
   useCortexPoliceCurriculum: 1
   cortexWindowSize: 100
   cortexSuccessThreshold: 0.8
@@ -561,11 +566,11 @@ MonoBehaviour:
   cortexCaptureDeadline: 512
   cortexChaseDeadline: 768
   cortexDetectDeadline: 1024
-  runCortexBaseline: 0
-  baselineStage: 0
-  baselineSearchDistance: 3
+  runCortexBaseline: 1
+  baselineStage: 2
+  baselineSearchDistance: 12
   baselineCompletedEpisodes: 100
-  baselineModelLabel: checkpoint-name
+  baselineModelLabel: v10 - 20M
   showCortexTrainingDashboard: 1
 --- !u!114 &2144339860
 MonoBehaviour:
@@ -596,7 +601,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnvironmentSpawner
   environmentPrefab: {fileID: 7066587739052165337, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
-  environmentCount: 40
+  environmentCount: 1
   maxCount: 50
   environmentGap: 100
 --- !u!1660057539 &9223372036854775807

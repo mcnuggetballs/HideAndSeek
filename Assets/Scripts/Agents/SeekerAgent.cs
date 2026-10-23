@@ -213,9 +213,8 @@ public sealed class SeekerAgent : Agent
         targetAgent = FindNearestTarget();
         if (targetAgent == null) return;
 
-        // NavMeshAgent radii are expressed in each object's local scale. Both character
-        // prefab roots are scaled by two, so comparing centers to the unscaled radii
-        // leaves an unreachable capture threshold while avoidance keeps them apart.
+        // Compare center distance with NavMeshAgent radii in world units. The
+        // runtime prefabs use scale-one roots, but this stays correct if scaled.
         float seekerScale = Mathf.Max(Mathf.Abs(transform.lossyScale.x), Mathf.Abs(transform.lossyScale.z));
         float targetScale = Mathf.Max(Mathf.Abs(targetAgent.transform.lossyScale.x),
             Mathf.Abs(targetAgent.transform.lossyScale.z));
