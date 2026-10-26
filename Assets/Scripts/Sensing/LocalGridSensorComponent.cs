@@ -8,14 +8,23 @@ public sealed class LocalGridSensorComponent : SensorComponent
     [SerializeField, Min(1)] private int supersample = 2;
 
     private ScenarioGrid grid;
+    private InfluenceMap coverage;
+    private System.Func<int> currentStep;
 
-    public void Configure(ScenarioGrid scenarioGrid) => grid = scenarioGrid;
+    public void Configure(ScenarioGrid scenarioGrid, InfluenceMap teamCoverage,
+        System.Func<int> stepProvider)
+    {
+        grid = scenarioGrid;
+        coverage = teamCoverage;
+        currentStep = stepProvider;
+    }
 
     public override ISensor[] CreateSensors()
     {
         return new ISensor[]
         {
-            new LocalGridSensor(transform, () => grid, radius, supersample)
+            new LocalGridSensor(transform, () => grid, () => coverage,
+                () => currentStep != null ? currentStep() : 0, radius, supersample)
         };
     }
 }

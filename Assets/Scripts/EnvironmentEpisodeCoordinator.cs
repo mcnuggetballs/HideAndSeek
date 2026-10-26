@@ -91,6 +91,32 @@ public sealed class EnvironmentEpisodeCoordinator
         foreach (SeekerAgent seeker in environment.Seekers)
             seeker?.UpdateTeamSightings();
 
+        // Four physics ticks match the decision interval. Each cell can earn
+        // coverage reward only once across the whole team and episode.
+        if (step % 4 == 0)
+        {
+            int newlyChecked = 0;
+            foreach (SeekerAgent seeker in environment.Seekers)
+                if (seeker != null) newlyChecked += seeker.MarkVisibleCoverage();
+            if (newlyChecked > 0 && rules.searchCoverageRewardBudget > 0f &&
+                curriculum is CortexPoliceCurriculum &&
+                environment.CurrentEpisode != null &&
+                environment.CurrentEpisode.Difficulty / 1000 ==
+                (int)CortexPoliceCurriculum.Stage.Search)
+            {
+                bool targetKnown = false;
+                foreach (SeekerAgent seeker in environment.Seekers)
+                    if (seeker != null && seeker.HasKnownActiveHider())
+                    {
+                        targetKnown = true;
+                        break;
+                    }
+                if (!targetKnown)
+                    AddGroupReward(rules.searchCoverageRewardBudget * newlyChecked /
+                        Mathf.Max(1, environment.InfluenceMap.ReachableCellCount));
+            }
+        }
+
         // "Visited" means occupied by a seeker, not visually cleared.
         foreach (SeekerAgent seeker in environment.Seekers)
             if (seeker != null)
@@ -183,7 +209,9 @@ public sealed class EnvironmentEpisodeCoordinator
                     : rules.maxEnvironmentSteps,
                 firstSightingStep, firstCaptureStep, visiblePhysicsSteps,
                 reacquisitions, visitedCells.Count, firstSightingSteps.Count,
-                capturesAfterSighting, sightingToCaptureStepSum);
+                capturesAfterSighting, sightingToCaptureStepSum,
+                environment.InfluenceMap.CheckedCellCount,
+                environment.InfluenceMap.ReachableCellCount);
 
             if (reportToCurriculum)
             {
@@ -209,6 +237,8 @@ public sealed class EnvironmentEpisodeCoordinator
                             measurements.MeanSightingToCaptureSteps);
                     Academy.Instance.StatsRecorder.Add(prefix + "Reacquisitions", reacquisitions);
                     Academy.Instance.StatsRecorder.Add(prefix + "VisitedCells", visitedCells.Count);
+                    Academy.Instance.StatsRecorder.Add(prefix + "CheckedFloorFraction",
+                        measurements.CheckedFraction);
                 }
                 if (curriculum is CortexPoliceCurriculum cortex)
                 {
@@ -270,6 +300,10 @@ public sealed class EnvironmentEpisodeCoordinator
         environment.InfluenceMap.ResetEpisode();
         environment.ResetParticipantsToSpawn();
         environment.AssignTargets();
+        environment.InfluenceMap.SetEpisodeSeekers(environment.Seekers);
+        // Initial visibility is known to the policy, but grants no free reward.
+        foreach (SeekerAgent seeker in environment.Seekers)
+            if (seeker != null) seeker.MarkVisibleCoverage();
         foreach (SeekerAgent seeker in environment.Seekers)
             if (seeker != null)
                 visitedCells.Add(environment.Grid.WorldToCell(seeker.transform.position));

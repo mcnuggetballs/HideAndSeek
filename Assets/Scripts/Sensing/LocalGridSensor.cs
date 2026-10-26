@@ -3,27 +3,32 @@ using Unity.MLAgents.Sensors;
 using UnityEngine;
 
 /// <summary>
-/// Heading-aligned wall window adapted from Loh Shao Cong's RedVsBlue local-grid sensor.
-/// The sensor reads ScenarioGrid directly; render objects never become training data.
+/// Heading-aligned wall and team-coverage window. The sensor reads ScenarioGrid
+/// and its arena's InfluenceMap; render objects never become training data.
 /// </summary>
 public sealed class LocalGridSensor : ISensor
 {
     private readonly Transform agent;
     private readonly Func<ScenarioGrid> getGrid;
+    private readonly Func<InfluenceMap> getCoverage;
+    private readonly Func<int> getStep;
     private readonly int radius;
     private readonly int supersample;
     private readonly int size;
     private readonly ObservationSpec specification;
 
     public LocalGridSensor(Transform agent, Func<ScenarioGrid> getGrid,
+        Func<InfluenceMap> getCoverage, Func<int> getStep,
         int radius, int supersample)
     {
         this.agent = agent;
         this.getGrid = getGrid;
+        this.getCoverage = getCoverage;
+        this.getStep = getStep;
         this.radius = Mathf.Max(1, radius);
         this.supersample = Mathf.Max(1, supersample);
         size = 2 * this.radius * this.supersample + 1;
-        specification = ObservationSpec.Visual(2, size, size);
+        specification = ObservationSpec.Visual(4, size, size);
     }
 
     public ObservationSpec GetObservationSpec() => specification;
@@ -31,6 +36,8 @@ public sealed class LocalGridSensor : ISensor
     public int Write(ObservationWriter writer)
     {
         ScenarioGrid grid = getGrid?.Invoke();
+        InfluenceMap coverage = getCoverage?.Invoke();
+        int step = getStep != null ? getStep() : 0;
         int half = radius * supersample;
         float sampleSpacing = grid != null ? grid.CellSize / supersample : 1f;
 
@@ -53,10 +60,16 @@ public sealed class LocalGridSensor : ISensor
                 writer[0, row, column] = !outside &&
                     grid.GetCell(cell) == ScenarioGrid.WallCell ? 1f : 0f;
                 writer[1, row, column] = outside ? 1f : 0f;
+                float checkedBefore = 0f;
+                float age = 1f;
+                if (!outside && coverage != null)
+                    coverage.GetCoverage(cell, step, out checkedBefore, out age);
+                writer[2, row, column] = checkedBefore;
+                writer[3, row, column] = age;
             }
         }
 
-        return 2 * size * size;
+        return 4 * size * size;
     }
 
     public byte[] GetCompressedObservation() => null;

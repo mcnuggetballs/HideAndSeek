@@ -544,6 +544,7 @@ MonoBehaviour:
     totalTimePenalty: 2
     hiderCaughtGroupReward: 5
     individualCatchRewardFraction: 0.5
+    searchCoverageRewardBudget: 1
   useAdaptiveSpawnCurriculum: 0
   minimumHiderDistance: 2
   startingMaximumHiderDistance: 4
@@ -567,8 +568,8 @@ MonoBehaviour:
   cortexChaseDeadline: 768
   cortexDetectDeadline: 1024
   runCortexBaseline: 1
-  baselineStage: 2
-  baselineSearchDistance: 12
+  baselineStage: 3
+  baselineSearchDistance: 10
   baselineCompletedEpisodes: 100
   baselineModelLabel: v10 - 20M
   showCortexTrainingDashboard: 1

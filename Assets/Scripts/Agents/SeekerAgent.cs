@@ -58,7 +58,8 @@ public sealed class SeekerAgent : Agent
     {
         environment = instance ?? throw new ArgumentNullException(nameof(instance));
         influenceMap = map;
-        GetComponent<LocalGridSensorComponent>()?.Configure(instance.Grid);
+        GetComponent<LocalGridSensorComponent>()?.Configure(instance.Grid, map,
+            () => environment.EpisodeCoordinator.CurrentStep);
 
         if (environment.Seekers.Count - 1 > MaxTeammates)
             throw new InvalidOperationException($"The policy supports at most {MaxTeammates + 1} seekers.");
@@ -119,7 +120,27 @@ public sealed class SeekerAgent : Agent
                     environment.EpisodeCoordinator.CurrentStep);
             }
         }
-        influenceMap?.MarkWasSeen(transform.position);
+    }
+
+    /// <summary>Update shared floor coverage using this seeker's actual view cone.</summary>
+    public int MarkVisibleCoverage() => influenceMap != null && environment != null
+        ? influenceMap.MarkVisibleCells(transform.position, transform.forward,
+            viewDistance, viewAngle, environment.EpisodeCoordinator.CurrentStep)
+        : 0;
+
+    /// <summary>Whether the team has a usable sighting of any uncaught hider.</summary>
+    public bool HasKnownActiveHider()
+    {
+        if (environment == null) return false;
+        foreach (NavMeshAgent hider in environment.Hiders)
+        {
+            if (hider == null || !hider.gameObject.activeInHierarchy ||
+                !environment.TeamSightings.TryGet(hider,
+                    out TeamSightingMemory.Sighting sighting)) continue;
+            if (environment.EpisodeCoordinator.CurrentStep - sighting.Step <=
+                Mathf.Max(1, hostileMemorySteps)) return true;
+        }
+        return false;
     }
 
     public override void CollectObservations(VectorSensor sensor)

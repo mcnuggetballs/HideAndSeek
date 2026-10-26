@@ -53,7 +53,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
                 "hiders_caught,hider_count,physics_steps,step_limit,first_sighting_step," +
                 "first_capture_step,sighted_hiders,captures_after_sighting," +
                 "mean_sighting_to_capture_steps,visible_physics_steps,reacquisitions," +
-                "unique_visited_cells,group_reward\n");
+                "unique_visited_cells,group_reward,checked_cells,reachable_cells\n");
             csvAvailable = true;
             Debug.Log($"[Baseline] Recording {curriculum.CurrentStage} episodes to {csvPath}", this);
         }
@@ -114,7 +114,8 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             m.SightedHiders.ToString(), m.CapturesAfterSighting.ToString(), mean,
             m.VisiblePhysicsSteps.ToString(), m.Reacquisitions.ToString(),
             m.DistinctVisitedCells.ToString(),
-            outcome.GroupReward.ToString("F4", CultureInfo.InvariantCulture)) + "\n";
+            outcome.GroupReward.ToString("F4", CultureInfo.InvariantCulture),
+            m.CheckedCells.ToString(), m.ReachableCells.ToString()) + "\n";
     }
 
     private void OnGUI()
@@ -127,7 +128,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             recent.Clear();
         }
         const float width = 365f;
-        const float height = 245f;
+        const float height = 270f;
         Rect panel = new(12f, 12f, width, height);
         GUI.Box(panel, "Cortex police training");
         float y = 42f;
@@ -145,6 +146,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
         int firstSightCount = 0;
         int chaseSum = 0;
         int chaseCount = 0;
+        float checkedFractionSum = 0f;
         foreach (EpisodeBaselineMetrics result in recent)
         {
             if (result.Outcome.WasSuccessful)
@@ -160,6 +162,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             }
             chaseSum += result.SightingToCaptureStepSum;
             chaseCount += result.CapturesAfterSighting;
+            checkedFractionSum += result.CheckedFraction;
         }
         DrawLine($"Recent {count}: full captures {(count > 0 ? (float)wins / count : 0f):P0}", ref y);
         string firstSightText = firstSightCount > 0
@@ -171,6 +174,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
                  $"first sight {firstSightText} steps", ref y);
         DrawLine($"Sight to capture {chaseText} steps; " +
                  $"success time {successTimeText} steps", ref y);
+        DrawLine($"Reachable floor checked {(count > 0 ? checkedFractionSum / count : 0f):P0}", ref y);
         if (baselineMode)
             DrawLine(completedEpisodes >= requestedEpisodes ? "Complete: simulation paused" :
                 $"Model label: {runLabel}", ref y);
@@ -178,7 +182,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             DrawLine("Metrics also appear under Baseline/<stage> in TensorBoard", ref y);
 
         if (baselineMode)
-            GUI.Label(new Rect(20f, 216f, width - 16f, 25f),
+            GUI.Label(new Rect(20f, 242f, width - 16f, 25f),
                 csvAvailable ? "CSV: " + csvPath : "CSV unavailable; check Console");
     }
 

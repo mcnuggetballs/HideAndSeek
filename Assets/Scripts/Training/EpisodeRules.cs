@@ -7,6 +7,9 @@ public sealed class EpisodeRules
     public float totalTimePenalty = 2f;
     public float hiderCaughtGroupReward = 5f;
     public float individualCatchRewardFraction = 0.5f;
+    // Maximum total group reward from first-time visible floor coverage in a
+    // Search episode. Capture remains worth five per hider by default.
+    public float searchCoverageRewardBudget = 1f;
 
     public void Validate()
     {
@@ -18,5 +21,7 @@ public sealed class EpisodeRules
             throw new ArgumentOutOfRangeException(nameof(hiderCaughtGroupReward));
         if (individualCatchRewardFraction < 0f)
             throw new ArgumentOutOfRangeException(nameof(individualCatchRewardFraction));
+        if (searchCoverageRewardBudget < 0f)
+            throw new ArgumentOutOfRangeException(nameof(searchCoverageRewardBudget));
     }
 }

@@ -16,11 +16,14 @@ public readonly struct EpisodeBaselineMetrics
     public readonly int SightedHiders;
     public readonly int CapturesAfterSighting;
     public readonly int SightingToCaptureStepSum;
+    public readonly int CheckedCells;
+    public readonly int ReachableCells;
 
     public EpisodeBaselineMetrics(EpisodeOutcome outcome, int stepLimit,
         int firstSightingStep, int firstCaptureStep, int visiblePhysicsSteps,
         int reacquisitions, int distinctVisitedCells, int sightedHiders,
-        int capturesAfterSighting, int sightingToCaptureStepSum)
+        int capturesAfterSighting, int sightingToCaptureStepSum,
+        int checkedCells, int reachableCells)
     {
         Outcome = outcome;
         StepLimit = stepLimit;
@@ -32,8 +35,13 @@ public readonly struct EpisodeBaselineMetrics
         SightedHiders = sightedHiders;
         CapturesAfterSighting = capturesAfterSighting;
         SightingToCaptureStepSum = sightingToCaptureStepSum;
+        CheckedCells = checkedCells;
+        ReachableCells = reachableCells;
     }
 
     public float MeanSightingToCaptureSteps => CapturesAfterSighting > 0
         ? (float)SightingToCaptureStepSum / CapturesAfterSighting : -1f;
+
+    public float CheckedFraction => ReachableCells > 0
+        ? (float)CheckedCells / ReachableCells : 0f;
 }
