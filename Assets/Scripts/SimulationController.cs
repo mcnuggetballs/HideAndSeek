@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Unity.MLAgents;
 using Unity.MLAgents.Policies;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -69,6 +70,8 @@ public class SimulationController : MonoBehaviour
     [Header("Cortex Police Curriculum")]
     [Tooltip("On a two-seeker, two-hider map, teach Capture, Chase, Detect, then progressively farther wall-hidden Search.")]
     [SerializeField] private bool useCortexPoliceCurriculum;
+    [Tooltip("Training maps in Resources/PoliceMaps/Training are rotated across arenas. Cortex1 is always included.")]
+    [SerializeField] private bool useCortexMapPool = true;
     [SerializeField, Min(1)] private int cortexWindowSize = 100;
     [SerializeField, Range(0f, 1f)] private float cortexSuccessThreshold = 0.8f;
     [SerializeField, Min(3)] private int cortexFinalSearchDistance = 12;
@@ -80,6 +83,13 @@ public class SimulationController : MonoBehaviour
     [Tooltip("Hold one Cortex lesson fixed for a repeatable inference evaluation. " +
         "Use an exported model in Inference Only mode.")]
     [SerializeField] private bool runCortexBaseline;
+    private enum PoliceBaselineCase
+    {
+        Custom, OpenPursuit, ObstacleSearch, CortexSearch, HeldoutSearch
+    }
+    [SerializeField] private PoliceBaselineCase baselineCase;
+    [Tooltip("Fixed evaluation layout: Cortex1 or a TextAsset name in Resources/PoliceMaps/Training or Evaluation.")]
+    [SerializeField] private string baselineMapId = "Cortex1";
     [SerializeField] private CortexPoliceCurriculum.Stage baselineStage =
         CortexPoliceCurriculum.Stage.Capture;
     [SerializeField, Min(3)] private int baselineSearchDistance = 3;
@@ -132,10 +142,71 @@ public class SimulationController : MonoBehaviour
             return;
         }
 
-        ScenarioGrid grid = scenarioSystem.Generate(scenarioType, mapFile, Config);
+        TextAsset[] trainingMaps = Array.Empty<TextAsset>();
+        TextAsset selectedMap = mapFile;
+        CortexPoliceCurriculum.Stage evaluationStage = baselineStage;
+        int evaluationSearchDistance = baselineSearchDistance;
+        string evaluationMapId = baselineMapId;
+        if (runCortexBaseline)
+        {
+            switch (baselineCase)
+            {
+                case PoliceBaselineCase.OpenPursuit:
+                    evaluationMapId = "EvalOpen";
+                    evaluationStage = CortexPoliceCurriculum.Stage.Chase;
+                    break;
+                case PoliceBaselineCase.ObstacleSearch:
+                    evaluationMapId = "EvalObstacles";
+                    evaluationStage = CortexPoliceCurriculum.Stage.Search;
+                    evaluationSearchDistance = 10;
+                    break;
+                case PoliceBaselineCase.CortexSearch:
+                    evaluationMapId = "Cortex1";
+                    evaluationStage = CortexPoliceCurriculum.Stage.Search;
+                    evaluationSearchDistance = 10;
+                    break;
+                case PoliceBaselineCase.HeldoutSearch:
+                    evaluationMapId = "HeldoutOffsetRooms";
+                    evaluationStage = CortexPoliceCurriculum.Stage.Search;
+                    evaluationSearchDistance = 10;
+                    break;
+            }
+        }
+        if (IsTrainingMode && useCortexPoliceCurriculum && scenarioType == ScenarioType.Fixed)
+        {
+            trainingMaps = Resources.LoadAll<TextAsset>("PoliceMaps/Training");
+            Array.Sort(trainingMaps, (a, b) => string.CompareOrdinal(a.name, b.name));
+            if (runCortexBaseline)
+            {
+                if (!string.IsNullOrWhiteSpace(evaluationMapId) &&
+                    !string.Equals(evaluationMapId, mapFile != null ? mapFile.name : "", StringComparison.Ordinal))
+                {
+                    selectedMap = FindPoliceMap(evaluationMapId, trainingMaps);
+                    if (selectedMap == null)
+                    {
+                        Debug.LogError($"Unknown baseline map '{evaluationMapId}'.", this);
+                        enabled = false;
+                        return;
+                    }
+                }
+            }
+            else if (useCortexMapPool && trainingMaps.Length == 0)
+                Debug.LogWarning("No PoliceMaps/Training assets found; using Cortex1 only.", this);
+        }
+
+        ScenarioGrid grid = scenarioSystem.Generate(scenarioType, selectedMap, Config);
+        if (grid != null) grid.LayoutId = selectedMap != null ? selectedMap.name : scenarioType.ToString();
         if (grid == null || (IsTrainingMode && !ScenarioSystem.HasBothTeams(grid)))
         {
             Debug.LogError("Scenario generation failed or the training scenario lacks a team.", this);
+            enabled = false;
+            return;
+        }
+        if (IsTrainingMode && useCortexPoliceCurriculum && useCortexMapPool &&
+            !runCortexBaseline && trainingMaps.Length > 0 &&
+            (!useSpawner || spawner.environmentCount < trainingMaps.Length + 1))
+        {
+            Debug.LogError("Cortex map pool needs at least one arena per layout.", this);
             enabled = false;
             return;
         }
@@ -156,13 +227,23 @@ public class SimulationController : MonoBehaviour
             }
             Debug.Log($"[Curriculum] {(resumeCurriculumProgress ? "Resuming" : "Fresh")} progress: {progressPath}", this);
             int minimumDistance = Mathf.Max(1, minimumHiderDistance);
+            var requiredMaps = new List<string>();
+            if (useCortexPoliceCurriculum)
+            {
+                requiredMaps.Add(selectedMap != null ? selectedMap.name : scenarioType.ToString());
+                if (useCortexMapPool && !runCortexBaseline &&
+                    scenarioType == ScenarioType.Fixed)
+                    foreach (TextAsset layout in trainingMaps)
+                        if (!requiredMaps.Contains(layout.name)) requiredMaps.Add(layout.name);
+            }
             curriculum = useCortexPoliceCurriculum
                 ? new CortexPoliceCurriculum(cortexWindowSize, cortexSuccessThreshold,
                     cortexFinalSearchDistance, cortexSearchDistanceIncrement,
                     new[] { cortexCaptureDeadline, cortexChaseDeadline,
                         cortexDetectDeadline, episodeRules.maxEnvironmentSteps },
                     progressPath, curriculumRandomSeed, resumeCurriculumProgress,
-                    runCortexBaseline, baselineStage, baselineSearchDistance)
+                    runCortexBaseline, evaluationStage, evaluationSearchDistance,
+                    requiredMaps.ToArray())
                 : useOrderedPoliceCurriculum
                     ? new OrderedPoliceCurriculum(orderedWindowSize, orderedSuccessThreshold,
                         progressPath, curriculumRandomSeed, resumeCurriculumProgress)
@@ -186,13 +267,34 @@ public class SimulationController : MonoBehaviour
             if (useSpawner)
             {
                 IReadOnlyList<EnvironmentInstance> batch = spawner.SpawnEnvironments(
-                    environmentManager, trainingEnvironmentPrefab, grid, origin =>
+                    environmentManager, trainingEnvironmentPrefab, grid, (index, origin) =>
                     {
                         WorldConfig config = Config;
                         config.origin = origin;
-                        return scenarioSystem.Generate(scenarioType, mapFile, config);
+                        TextAsset layout = selectedMap;
+                        if (!runCortexBaseline && useCortexPoliceCurriculum &&
+                            useCortexMapPool && scenarioType == ScenarioType.Fixed &&
+                            trainingMaps.Length > 0)
+                            layout = index % (trainingMaps.Length + 1) == 0
+                                ? mapFile : trainingMaps[(index - 1) % (trainingMaps.Length + 1)];
+                        ScenarioGrid generated = scenarioSystem.Generate(scenarioType, layout, config);
+                        if (generated != null)
+                            generated.LayoutId = layout != null ? layout.name : scenarioType.ToString();
+                        return generated;
                     });
                 environment = batch[0]; // Primary environment for camera focus and existing callers.
+                if (useCortexPoliceCurriculum)
+                {
+                    var layoutCounts = new Dictionary<string, int>();
+                    foreach (EnvironmentInstance instance in batch)
+                    {
+                        string id = instance.Grid.LayoutId;
+                        layoutCounts.TryGetValue(id, out int count);
+                        layoutCounts[id] = count + 1;
+                    }
+                    foreach (var entry in layoutCounts)
+                        Debug.Log($"[Police Maps] {entry.Key}: {entry.Value} arenas", this);
+                }
             }
             else
             {
@@ -235,6 +337,22 @@ public class SimulationController : MonoBehaviour
                     Time.timeScale = 0f;
                 }
             }
+            else if (curriculum is CortexPoliceCurriculum &&
+                Academy.Instance.IsCommunicatorOn)
+            {
+                foreach (EnvironmentInstance instance in environmentManager.Environments)
+                    foreach (SeekerAgent seeker in instance.Seekers)
+                    {
+                        BehaviorParameters behavior = seeker.GetComponent<BehaviorParameters>();
+                        if (behavior != null && behavior.BehaviorType == BehaviorType.Default)
+                            continue;
+                        Debug.LogError("Cortex training requires Behavior Type Default " +
+                            "on every seeker when the Python trainer is connected. " +
+                            "Simulation paused.", this);
+                        Time.timeScale = 0f;
+                        break;
+                    }
+            }
             if (showCortexTrainingDashboard && curriculum is CortexPoliceCurriculum cortex)
             {
                 TrainingBaselineDashboard dashboard =
@@ -249,6 +367,15 @@ public class SimulationController : MonoBehaviour
             HandleLayoutChanged(environment);
             environment.RuntimeRoot.gameObject.SetActive(false);
         }
+    }
+
+    private static TextAsset FindPoliceMap(string name, TextAsset[] trainingMaps)
+    {
+        foreach (TextAsset candidate in trainingMaps)
+            if (string.Equals(candidate.name, name, StringComparison.Ordinal)) return candidate;
+        foreach (TextAsset candidate in Resources.LoadAll<TextAsset>("PoliceMaps/Evaluation"))
+            if (string.Equals(candidate.name, name, StringComparison.Ordinal)) return candidate;
+        return null;
     }
 
     private bool BuildWorld()

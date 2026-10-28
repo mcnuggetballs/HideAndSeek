@@ -16,7 +16,7 @@ public class EnvironmentSpawner : MonoBehaviour
     // Called explicitly after the manager and scenario configuration are ready.
     public IReadOnlyList<EnvironmentInstance> SpawnEnvironments(
         EnvironmentManager manager, GameObject fallbackPrefab, ScenarioGrid firstGrid,
-        Func<Vector3, ScenarioGrid> generateGrid)
+        Func<int, Vector3, ScenarioGrid> generateGrid)
     {
         if (manager == null) throw new ArgumentNullException(nameof(manager));
         if (firstGrid == null) throw new ArgumentNullException(nameof(firstGrid));
@@ -41,7 +41,7 @@ public class EnvironmentSpawner : MonoBehaviour
         {
             Vector3 origin = firstGrid.Origin + new Vector3(
                 (i % columns) * spacingX, 0f, (i / columns) * spacingZ);
-            ScenarioGrid grid = i == 0 ? firstGrid : generateGrid(origin);
+            ScenarioGrid grid = i == 0 ? firstGrid : generateGrid(i, origin);
             if (grid == null || !ScenarioSystem.HasBothTeams(grid))
                 throw new InvalidOperationException($"Training scenario {i} must contain both teams.");
             if (!uniqueGrids.Add(grid))

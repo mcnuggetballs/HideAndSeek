@@ -18,6 +18,9 @@ public sealed class SeekerAgent : Agent
     private const int MaxHiders = 4;
     public const int VectorObservationSize = 52;
     public float ViewDistance => viewDistance;
+    public int LastMoveAction => lastMoveAction;
+    public float DisplacementSinceLastAction => displacementSinceLastAction;
+    public int DecisionCount { get; private set; }
 
     [Header("Agent Setup")]
     [SerializeField] private NavMeshAgent seekerAgent;
@@ -83,6 +86,7 @@ public sealed class SeekerAgent : Agent
         transform.rotation = spawnRotation;
         targetAgent = null;
         hasPreviousActionPosition = false;
+        DecisionCount = 0;
         displacementSinceLastAction = 0f;
         currentlyVisibleHiders = 0;
         visibleHiders.Clear();
@@ -221,6 +225,7 @@ public sealed class SeekerAgent : Agent
         int turnIndex = Mathf.Clamp(discrete[1], 0, TurnBuckets.Length - 1);
         lastMoveAction = moveIndex;
         lastTurnAction = turnIndex;
+        DecisionCount++;
         displacementSinceLastAction = hasPreviousActionPosition
             ? Vector3.Distance(transform.position, previousActionPosition) : 0f;
         previousActionPosition = transform.position;

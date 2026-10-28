@@ -18,6 +18,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
     private int completedEpisodes;
     private int displayedDifficulty = -1;
     private string runLabel;
+    private string mapLabel;
     private string csvPath;
     private bool csvAvailable;
 
@@ -30,6 +31,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
         baselineMode = recordBaseline;
         requestedEpisodes = Mathf.Max(1, episodeCount);
         runLabel = string.IsNullOrWhiteSpace(label) ? "unlabelled-model" : label.Trim();
+        mapLabel = environments.Count > 0 ? environments[0].Grid.LayoutId : "unknown";
         completedEpisodes = 0;
         displayedDifficulty = (int)curriculum.CurrentStage * 1000 + curriculum.CurrentDistance;
         recent.Clear();
@@ -46,14 +48,18 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             string folder = Path.Combine(Application.persistentDataPath, "TrainingBaselines");
             Directory.CreateDirectory(folder);
             csvPath = Path.Combine(folder,
-                $"Cortex_{curriculum.CurrentStage}_d{curriculum.CurrentDistance}_" +
+                $"Cortex_{mapLabel}_{curriculum.CurrentStage}_d{curriculum.CurrentDistance}_" +
                 $"{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv");
             File.WriteAllText(csvPath,
-                "model_label,utc,stage,distance,environment_id,episode_number,success," +
+                "model_label,utc,map_id,stage,distance,environment_id,episode_number,success," +
                 "hiders_caught,hider_count,physics_steps,step_limit,first_sighting_step," +
                 "first_capture_step,sighted_hiders,captures_after_sighting," +
                 "mean_sighting_to_capture_steps,visible_physics_steps,reacquisitions," +
-                "unique_visited_cells,group_reward,checked_cells,reachable_cells\n");
+                "unique_visited_cells,group_reward,checked_cells,reachable_cells," +
+                "seeker_0_travel,seeker_0_visited,seeker_0_turn_in_place," +
+                "seeker_0_blocked_forward,seeker_0_captures," +
+                "seeker_1_travel,seeker_1_visited,seeker_1_turn_in_place," +
+                "seeker_1_blocked_forward,seeker_1_captures\n");
             csvAvailable = true;
             Debug.Log($"[Baseline] Recording {curriculum.CurrentStage} episodes to {csvPath}", this);
         }
@@ -104,7 +110,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
         string mean = m.MeanSightingToCaptureSteps >= 0f
             ? m.MeanSightingToCaptureSteps.ToString("F2", CultureInfo.InvariantCulture) : "";
         string escapedLabel = "\"" + runLabel.Replace("\"", "\"\"") + "\"";
-        return string.Join(",", escapedLabel, DateTime.UtcNow.ToString("O"), phase,
+        return string.Join(",", escapedLabel, DateTime.UtcNow.ToString("O"), m.MapId, phase,
             (outcome.Difficulty % 1000).ToString(), outcome.EnvironmentId.ToString(),
             outcome.EpisodeNumber.ToString(), outcome.WasSuccessful ? "1" : "0",
             outcome.HidersCaught.ToString(), outcome.HiderCount.ToString(),
@@ -115,7 +121,19 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             m.VisiblePhysicsSteps.ToString(), m.Reacquisitions.ToString(),
             m.DistinctVisitedCells.ToString(),
             outcome.GroupReward.ToString("F4", CultureInfo.InvariantCulture),
-            m.CheckedCells.ToString(), m.ReachableCells.ToString()) + "\n";
+            m.CheckedCells.ToString(), m.ReachableCells.ToString(),
+            SeekerColumns(m, 0), SeekerColumns(m, 1)) + "\n";
+    }
+
+    private static string SeekerColumns(EpisodeBaselineMetrics m, int index)
+    {
+        if (index >= m.SeekerTravelDistance.Length) return ",,,,";
+        return string.Join(",",
+            m.SeekerTravelDistance[index].ToString("F3", CultureInfo.InvariantCulture),
+            m.SeekerVisitedCells[index].ToString(),
+            m.SeekerTurnInPlaceSteps[index].ToString(),
+            m.SeekerBlockedForwardDecisions[index].ToString(),
+            m.SeekerCaptures[index].ToString());
     }
 
     private void OnGUI()
@@ -127,8 +145,8 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             displayedDifficulty = currentDifficulty;
             recent.Clear();
         }
-        const float width = 365f;
-        const float height = 270f;
+        const float width = 480f;
+        const float height = 295f;
         Rect panel = new(12f, 12f, width, height);
         GUI.Box(panel, "Cortex police training");
         float y = 42f;
@@ -137,6 +155,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             ? $"Fixed-stage baseline: {completedEpisodes}/{requestedEpisodes} episodes"
             : $"Advancement: {curriculum.WindowCount}/{curriculum.WindowSize} " +
               $"at {curriculum.WindowSuccessRate:P0} (target {curriculum.SuccessThreshold:P0})", ref y);
+        DrawLine(baselineMode ? $"Map: {mapLabel}" : curriculum.MapWindowStatus, ref y);
 
         int count = recent.Count;
         int wins = 0;
@@ -182,13 +201,13 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             DrawLine("Metrics also appear under Baseline/<stage> in TensorBoard", ref y);
 
         if (baselineMode)
-            GUI.Label(new Rect(20f, 242f, width - 16f, 25f),
+            GUI.Label(new Rect(20f, 267f, width - 16f, 25f),
                 csvAvailable ? "CSV: " + csvPath : "CSV unavailable; check Console");
     }
 
     private static void DrawLine(string value, ref float y)
     {
-        GUI.Label(new Rect(20f, y, 355f, 23f), value);
+        GUI.Label(new Rect(20f, y, 465f, 23f), value);
         y += 25f;
     }
 

@@ -560,6 +560,7 @@ MonoBehaviour:
   orderedWindowSize: 100
   orderedSuccessThreshold: 0.8
   useCortexPoliceCurriculum: 1
+  useCortexMapPool: 1
   cortexWindowSize: 100
   cortexSuccessThreshold: 0.8
   cortexFinalSearchDistance: 12
@@ -567,7 +568,9 @@ MonoBehaviour:
   cortexCaptureDeadline: 512
   cortexChaseDeadline: 768
   cortexDetectDeadline: 1024
-  runCortexBaseline: 1
+  runCortexBaseline: 0
+  baselineCase: 0
+  baselineMapId: Cortex1
   baselineStage: 3
   baselineSearchDistance: 10
   baselineCompletedEpisodes: 100
@@ -602,7 +605,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnvironmentSpawner
   environmentPrefab: {fileID: 7066587739052165337, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
-  environmentCount: 1
+  environmentCount: 25
   maxCount: 50
   environmentGap: 100
 --- !u!1660057539 &9223372036854775807

@@ -17,6 +17,14 @@ public sealed class EnvironmentEpisodeCoordinator
     private readonly Dictionary<NavMeshAgent, int> firstSightingSteps = new();
     private readonly Dictionary<NavMeshAgent, int> lastSightingSteps = new();
     private readonly HashSet<Vector2Int> visitedCells = new();
+    private readonly List<HashSet<Vector2Int>> seekerVisitedCells = new();
+    private Vector3[] previousSeekerPositions = Array.Empty<Vector3>();
+    private Quaternion[] previousSeekerRotations = Array.Empty<Quaternion>();
+    private int[] previousDecisionCounts = Array.Empty<int>();
+    private float[] seekerTravelDistance = Array.Empty<float>();
+    private int[] seekerTurnInPlaceSteps = Array.Empty<int>();
+    private int[] seekerBlockedForwardDecisions = Array.Empty<int>();
+    private int[] seekerCaptures = Array.Empty<int>();
 
     private SimpleMultiAgentGroup group;
     private EpisodeRules rules = new();
@@ -118,9 +126,28 @@ public sealed class EnvironmentEpisodeCoordinator
         }
 
         // "Visited" means occupied by a seeker, not visually cleared.
-        foreach (SeekerAgent seeker in environment.Seekers)
-            if (seeker != null)
-                visitedCells.Add(environment.Grid.WorldToCell(seeker.transform.position));
+        for (int i = 0; i < environment.Seekers.Count; i++)
+        {
+            SeekerAgent seeker = environment.Seekers[i];
+            if (seeker == null) continue;
+            Vector3 position = seeker.transform.position;
+            float movement = Vector3.Distance(position, previousSeekerPositions[i]);
+            seekerTravelDistance[i] += movement;
+            float rotation = Quaternion.Angle(seeker.transform.rotation, previousSeekerRotations[i]);
+            if (movement < 0.025f && rotation > 0.5f) seekerTurnInPlaceSteps[i]++;
+            if (seeker.DecisionCount != previousDecisionCounts[i])
+            {
+                if (seeker.DecisionCount > 1 && seeker.LastMoveAction == 3 &&
+                    seeker.DisplacementSinceLastAction < 0.05f)
+                    seekerBlockedForwardDecisions[i]++;
+                previousDecisionCounts[i] = seeker.DecisionCount;
+            }
+            previousSeekerPositions[i] = position;
+            previousSeekerRotations[i] = seeker.transform.rotation;
+            Vector2Int cell = environment.Grid.WorldToCell(position);
+            visitedCells.Add(cell);
+            seekerVisitedCells[i].Add(cell);
+        }
         bool anyVisible = false;
         foreach (NavMeshAgent hider in environment.Hiders)
         {
@@ -165,6 +192,8 @@ public sealed class EnvironmentEpisodeCoordinator
         if (!environment.CaptureHider(hider)) return;
 
         caughtHiders.Add(hider);
+        for (int i = 0; i < environment.Seekers.Count; i++)
+            if (environment.Seekers[i] == capturingAgent) seekerCaptures[i]++;
         captureCells.Add(captureCell);
         if (firstCaptureStep < 0) firstCaptureStep = step;
         if (firstSightingSteps.TryGetValue(hider, out int seenAt))
@@ -211,7 +240,11 @@ public sealed class EnvironmentEpisodeCoordinator
                 reacquisitions, visitedCells.Count, firstSightingSteps.Count,
                 capturesAfterSighting, sightingToCaptureStepSum,
                 environment.InfluenceMap.CheckedCellCount,
-                environment.InfluenceMap.ReachableCellCount);
+                environment.InfluenceMap.ReachableCellCount,
+                environment.Grid.LayoutId, (float[])seekerTravelDistance.Clone(),
+                SeekerVisitCounts(), (int[])seekerTurnInPlaceSteps.Clone(),
+                (int[])seekerBlockedForwardDecisions.Clone(),
+                (int[])seekerCaptures.Clone());
 
             if (reportToCurriculum)
             {
@@ -239,6 +272,12 @@ public sealed class EnvironmentEpisodeCoordinator
                     Academy.Instance.StatsRecorder.Add(prefix + "VisitedCells", visitedCells.Count);
                     Academy.Instance.StatsRecorder.Add(prefix + "CheckedFloorFraction",
                         measurements.CheckedFraction);
+                    string mapPrefix = $"Evaluation/Maps/{environment.Grid.LayoutId}/{phase}/";
+                    Academy.Instance.StatsRecorder.Add(mapPrefix + "FullCapture", success ? 1f : 0f);
+                    Academy.Instance.StatsRecorder.Add(mapPrefix + "CheckedFloorFraction",
+                        measurements.CheckedFraction);
+                    Academy.Instance.StatsRecorder.Add(mapPrefix + "FirstSightingRate",
+                        firstSightingStep >= 0 ? 1f : 0f);
                 }
                 if (curriculum is CortexPoliceCurriculum cortex)
                 {
@@ -290,6 +329,16 @@ public sealed class EnvironmentEpisodeCoordinator
         firstSightingSteps.Clear();
         lastSightingSteps.Clear();
         visitedCells.Clear();
+        int seekerCount = environment.Seekers.Count;
+        previousSeekerPositions = new Vector3[seekerCount];
+        previousSeekerRotations = new Quaternion[seekerCount];
+        previousDecisionCounts = new int[seekerCount];
+        seekerTravelDistance = new float[seekerCount];
+        seekerTurnInPlaceSteps = new int[seekerCount];
+        seekerBlockedForwardDecisions = new int[seekerCount];
+        seekerCaptures = new int[seekerCount];
+        seekerVisitedCells.Clear();
+        for (int i = 0; i < seekerCount; i++) seekerVisitedCells.Add(new HashSet<Vector2Int>());
         firstSightingStep = -1;
         firstCaptureStep = -1;
         visiblePhysicsSteps = 0;
@@ -304,9 +353,23 @@ public sealed class EnvironmentEpisodeCoordinator
         // Initial visibility is known to the policy, but grants no free reward.
         foreach (SeekerAgent seeker in environment.Seekers)
             if (seeker != null) seeker.MarkVisibleCoverage();
-        foreach (SeekerAgent seeker in environment.Seekers)
-            if (seeker != null)
-                visitedCells.Add(environment.Grid.WorldToCell(seeker.transform.position));
+        for (int i = 0; i < environment.Seekers.Count; i++)
+        {
+            SeekerAgent seeker = environment.Seekers[i];
+            if (seeker == null) continue;
+            previousSeekerPositions[i] = seeker.transform.position;
+            previousSeekerRotations[i] = seeker.transform.rotation;
+            Vector2Int cell = environment.Grid.WorldToCell(seeker.transform.position);
+            visitedCells.Add(cell);
+            seekerVisitedCells[i].Add(cell);
+        }
+    }
+
+    private int[] SeekerVisitCounts()
+    {
+        int[] counts = new int[seekerVisitedCells.Count];
+        for (int i = 0; i < counts.Length; i++) counts[i] = seekerVisitedCells[i].Count;
+        return counts;
     }
 
     private void AddGroupReward(float reward)

@@ -5,7 +5,7 @@ using Unity.MLAgents;
 using UnityEngine;
 
 /// <summary>
-/// Two-seeker Cortex1 lesson: Capture, Chase, Detect, then wall-hidden Search.
+/// Two-seeker police lesson on a pool of fixed layouts.
 /// Search grows by walkable path distance without changing the policy inputs or rewards.
 /// The one shared instance pools completed episodes from every training arena.
 /// </summary>
@@ -16,11 +16,19 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
     [Serializable]
     private sealed class Progress
     {
+        public int version = 2;
         public int stage;
         public int searchDistance = 3;
         public int sequence;
         public bool finalLessonMastered;
-        public List<int> successWindow = new();
+        public List<MapResult> recentResults = new();
+    }
+
+    [Serializable]
+    private sealed class MapResult
+    {
+        public string mapId;
+        public int passed;
     }
 
     private readonly struct Pair
@@ -43,33 +51,50 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
     private readonly string savePath;
     private readonly bool baselineMode;
     private readonly System.Random random;
-    private readonly Dictionary<int, List<Pair>> pairCache = new();
+    private readonly string[] requiredMapIds;
+    private readonly Dictionary<string, List<Pair>> pairCache = new();
     private Progress progress;
 
     public Stage CurrentStage => (Stage)progress.stage;
     public int CurrentDistance => CurrentStage == Stage.Capture ? 1 :
         CurrentStage == Stage.Search ? progress.searchDistance : 2;
-    public int WindowCount => progress.successWindow.Count;
+    public int WindowCount => progress.recentResults.Count;
     public float WindowSuccessRate
     {
         get
         {
-            if (progress.successWindow.Count == 0) return 0f;
+            if (progress.recentResults.Count == 0) return 0f;
             int wins = 0;
-            foreach (int result in progress.successWindow) wins += result;
-            return (float)wins / progress.successWindow.Count;
+            foreach (MapResult result in progress.recentResults) wins += result.passed;
+            return (float)wins / progress.recentResults.Count;
         }
     }
     public bool FinalLessonMastered => progress.finalLessonMastered;
     public float SuccessThreshold => threshold;
     public int WindowSize => windowSize;
     public bool IsBaseline => baselineMode;
+    public string MapWindowStatus
+    {
+        get
+        {
+            var parts = new List<string>();
+            foreach (string mapId in requiredMapIds)
+            {
+                int count = 0;
+                int wins = 0;
+                foreach (MapResult result in progress.recentResults)
+                    if (result.mapId == mapId) { count++; wins += result.passed; }
+                parts.Add($"{mapId} {wins}/{count}");
+            }
+            return string.Join("  ", parts);
+        }
+    }
 
     public CortexPoliceCurriculum(int windowSize, float threshold,
         int finalSearchDistance, int distanceIncrement, int[] stageDeadlines,
         string savePath, int randomSeed, bool resumeProgress,
         bool baselineMode = false, Stage baselineStage = Stage.Capture,
-        int baselineSearchDistance = 3)
+        int baselineSearchDistance = 3, string[] requiredMapIds = null)
     {
         this.windowSize = Mathf.Max(1, windowSize);
         this.threshold = Mathf.Clamp01(threshold);
@@ -83,6 +108,7 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
                 throw new ArgumentOutOfRangeException(nameof(stageDeadlines));
         this.savePath = savePath;
         this.baselineMode = baselineMode;
+        this.requiredMapIds = requiredMapIds ?? Array.Empty<string>();
         random = new System.Random(randomSeed);
         if (baselineMode)
             progress = new Progress
@@ -108,12 +134,16 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         {
             bool passed = outcome.WasSuccessful &&
                 outcome.Steps <= stageDeadlines[progress.stage];
-            progress.successWindow.Add(passed ? 1 : 0);
-            while (progress.successWindow.Count > windowSize)
-                progress.successWindow.RemoveAt(0);
+            progress.recentResults.Add(new MapResult
+            {
+                mapId = environment.Grid.LayoutId,
+                passed = passed ? 1 : 0
+            });
+            while (progress.recentResults.Count > windowSize)
+                progress.recentResults.RemoveAt(0);
 
-            if (progress.successWindow.Count == windowSize &&
-                WindowSuccessRate >= threshold)
+            if (WindowCount == windowSize && WindowSuccessRate >= threshold &&
+                EachMapPasses())
             {
                 if (CurrentStage != Stage.Search)
                     progress.stage++;
@@ -123,7 +153,7 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
                 else
                     progress.finalLessonMastered = true;
 
-                progress.successWindow.Clear();
+                progress.recentResults.Clear();
                 Debug.Log($"[Cortex Curriculum] {CurrentStage}, distance {CurrentDistance}" +
                     (progress.finalLessonMastered ? " (final lesson mastered)." : "."));
             }
@@ -144,7 +174,7 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         ScenarioGrid grid = environment.Grid;
         float viewDistance = Mathf.Min(environment.Seekers[0].ViewDistance,
             environment.Seekers[1].ViewDistance);
-        int cacheKey = Difficulty;
+        string cacheKey = LayoutKey(grid) + ":" + Difficulty;
         if (!pairCache.TryGetValue(cacheKey, out List<Pair> candidates))
         {
             candidates = BuildPairs(grid, viewDistance);
@@ -152,7 +182,7 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         }
         if (candidates.Count < 2)
             throw new InvalidOperationException(
-                $"Cortex1 has no valid {CurrentStage} pairs at distance {CurrentDistance}.");
+                $"{grid.LayoutId} has no valid {CurrentStage} pairs at distance {CurrentDistance}.");
 
         for (int attempt = 0; attempt < 8192; attempt++)
         {
@@ -172,7 +202,41 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
 
         throw new InvalidOperationException(
             $"No two valid {CurrentStage} pairs at distance {CurrentDistance} " +
-            "could be drawn on Cortex1. Check the map or stage settings.");
+            $"could be drawn on {grid.LayoutId}. Check the map or stage settings.");
+    }
+
+    private bool EachMapPasses()
+    {
+        var totals = new Dictionary<string, int>();
+        var wins = new Dictionary<string, int>();
+        foreach (MapResult result in progress.recentResults)
+        {
+            totals.TryGetValue(result.mapId, out int count);
+            wins.TryGetValue(result.mapId, out int success);
+            totals[result.mapId] = count + 1;
+            wins[result.mapId] = success + result.passed;
+        }
+        // A map must contribute enough episodes to make its score meaningful.
+        foreach (string mapId in requiredMapIds)
+            if (!totals.ContainsKey(mapId)) return false;
+        int minimumPerMap = Mathf.Max(1,
+            Mathf.Min(20, windowSize / Mathf.Max(1, requiredMapIds.Length)));
+        foreach (string mapId in totals.Keys)
+            if (totals[mapId] < minimumPerMap ||
+                (float)wins[mapId] / totals[mapId] < threshold)
+                return false;
+        return totals.Count > 0;
+    }
+
+    private static string LayoutKey(ScenarioGrid grid)
+    {
+        unchecked
+        {
+            uint hash = 2166136261;
+            foreach (Vector2Int cell in grid.GetAllCells())
+                hash = (hash ^ grid.GetCell(cell)) * 16777619;
+            return $"{grid.Width}x{grid.Height}:{hash:X8}";
+        }
     }
 
     private List<Pair> BuildPairs(ScenarioGrid grid, float viewDistance)
@@ -276,11 +340,16 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         {
             Debug.LogWarning($"[Cortex Curriculum] Could not load progress: {exception.Message}");
         }
+        if (progress != null && progress.version != 2)
+        {
+            Debug.LogWarning("[Cortex Curriculum] Saved progress predates the map pool; starting a fresh curriculum.");
+            progress = null;
+        }
         progress ??= new Progress();
         progress.stage = Mathf.Clamp(progress.stage, 0, (int)Stage.Search);
         progress.searchDistance = Mathf.Clamp(progress.searchDistance, 3,
             finalSearchDistance);
-        progress.successWindow ??= new List<int>();
+        progress.recentResults ??= new List<MapResult>();
     }
 
     private void Save()

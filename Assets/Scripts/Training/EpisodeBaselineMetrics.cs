@@ -18,12 +18,21 @@ public readonly struct EpisodeBaselineMetrics
     public readonly int SightingToCaptureStepSum;
     public readonly int CheckedCells;
     public readonly int ReachableCells;
+    public readonly string MapId;
+    public readonly float[] SeekerTravelDistance;
+    public readonly int[] SeekerVisitedCells;
+    public readonly int[] SeekerTurnInPlaceSteps;
+    public readonly int[] SeekerBlockedForwardDecisions;
+    public readonly int[] SeekerCaptures;
 
     public EpisodeBaselineMetrics(EpisodeOutcome outcome, int stepLimit,
         int firstSightingStep, int firstCaptureStep, int visiblePhysicsSteps,
         int reacquisitions, int distinctVisitedCells, int sightedHiders,
         int capturesAfterSighting, int sightingToCaptureStepSum,
-        int checkedCells, int reachableCells)
+        int checkedCells, int reachableCells, string mapId,
+        float[] seekerTravelDistance, int[] seekerVisitedCells,
+        int[] seekerTurnInPlaceSteps, int[] seekerBlockedForwardDecisions,
+        int[] seekerCaptures)
     {
         Outcome = outcome;
         StepLimit = stepLimit;
@@ -37,6 +46,12 @@ public readonly struct EpisodeBaselineMetrics
         SightingToCaptureStepSum = sightingToCaptureStepSum;
         CheckedCells = checkedCells;
         ReachableCells = reachableCells;
+        MapId = mapId;
+        SeekerTravelDistance = seekerTravelDistance;
+        SeekerVisitedCells = seekerVisitedCells;
+        SeekerTurnInPlaceSteps = seekerTurnInPlaceSteps;
+        SeekerBlockedForwardDecisions = seekerBlockedForwardDecisions;
+        SeekerCaptures = seekerCaptures;
     }
 
     public float MeanSightingToCaptureSteps => CapturesAfterSighting > 0

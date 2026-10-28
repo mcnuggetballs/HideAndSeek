@@ -26,6 +26,8 @@ public class ScenarioGrid
     public int Height => gridHeight;
     public float CellSize => cellSize;
     public Vector3 Origin => origin;
+    // Human-readable identity for diagnostics; the curriculum caches by actual cell content.
+    public string LayoutId { get; set; } = "unlabelled";
     public long LayoutRevision => layoutRevision;
     public long SavedRevision => savedRevision;
     public bool HasUnsavedChanges => layoutRevision != savedRevision;
