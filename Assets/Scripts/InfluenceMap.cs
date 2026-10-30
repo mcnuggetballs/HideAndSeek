@@ -21,6 +21,10 @@ public class InfluenceMap : MonoBehaviour
     private Dictionary<LayerTag, float[,]> layers;
     private int[,] componentIds;
     private int[,] lastSeenSteps;
+    private int[,] teamVisibilityMasks;
+    private readonly List<Vector2Int> visibleBuffer = new();
+    private readonly List<Vector2Int> teamVisibleUnion = new();
+    private readonly List<List<Vector2Int>> teamVisibleBuffers = new();
     private bool[] reachableComponents;
     private int componentCount;
     private int currentStep;
@@ -39,6 +43,7 @@ public class InfluenceMap : MonoBehaviour
             { LayerTag.AgentPositions, new float[grid.Height, grid.Width] }
         };
         lastSeenSteps = new int[grid.Width, grid.Height];
+        teamVisibilityMasks = new int[grid.Width, grid.Height];
         BuildWalkableComponents();
         ResetEpisode();
     }
@@ -70,20 +75,94 @@ public class InfluenceMap : MonoBehaviour
     public int MarkVisibleCells(Vector3 observer, Vector3 forward,
         float viewDistance, float viewAngle, int step)
     {
-        if (grid == null || layers == null || viewDistance <= 0f) return 0;
-        Vector2Int origin = grid.WorldToCell(observer);
-        if (!grid.IsInsideGrid(origin)) return 0;
-        int component = componentIds[origin.x, origin.y];
-        if (component < 0 || !reachableComponents[component]) return 0;
+        if (grid == null || layers == null) return 0;
+        visibleBuffer.Clear();
+        CollectVisibleFloorCells(observer, forward, viewDistance, viewAngle,
+            visibleBuffer);
+        currentStep = step;
+        int newCells = 0;
+        float[,] checkedLayer = layers[LayerTag.WasSeen];
+        foreach (Vector2Int cell in visibleBuffer)
+        {
+            lastSeenSteps[cell.x, cell.y] = step;
+            if (checkedLayer[cell.y, cell.x] > 0f) continue;
+            checkedLayer[cell.y, cell.x] = 1f;
+            CheckedCellCount++;
+            newCells++;
+        }
+        return newCells;
+    }
+
+    /// <summary>
+    /// Marks both seekers' views against the same pre-update coverage snapshot.
+    /// Exclusive counts have no iteration-order bias; shared cells count once.
+    /// </summary>
+    public int MarkTeamVisibleCells(IReadOnlyList<SeekerAgent> seekers, int step,
+        int[] exclusiveNewCells, out int sharedNewCells)
+    {
+        sharedNewCells = 0;
+        if (seekers == null || exclusiveNewCells == null ||
+            exclusiveNewCells.Length < seekers.Count || seekers.Count > 30)
+            throw new System.ArgumentException("Provide one exclusive-cell slot per seeker (at most 30).");
+        System.Array.Clear(exclusiveNewCells, 0, exclusiveNewCells.Length);
+        if (grid == null || layers == null) return 0;
 
         currentStep = step;
+        teamVisibleUnion.Clear();
+        while (teamVisibleBuffers.Count < seekers.Count)
+            teamVisibleBuffers.Add(new List<Vector2Int>());
+        for (int i = 0; i < seekers.Count; i++)
+        {
+            List<Vector2Int> cells = teamVisibleBuffers[i];
+            cells.Clear();
+            SeekerAgent seeker = seekers[i];
+            if (seeker == null) continue;
+            CollectVisibleFloorCells(seeker.transform.position,
+                seeker.transform.forward, seeker.ViewDistance, seeker.ViewAngle, cells);
+            int bit = 1 << i;
+            foreach (Vector2Int cell in cells)
+            {
+                if (teamVisibilityMasks[cell.x, cell.y] == 0)
+                    teamVisibleUnion.Add(cell);
+                teamVisibilityMasks[cell.x, cell.y] |= bit;
+            }
+        }
+
+        int newCells = 0;
+        float[,] checkedLayer = layers[LayerTag.WasSeen];
+        foreach (Vector2Int cell in teamVisibleUnion)
+        {
+            int mask = teamVisibilityMasks[cell.x, cell.y];
+            teamVisibilityMasks[cell.x, cell.y] = 0;
+            lastSeenSteps[cell.x, cell.y] = step;
+            if (checkedLayer[cell.y, cell.x] > 0f) continue;
+            checkedLayer[cell.y, cell.x] = 1f;
+            CheckedCellCount++;
+            newCells++;
+            if ((mask & (mask - 1)) != 0)
+            {
+                sharedNewCells++;
+                continue;
+            }
+            for (int i = 0; i < seekers.Count; i++)
+                if ((mask & (1 << i)) != 0) { exclusiveNewCells[i]++; break; }
+        }
+        return newCells;
+    }
+
+    private void CollectVisibleFloorCells(Vector3 observer, Vector3 forward,
+        float viewDistance, float viewAngle, List<Vector2Int> output)
+    {
+        if (grid == null || layers == null || viewDistance <= 0f) return;
+        Vector2Int origin = grid.WorldToCell(observer);
+        if (!grid.IsInsideGrid(origin)) return;
+        int component = componentIds[origin.x, origin.y];
+        if (component < 0 || !reachableComponents[component]) return;
+
         float maxDistanceSquared = viewDistance * viewDistance;
         float halfAngleCos = Mathf.Cos(Mathf.Clamp(viewAngle, 1f, 360f) * 0.5f * Mathf.Deg2Rad);
         Vector2 flatForward = new Vector2(forward.x, forward.z).normalized;
         int radius = Mathf.CeilToInt(viewDistance / grid.CellSize) + 1;
-        int newCells = 0;
-        float[,] checkedLayer = layers[LayerTag.WasSeen];
-
         for (int y = Mathf.Max(0, origin.y - radius);
              y <= Mathf.Min(grid.Height - 1, origin.y + radius); y++)
             for (int x = Mathf.Max(0, origin.x - radius);
@@ -100,13 +179,8 @@ public class InfluenceMap : MonoBehaviour
                     Mathf.Sqrt(distanceSquared) * halfAngleCos)) continue;
                 if (!occupiedCell && !HasClearGridLine(observer, cell)) continue;
 
-                lastSeenSteps[x, y] = step;
-                if (checkedLayer[y, x] > 0f) continue;
-                checkedLayer[y, x] = 1f;
-                CheckedCellCount++;
-                newCells++;
+                output.Add(cell);
             }
-        return newCells;
     }
 
     public void GetCoverage(Vector2Int cell, int step, out float checkedBefore,
@@ -161,6 +235,9 @@ public class InfluenceMap : MonoBehaviour
             for (int x = 0; x < grid.Width; x++)
                 lastSeenSteps[x, y] = -1;
         CheckedCellCount = 0;
+        if (teamVisibilityMasks != null)
+            System.Array.Clear(teamVisibilityMasks, 0, teamVisibilityMasks.Length);
+        teamVisibleUnion.Clear();
         ReachableCellCount = 0;
         currentStep = 0;
         if (reachableComponents != null)

@@ -545,6 +545,9 @@ MonoBehaviour:
     hiderCaughtGroupReward: 5
     individualCatchRewardFraction: 0.5
     searchCoverageRewardBudget: 1
+    searchPersonalCoverageRewardBudget: 0.5
+    searchMinimumNovelCellsPerDecision: 4
+    searchSharedViewRewardFraction: 0.25
   useAdaptiveSpawnCurriculum: 0
   minimumHiderDistance: 2
   startingMaximumHiderDistance: 4
@@ -565,6 +568,7 @@ MonoBehaviour:
   cortexSuccessThreshold: 0.8
   cortexFinalSearchDistance: 12
   cortexSearchDistanceIncrement: 1
+  cortexMaximumSeekerSpawnDistance: 5
   cortexCaptureDeadline: 512
   cortexChaseDeadline: 768
   cortexDetectDeadline: 1024

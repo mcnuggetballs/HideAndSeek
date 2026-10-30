@@ -1,0 +1,29 @@
+{
+    "version": 3,
+    "stage": 0,
+    "searchDistance": 3,
+    "sequence": 29,
+    "finalLessonMastered": false,
+    "recentResults": [
+        {
+            "mapId": "Cortex1",
+            "passed": 1
+        },
+        {
+            "mapId": "CortexWestRooms",
+            "passed": 1
+        },
+        {
+            "mapId": "Cortex1",
+            "passed": 1
+        },
+        {
+            "mapId": "CortexNorthRooms",
+            "passed": 1
+        },
+        {
+            "mapId": "CortexNorthRooms",
+            "passed": 1
+        }
+    ]
+}

@@ -76,6 +76,8 @@ public class SimulationController : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float cortexSuccessThreshold = 0.8f;
     [SerializeField, Min(3)] private int cortexFinalSearchDistance = 12;
     [SerializeField, Min(1)] private int cortexSearchDistanceIncrement = 1;
+    [Tooltip("Maximum walking-cell distance between the two seekers at episode start.")]
+    [SerializeField, Min(2)] private int cortexMaximumSeekerSpawnDistance = 5;
     [SerializeField, Min(1)] private int cortexCaptureDeadline = 512;
     [SerializeField, Min(1)] private int cortexChaseDeadline = 768;
     [SerializeField, Min(1)] private int cortexDetectDeadline = 1024;
@@ -243,7 +245,7 @@ public class SimulationController : MonoBehaviour
                         cortexDetectDeadline, episodeRules.maxEnvironmentSteps },
                     progressPath, curriculumRandomSeed, resumeCurriculumProgress,
                     runCortexBaseline, evaluationStage, evaluationSearchDistance,
-                    requiredMaps.ToArray())
+                    requiredMaps.ToArray(), cortexMaximumSeekerSpawnDistance)
                 : useOrderedPoliceCurriculum
                     ? new OrderedPoliceCurriculum(orderedWindowSize, orderedSuccessThreshold,
                         progressPath, curriculumRandomSeed, resumeCurriculumProgress)

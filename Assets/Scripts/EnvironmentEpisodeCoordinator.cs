@@ -25,6 +25,12 @@ public sealed class EnvironmentEpisodeCoordinator
     private int[] seekerTurnInPlaceSteps = Array.Empty<int>();
     private int[] seekerBlockedForwardDecisions = Array.Empty<int>();
     private int[] seekerCaptures = Array.Empty<int>();
+    private int[] seekerExclusiveNewCells = Array.Empty<int>();
+    private int[] seekerExclusiveCheckedCells = Array.Empty<int>();
+    private float[] seekerCoverageRewardGiven = Array.Empty<float>();
+    private int sharedNewCheckedCells;
+    private int rewardedNovelCells;
+    private int seekerSpawnSeparationCells;
 
     private SimpleMultiAgentGroup group;
     private EpisodeRules rules = new();
@@ -99,14 +105,20 @@ public sealed class EnvironmentEpisodeCoordinator
         foreach (SeekerAgent seeker in environment.Seekers)
             seeker?.UpdateTeamSightings();
 
-        // Four physics ticks match the decision interval. Each cell can earn
-        // coverage reward only once across the whole team and episode.
+        // Four physics ticks match the decision interval. The team view is
+        // sampled atomically so overlapping rays cannot give the first seeker
+        // an arbitrary personal credit.
         if (step % 4 == 0)
         {
-            int newlyChecked = 0;
-            foreach (SeekerAgent seeker in environment.Seekers)
-                if (seeker != null) newlyChecked += seeker.MarkVisibleCoverage();
-            if (newlyChecked > 0 && rules.searchCoverageRewardBudget > 0f &&
+            int newlyChecked = environment.InfluenceMap.MarkTeamVisibleCells(
+                environment.Seekers, step, seekerExclusiveNewCells,
+                out int sharedNewCells);
+            sharedNewCheckedCells += sharedNewCells;
+            for (int i = 0; i < seekerExclusiveNewCells.Length; i++)
+                seekerExclusiveCheckedCells[i] += seekerExclusiveNewCells[i];
+            if (newlyChecked >= Mathf.Max(1, rules.searchMinimumNovelCellsPerDecision) &&
+                (rules.searchCoverageRewardBudget > 0f ||
+                 rules.searchPersonalCoverageRewardBudget > 0f) &&
                 curriculum is CortexPoliceCurriculum &&
                 environment.CurrentEpisode != null &&
                 environment.CurrentEpisode.Difficulty / 1000 ==
@@ -120,8 +132,29 @@ public sealed class EnvironmentEpisodeCoordinator
                         break;
                     }
                 if (!targetKnown)
-                    AddGroupReward(rules.searchCoverageRewardBudget * newlyChecked /
-                        Mathf.Max(1, environment.InfluenceMap.ReachableCellCount));
+                {
+                    int reachable = Mathf.Max(1, environment.InfluenceMap.ReachableCellCount);
+                    float weightedCells = newlyChecked - sharedNewCells +
+                        rules.searchSharedViewRewardFraction * sharedNewCells;
+                    if (rules.searchCoverageRewardBudget > 0f)
+                        AddGroupReward(rules.searchCoverageRewardBudget * weightedCells / reachable);
+                    float fairShare = (float)reachable /
+                        Mathf.Max(1, environment.Seekers.Count);
+                    for (int i = 0; i < seekerExclusiveNewCells.Length; i++)
+                    {
+                        SeekerAgent seeker = environment.Seekers[i];
+                        if (seeker == null || seekerExclusiveNewCells[i] == 0) continue;
+                        float remaining = rules.searchPersonalCoverageRewardBudget -
+                            seekerCoverageRewardGiven[i];
+                        float personal = Mathf.Min(remaining,
+                            rules.searchPersonalCoverageRewardBudget *
+                            seekerExclusiveNewCells[i] / fairShare);
+                        if (personal <= 0f) continue;
+                        seeker.AddReward(personal);
+                        seekerCoverageRewardGiven[i] += personal;
+                    }
+                    rewardedNovelCells += newlyChecked;
+                }
             }
         }
 
@@ -244,7 +277,10 @@ public sealed class EnvironmentEpisodeCoordinator
                 environment.Grid.LayoutId, (float[])seekerTravelDistance.Clone(),
                 SeekerVisitCounts(), (int[])seekerTurnInPlaceSteps.Clone(),
                 (int[])seekerBlockedForwardDecisions.Clone(),
-                (int[])seekerCaptures.Clone());
+                (int[])seekerCaptures.Clone(),
+                (int[])seekerExclusiveCheckedCells.Clone(),
+                sharedNewCheckedCells, rewardedNovelCells,
+                seekerSpawnSeparationCells);
 
             if (reportToCurriculum)
             {
@@ -272,6 +308,13 @@ public sealed class EnvironmentEpisodeCoordinator
                     Academy.Instance.StatsRecorder.Add(prefix + "VisitedCells", visitedCells.Count);
                     Academy.Instance.StatsRecorder.Add(prefix + "CheckedFloorFraction",
                         measurements.CheckedFraction);
+                    Academy.Instance.StatsRecorder.Add(prefix + "SharedNewCheckedCells",
+                        sharedNewCheckedCells);
+                    Academy.Instance.StatsRecorder.Add(prefix + "RewardedNovelCells",
+                        rewardedNovelCells);
+                    for (int i = 0; i < seekerExclusiveCheckedCells.Length; i++)
+                        Academy.Instance.StatsRecorder.Add(prefix +
+                            $"Seeker{i}ExclusiveCheckedCells", seekerExclusiveCheckedCells[i]);
                     string mapPrefix = $"Evaluation/Maps/{environment.Grid.LayoutId}/{phase}/";
                     Academy.Instance.StatsRecorder.Add(mapPrefix + "FullCapture", success ? 1f : 0f);
                     Academy.Instance.StatsRecorder.Add(mapPrefix + "CheckedFloorFraction",
@@ -337,6 +380,12 @@ public sealed class EnvironmentEpisodeCoordinator
         seekerTurnInPlaceSteps = new int[seekerCount];
         seekerBlockedForwardDecisions = new int[seekerCount];
         seekerCaptures = new int[seekerCount];
+        seekerExclusiveNewCells = new int[seekerCount];
+        seekerExclusiveCheckedCells = new int[seekerCount];
+        seekerCoverageRewardGiven = new float[seekerCount];
+        sharedNewCheckedCells = 0;
+        rewardedNovelCells = 0;
+        seekerSpawnSeparationCells = 0;
         seekerVisitedCells.Clear();
         for (int i = 0; i < seekerCount; i++) seekerVisitedCells.Add(new HashSet<Vector2Int>());
         firstSightingStep = -1;
@@ -362,6 +411,15 @@ public sealed class EnvironmentEpisodeCoordinator
             Vector2Int cell = environment.Grid.WorldToCell(seeker.transform.position);
             visitedCells.Add(cell);
             seekerVisitedCells[i].Add(cell);
+        }
+        if (environment.Seekers.Count == 2 &&
+            environment.Seekers[0] != null && environment.Seekers[1] != null)
+        {
+            Vector2Int a = environment.Grid.WorldToCell(
+                environment.Seekers[0].transform.position);
+            Vector2Int b = environment.Grid.WorldToCell(
+                environment.Seekers[1].transform.position);
+            seekerSpawnSeparationCells = Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
         }
     }
 

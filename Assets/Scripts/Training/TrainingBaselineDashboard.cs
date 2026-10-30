@@ -59,7 +59,10 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
                 "seeker_0_travel,seeker_0_visited,seeker_0_turn_in_place," +
                 "seeker_0_blocked_forward,seeker_0_captures," +
                 "seeker_1_travel,seeker_1_visited,seeker_1_turn_in_place," +
-                "seeker_1_blocked_forward,seeker_1_captures\n");
+                "seeker_1_blocked_forward,seeker_1_captures," +
+                "seeker_0_exclusive_checked,seeker_1_exclusive_checked," +
+                "shared_new_checked,rewarded_novel_cells," +
+                "seeker_spawn_separation_cells\n");
             csvAvailable = true;
             Debug.Log($"[Baseline] Recording {curriculum.CurrentStage} episodes to {csvPath}", this);
         }
@@ -122,7 +125,14 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             m.DistinctVisitedCells.ToString(),
             outcome.GroupReward.ToString("F4", CultureInfo.InvariantCulture),
             m.CheckedCells.ToString(), m.ReachableCells.ToString(),
-            SeekerColumns(m, 0), SeekerColumns(m, 1)) + "\n";
+            SeekerColumns(m, 0), SeekerColumns(m, 1),
+            m.SeekerExclusiveCheckedCells.Length > 0 ?
+                m.SeekerExclusiveCheckedCells[0].ToString() : "",
+            m.SeekerExclusiveCheckedCells.Length > 1 ?
+                m.SeekerExclusiveCheckedCells[1].ToString() : "",
+            m.SharedNewCheckedCells.ToString(),
+            m.RewardedNovelCells.ToString(),
+            m.SeekerSpawnSeparationCells.ToString()) + "\n";
     }
 
     private static string SeekerColumns(EpisodeBaselineMetrics m, int index)
@@ -146,7 +156,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             recent.Clear();
         }
         const float width = 480f;
-        const float height = 295f;
+        const float height = 320f;
         Rect panel = new(12f, 12f, width, height);
         GUI.Box(panel, "Cortex police training");
         float y = 42f;
@@ -166,6 +176,9 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
         int chaseSum = 0;
         int chaseCount = 0;
         float checkedFractionSum = 0f;
+        int exclusive0 = 0;
+        int exclusive1 = 0;
+        int shared = 0;
         foreach (EpisodeBaselineMetrics result in recent)
         {
             if (result.Outcome.WasSuccessful)
@@ -182,6 +195,11 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             chaseSum += result.SightingToCaptureStepSum;
             chaseCount += result.CapturesAfterSighting;
             checkedFractionSum += result.CheckedFraction;
+            if (result.SeekerExclusiveCheckedCells.Length > 0)
+                exclusive0 += result.SeekerExclusiveCheckedCells[0];
+            if (result.SeekerExclusiveCheckedCells.Length > 1)
+                exclusive1 += result.SeekerExclusiveCheckedCells[1];
+            shared += result.SharedNewCheckedCells;
         }
         DrawLine($"Recent {count}: full captures {(count > 0 ? (float)wins / count : 0f):P0}", ref y);
         string firstSightText = firstSightCount > 0
@@ -194,6 +212,8 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
         DrawLine($"Sight to capture {chaseText} steps; " +
                  $"success time {successTimeText} steps", ref y);
         DrawLine($"Reachable floor checked {(count > 0 ? checkedFractionSum / count : 0f):P0}", ref y);
+        DrawLine($"New cells/episode: S0 {exclusive0 / Mathf.Max(1, count)}, " +
+                 $"S1 {exclusive1 / Mathf.Max(1, count)}, shared {shared / Mathf.Max(1, count)}", ref y);
         if (baselineMode)
             DrawLine(completedEpisodes >= requestedEpisodes ? "Complete: simulation paused" :
                 $"Model label: {runLabel}", ref y);
@@ -201,7 +221,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             DrawLine("Metrics also appear under Baseline/<stage> in TensorBoard", ref y);
 
         if (baselineMode)
-            GUI.Label(new Rect(20f, 267f, width - 16f, 25f),
+            GUI.Label(new Rect(20f, 292f, width - 16f, 25f),
                 csvAvailable ? "CSV: " + csvPath : "CSV unavailable; check Console");
     }
 

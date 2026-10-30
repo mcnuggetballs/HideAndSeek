@@ -18,6 +18,7 @@ public sealed class SeekerAgent : Agent
     private const int MaxHiders = 4;
     public const int VectorObservationSize = 52;
     public float ViewDistance => viewDistance;
+    public float ViewAngle => viewAngle;
     public int LastMoveAction => lastMoveAction;
     public float DisplacementSinceLastAction => displacementSinceLastAction;
     public int DecisionCount { get; private set; }

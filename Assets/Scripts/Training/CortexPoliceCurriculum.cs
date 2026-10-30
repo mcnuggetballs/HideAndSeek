@@ -6,7 +6,7 @@ using UnityEngine;
 
 /// <summary>
 /// Two-seeker police lesson on a pool of fixed layouts.
-/// Search grows by walkable path distance without changing the policy inputs or rewards.
+/// Search grows by walkable path distance; seeker starts are paired nearby.
 /// The one shared instance pools completed episodes from every training arena.
 /// </summary>
 public sealed class CortexPoliceCurriculum : ITrainingCurriculum
@@ -16,7 +16,7 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
     [Serializable]
     private sealed class Progress
     {
-        public int version = 2;
+        public int version = 3;
         public int stage;
         public int searchDistance = 3;
         public int sequence;
@@ -47,12 +47,14 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
     private readonly float threshold;
     private readonly int finalSearchDistance;
     private readonly int distanceIncrement;
+    private readonly int maximumSeekerSpawnDistance;
     private readonly int[] stageDeadlines;
     private readonly string savePath;
     private readonly bool baselineMode;
     private readonly System.Random random;
     private readonly string[] requiredMapIds;
     private readonly Dictionary<string, List<Pair>> pairCache = new();
+    private readonly Dictionary<string, Dictionary<Vector2Int, int[,]>> pathCache = new();
     private Progress progress;
 
     public Stage CurrentStage => (Stage)progress.stage;
@@ -94,12 +96,14 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         int finalSearchDistance, int distanceIncrement, int[] stageDeadlines,
         string savePath, int randomSeed, bool resumeProgress,
         bool baselineMode = false, Stage baselineStage = Stage.Capture,
-        int baselineSearchDistance = 3, string[] requiredMapIds = null)
+        int baselineSearchDistance = 3, string[] requiredMapIds = null,
+        int maximumSeekerSpawnDistance = 5)
     {
         this.windowSize = Mathf.Max(1, windowSize);
         this.threshold = Mathf.Clamp01(threshold);
         this.finalSearchDistance = Mathf.Max(3, finalSearchDistance);
         this.distanceIncrement = Mathf.Max(1, distanceIncrement);
+        this.maximumSeekerSpawnDistance = Mathf.Max(2, maximumSeekerSpawnDistance);
         if (stageDeadlines == null || stageDeadlines.Length != 4)
             throw new ArgumentException("Four stage deadlines are required.", nameof(stageDeadlines));
         this.stageDeadlines = (int[])stageDeadlines.Clone();
@@ -174,7 +178,8 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         ScenarioGrid grid = environment.Grid;
         float viewDistance = Mathf.Min(environment.Seekers[0].ViewDistance,
             environment.Seekers[1].ViewDistance);
-        string cacheKey = LayoutKey(grid) + ":" + Difficulty;
+        string layoutKey = LayoutKey(grid);
+        string cacheKey = layoutKey + ":" + Difficulty;
         if (!pairCache.TryGetValue(cacheKey, out List<Pair> candidates))
         {
             candidates = BuildPairs(grid, viewDistance);
@@ -188,7 +193,7 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         {
             Pair first = candidates[random.Next(candidates.Count)];
             Pair second = candidates[random.Next(candidates.Count)];
-            if (!Compatible(grid, first, second, viewDistance)) continue;
+            if (!Compatible(grid, layoutKey, first, second, viewDistance)) continue;
 
             progress.sequence++;
             bool faceHider = CurrentStage <= Stage.Chase;
@@ -241,6 +246,12 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
 
     private List<Pair> BuildPairs(ScenarioGrid grid, float viewDistance)
     {
+        string layoutKey = LayoutKey(grid);
+        if (!pathCache.TryGetValue(layoutKey, out Dictionary<Vector2Int, int[,]> paths))
+        {
+            paths = new Dictionary<Vector2Int, int[,]>();
+            pathCache.Add(layoutKey, paths);
+        }
         var walkable = new List<Vector2Int>();
         foreach (Vector2Int cell in grid.GetAllCells())
             if (grid.GetCell(cell) != ScenarioGrid.WallCell)
@@ -251,7 +262,11 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         int minimum = CurrentStage == Stage.Search ? Mathf.Max(3, maximum - 1) : maximum;
         foreach (Vector2Int seeker in walkable)
         {
-            int[,] distance = PathDistances(grid, seeker);
+            if (!paths.TryGetValue(seeker, out int[,] distance))
+            {
+                distance = PathDistances(grid, seeker);
+                paths.Add(seeker, distance);
+            }
             foreach (Vector2Int hider in walkable)
             {
                 int steps = distance[hider.x, hider.y];
@@ -268,19 +283,21 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         return candidates;
     }
 
-    private bool Compatible(ScenarioGrid grid, Pair first, Pair second,
+    private bool Compatible(ScenarioGrid grid, string layoutKey, Pair first, Pair second,
         float viewDistance)
     {
         if (first.Seeker == second.Seeker || first.Hider == second.Hider ||
             first.Seeker == second.Hider || second.Seeker == first.Hider)
             return false;
-        // Keep each pair independent during the first three lessons and avoid
-        // a teammate accidentally exposing a Search hider at episode start.
-        int separation = Mathf.Abs(first.Seeker.x - second.Seeker.x) +
-            Mathf.Abs(first.Seeker.y - second.Seeker.y);
-        if (separation < 6) return false;
-        if (InitiallyVisible(grid, first.Seeker, second.Hider, viewDistance) ||
-            InitiallyVisible(grid, second.Seeker, first.Hider, viewDistance))
+        // Pair the seekers in the same reachable area, within five walking cells.
+        int[,] seekerDistances = pathCache[layoutKey][first.Seeker];
+        int separation = seekerDistances[second.Seeker.x, second.Seeker.y];
+        if (separation < 2 || separation > maximumSeekerSpawnDistance ||
+            !HasClearGridLine(grid, first.Seeker, second.Seeker)) return false;
+        // Search must still begin without either hider visible to either seeker.
+        if (CurrentStage == Stage.Search &&
+            (InitiallyVisible(grid, first.Seeker, second.Hider, viewDistance) ||
+             InitiallyVisible(grid, second.Seeker, first.Hider, viewDistance)))
             return false;
         return true;
     }
@@ -340,9 +357,9 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         {
             Debug.LogWarning($"[Cortex Curriculum] Could not load progress: {exception.Message}");
         }
-        if (progress != null && progress.version != 2)
+        if (progress != null && progress.version != 3)
         {
-            Debug.LogWarning("[Cortex Curriculum] Saved progress predates the map pool; starting a fresh curriculum.");
+            Debug.LogWarning("[Cortex Curriculum] Saved progress predates paired seeker spawns; starting a fresh curriculum.");
             progress = null;
         }
         progress ??= new Progress();

@@ -32,3 +32,8 @@ Compare the four cases using **full capture rate first**, then first-sighting ra
 
 New maps go into `Assets/Resources/PoliceMaps/Training` or `Evaluation` as 33 × 20 text files using `X` for a wall, spaces for floor, and exactly two `S` and two `H` spawn markers. Training maps are discovered automatically at startup; evaluation maps are selected by their filename without `.txt`. Keep every floor region reachable and verify Capture/Chase/Detect/Search spawn pairs before a long run. A training map added to the pool needs at least one arena and enough completed episodes in the 100-result window for the per-map gate.
 
+
+## Paired Search lesson
+
+See [PAIRED_SEARCH_LESSON.md](PAIRED_SEARCH_LESSON.md) for the new nearby seeker spawns, complementary coverage reward, and CSV contribution columns.
+
