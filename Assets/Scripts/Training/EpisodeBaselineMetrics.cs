@@ -28,6 +28,9 @@ public readonly struct EpisodeBaselineMetrics
     public readonly int SharedNewCheckedCells;
     public readonly int RewardedNovelCells;
     public readonly int SeekerSpawnSeparationCells;
+    public readonly int KnownWalls;
+    public readonly int FrontiersInspected;
+    public readonly int FirstFrontierInspectionStep;
 
     public EpisodeBaselineMetrics(EpisodeOutcome outcome, int stepLimit,
         int firstSightingStep, int firstCaptureStep, int visiblePhysicsSteps,
@@ -38,7 +41,8 @@ public readonly struct EpisodeBaselineMetrics
         int[] seekerTurnInPlaceSteps, int[] seekerBlockedForwardDecisions,
         int[] seekerCaptures, int[] seekerExclusiveCheckedCells,
         int sharedNewCheckedCells, int rewardedNovelCells,
-        int seekerSpawnSeparationCells)
+        int seekerSpawnSeparationCells, int knownWalls = 0,
+        int frontiersInspected = 0, int firstFrontierInspectionStep = -1)
     {
         Outcome = outcome;
         StepLimit = stepLimit;
@@ -62,6 +66,9 @@ public readonly struct EpisodeBaselineMetrics
         SharedNewCheckedCells = sharedNewCheckedCells;
         RewardedNovelCells = rewardedNovelCells;
         SeekerSpawnSeparationCells = seekerSpawnSeparationCells;
+        KnownWalls = knownWalls;
+        FrontiersInspected = frontiersInspected;
+        FirstFrontierInspectionStep = firstFrontierInspectionStep;
     }
 
     public float MeanSightingToCaptureSteps => CapturesAfterSighting > 0

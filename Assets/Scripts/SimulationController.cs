@@ -498,6 +498,9 @@ public class SimulationController : MonoBehaviour
         if (environmentManager == null) return;
         foreach (EnvironmentInstance instance in environmentManager.Environments)
         {
+            // The camera follows the primary arena. Updating every hidden grid
+            // renderer each frame scales poorly when many arenas train at once.
+            if (IsTrainingMode && instance != environment) continue;
             if (!instance.IsBuilt || instance.InfluenceMap == null) continue;
             if (instance.GridRenderer != null &&
                 instance.InfluenceMap.TryGetLayer(debugLayer, out var data))

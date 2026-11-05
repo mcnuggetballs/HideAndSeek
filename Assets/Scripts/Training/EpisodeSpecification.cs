@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 
+public enum SearchLessonKind { None, EmptyArea, OccupiedArea }
+
 /// <summary>
 /// Immutable data describing where the already-built participants should start an episode.
 /// Geometry remains owned by ScenarioGrid and EnvironmentManager.
@@ -15,11 +17,13 @@ public sealed class EpisodeSpecification
     public bool FaceAwayFromNearestHider { get; }
     public bool MovingHider { get; }
     public int StepLimit { get; }
+    public SearchLessonKind SearchLesson { get; }
 
     public EpisodeSpecification(int sequence, int difficulty,
         Vector2Int[] seekerSpawnCells, Vector2Int[] hiderSpawnCells,
         bool faceNearestHider = false, bool faceAwayFromNearestHider = false,
-        bool movingHider = false, int stepLimit = 0)
+        bool movingHider = false, int stepLimit = 0,
+        SearchLessonKind searchLesson = SearchLessonKind.None)
     {
         Sequence = sequence;
         Difficulty = difficulty;
@@ -29,5 +33,6 @@ public sealed class EpisodeSpecification
         FaceAwayFromNearestHider = faceAwayFromNearestHider;
         MovingHider = movingHider;
         StepLimit = stepLimit;
+        SearchLesson = searchLesson;
     }
 }

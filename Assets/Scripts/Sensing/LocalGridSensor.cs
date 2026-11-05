@@ -3,8 +3,8 @@ using Unity.MLAgents.Sensors;
 using UnityEngine;
 
 /// <summary>
-/// Heading-aligned wall and team-coverage window. The sensor reads ScenarioGrid
-/// and its arena's InfluenceMap; render objects never become training data.
+/// Heading-aligned discovered-map window. The real grid supplies coordinates and
+/// boundaries only; interior wall/floor values come from team observations.
 /// </summary>
 public sealed class LocalGridSensor : ISensor
 {
@@ -15,11 +15,12 @@ public sealed class LocalGridSensor : ISensor
     private readonly int radius;
     private readonly int supersample;
     private readonly int size;
+    private readonly bool useDiscoveredMap;
     private readonly ObservationSpec specification;
 
     public LocalGridSensor(Transform agent, Func<ScenarioGrid> getGrid,
         Func<InfluenceMap> getCoverage, Func<int> getStep,
-        int radius, int supersample)
+        int radius, int supersample, bool useDiscoveredMap)
     {
         this.agent = agent;
         this.getGrid = getGrid;
@@ -27,6 +28,7 @@ public sealed class LocalGridSensor : ISensor
         this.getStep = getStep;
         this.radius = Mathf.Max(1, radius);
         this.supersample = Mathf.Max(1, supersample);
+        this.useDiscoveredMap = useDiscoveredMap;
         size = 2 * this.radius * this.supersample + 1;
         specification = ObservationSpec.Visual(4, size, size);
     }
@@ -57,8 +59,12 @@ public sealed class LocalGridSensor : ISensor
                 Vector3 sample = agent.position + forward * forwardDistance + right * rightDistance;
                 Vector2Int cell = grid != null ? grid.WorldToCell(sample) : new Vector2Int(-1, -1);
                 bool outside = grid == null || !grid.IsInsideGrid(cell);
+                // In discovery mode, wall=0 and floor=0 means unknown. The old
+                // mode keeps the original wall contract for existing ONNX models.
                 writer[0, row, column] = !outside &&
-                    grid.GetCell(cell) == ScenarioGrid.WallCell ? 1f : 0f;
+                    (useDiscoveredMap
+                        ? coverage != null && coverage.IsKnownWall(cell)
+                        : grid.GetCell(cell) == ScenarioGrid.WallCell) ? 1f : 0f;
                 writer[1, row, column] = outside ? 1f : 0f;
                 float checkedBefore = 0f;
                 float age = 1f;

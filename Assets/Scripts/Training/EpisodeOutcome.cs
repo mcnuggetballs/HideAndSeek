@@ -14,10 +14,14 @@ public readonly struct EpisodeOutcome
     public int Steps { get; }
     public float GroupReward { get; }
     public Vector2Int[] CaptureCells { get; }
+    public SearchLessonKind SearchLesson { get; }
+    public bool FrontierInspectionPassed { get; }
 
     public EpisodeOutcome(int environmentId, int episodeNumber, int difficulty,
         bool wasSuccessful, bool wasInterrupted, int hidersCaught, int hiderCount,
-        int steps, float groupReward, Vector2Int[] captureCells)
+        int steps, float groupReward, Vector2Int[] captureCells,
+        SearchLessonKind searchLesson = SearchLessonKind.None,
+        bool frontierInspectionPassed = false)
     {
         EnvironmentId = environmentId;
         EpisodeNumber = episodeNumber;
@@ -29,5 +33,7 @@ public readonly struct EpisodeOutcome
         Steps = steps;
         GroupReward = groupReward;
         CaptureCells = captureCells ?? Array.Empty<Vector2Int>();
+        SearchLesson = searchLesson;
+        FrontierInspectionPassed = frontierInspectionPassed;
     }
 }

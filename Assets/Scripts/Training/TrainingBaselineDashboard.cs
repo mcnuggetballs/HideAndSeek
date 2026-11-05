@@ -62,7 +62,8 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
                 "seeker_1_blocked_forward,seeker_1_captures," +
                 "seeker_0_exclusive_checked,seeker_1_exclusive_checked," +
                 "shared_new_checked,rewarded_novel_cells," +
-                "seeker_spawn_separation_cells\n");
+                "seeker_spawn_separation_cells,search_lesson,frontier_inspection_pass," +
+                "known_walls,frontiers_inspected,first_frontier_inspection_step\n");
             csvAvailable = true;
             Debug.Log($"[Baseline] Recording {curriculum.CurrentStage} episodes to {csvPath}", this);
         }
@@ -132,7 +133,12 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
                 m.SeekerExclusiveCheckedCells[1].ToString() : "",
             m.SharedNewCheckedCells.ToString(),
             m.RewardedNovelCells.ToString(),
-            m.SeekerSpawnSeparationCells.ToString()) + "\n";
+            m.SeekerSpawnSeparationCells.ToString(),
+            outcome.SearchLesson.ToString(),
+            outcome.FrontierInspectionPassed ? "1" : "0",
+            m.KnownWalls.ToString(), m.FrontiersInspected.ToString(),
+            m.FirstFrontierInspectionStep >= 0 ?
+                m.FirstFrontierInspectionStep.ToString() : "") + "\n";
     }
 
     private static string SeekerColumns(EpisodeBaselineMetrics m, int index)
@@ -156,7 +162,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             recent.Clear();
         }
         const float width = 480f;
-        const float height = 320f;
+        const float height = 420f;
         Rect panel = new(12f, 12f, width, height);
         GUI.Box(panel, "Cortex police training");
         float y = 42f;
@@ -165,7 +171,11 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             ? $"Fixed-stage baseline: {completedEpisodes}/{requestedEpisodes} episodes"
             : $"Advancement: {curriculum.WindowCount}/{curriculum.WindowSize} " +
               $"at {curriculum.WindowSuccessRate:P0} (target {curriculum.SuccessThreshold:P0})", ref y);
-        DrawLine(baselineMode ? $"Map: {mapLabel}" : curriculum.MapWindowStatus, ref y);
+        if (baselineMode) DrawLine($"Map: {mapLabel}", ref y);
+        else
+            foreach (string mapStatus in curriculum.MapWindowStatus.Split(
+                         new[] { "  " }, StringSplitOptions.RemoveEmptyEntries))
+                DrawLine(mapStatus, ref y);
 
         int count = recent.Count;
         int wins = 0;
@@ -179,6 +189,10 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
         int exclusive0 = 0;
         int exclusive1 = 0;
         int shared = 0;
+        int emptyCases = 0;
+        int emptyPasses = 0;
+        int occupiedCases = 0;
+        int occupiedPasses = 0;
         foreach (EpisodeBaselineMetrics result in recent)
         {
             if (result.Outcome.WasSuccessful)
@@ -200,6 +214,10 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             if (result.SeekerExclusiveCheckedCells.Length > 1)
                 exclusive1 += result.SeekerExclusiveCheckedCells[1];
             shared += result.SharedNewCheckedCells;
+            if (result.Outcome.SearchLesson == SearchLessonKind.EmptyArea)
+            { emptyCases++; if (result.Outcome.FrontierInspectionPassed) emptyPasses++; }
+            else if (result.Outcome.SearchLesson == SearchLessonKind.OccupiedArea)
+            { occupiedCases++; if (result.Outcome.WasSuccessful) occupiedPasses++; }
         }
         DrawLine($"Recent {count}: full captures {(count > 0 ? (float)wins / count : 0f):P0}", ref y);
         string firstSightText = firstSightCount > 0
@@ -214,6 +232,9 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
         DrawLine($"Reachable floor checked {(count > 0 ? checkedFractionSum / count : 0f):P0}", ref y);
         DrawLine($"New cells/episode: S0 {exclusive0 / Mathf.Max(1, count)}, " +
                  $"S1 {exclusive1 / Mathf.Max(1, count)}, shared {shared / Mathf.Max(1, count)}", ref y);
+        if (curriculum.CurrentStage == CortexPoliceCurriculum.Stage.Search)
+            DrawLine($"Search pass: empty {emptyPasses}/{emptyCases}, " +
+                     $"occupied {occupiedPasses}/{occupiedCases}", ref y);
         if (baselineMode)
             DrawLine(completedEpisodes >= requestedEpisodes ? "Complete: simulation paused" :
                 $"Model label: {runLabel}", ref y);
@@ -221,7 +242,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             DrawLine("Metrics also appear under Baseline/<stage> in TensorBoard", ref y);
 
         if (baselineMode)
-            GUI.Label(new Rect(20f, 292f, width - 16f, 25f),
+            GUI.Label(new Rect(20f, 392f, width - 16f, 25f),
                 csvAvailable ? "CSV: " + csvPath : "CSV unavailable; check Console");
     }
 

@@ -89,6 +89,20 @@ public class GridRenderer : MonoBehaviour
                         col = (v > 0f) ? Color.blue : Color.black;
                         break;
 
+                    case LayerTag.KnownWall:
+                        col = (v > 0f) ? Color.gray : Color.black;
+                        break;
+
+                    case LayerTag.Frontier:
+                        col = (v > 0f) ? Color.yellow : Color.black;
+                        break;
+
+                    case LayerTag.DiscoveredMap:
+                        col = v >= 3f ? Color.yellow :
+                            v >= 2f ? Color.gray :
+                            v >= 1f ? Color.cyan : Color.black;
+                        break;
+
                     default:
                         col = Color.Lerp(Color.black, Color.white, v);
                         break;

@@ -3576,6 +3576,10 @@ PrefabInstance:
       propertyPath: simulationMode
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6474338889623940484, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
+      propertyPath: episodeRules.maxEnvironmentSteps
+      value: 5000
+      objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 4979092101512667605, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
     m_RemovedGameObjects: []

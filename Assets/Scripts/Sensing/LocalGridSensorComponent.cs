@@ -6,6 +6,9 @@ public sealed class LocalGridSensorComponent : SensorComponent
 {
     [SerializeField, Min(1)] private int radius = 5;
     [SerializeField, Min(1)] private int supersample = 2;
+    [Tooltip("Reveal walls only after they enter the team view. Use a fresh model when enabled.")]
+    [SerializeField] private bool useDiscoveredMap;
+    public bool UseDiscoveredMap => useDiscoveredMap;
 
     private ScenarioGrid grid;
     private InfluenceMap coverage;
@@ -24,7 +27,8 @@ public sealed class LocalGridSensorComponent : SensorComponent
         return new ISensor[]
         {
             new LocalGridSensor(transform, () => grid, () => coverage,
-                () => currentStep != null ? currentStep() : 0, radius, supersample)
+                () => currentStep != null ? currentStep() : 0, radius, supersample,
+                useDiscoveredMap)
         };
     }
 }

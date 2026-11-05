@@ -2,13 +2,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Shared, per-arena memory of floor cells the seeker team has actually viewed.
-/// A checked cell is walkable, grid-reachable from a seeker spawn, inside the
-/// seeker's view cone and range, and not hidden by a grid wall.
+/// Shared, per-arena discovered map. The real ScenarioGrid remains private to
+/// physics and episode setup; seekers receive only observed floor and walls.
 /// </summary>
 public class InfluenceMap : MonoBehaviour
 {
-    public enum LayerTag { WasSeen, TimeSinceLastSeen, AgentPositions }
+    // Append values: existing scenes serialize the first three enum indices.
+    public enum LayerTag { WasSeen, TimeSinceLastSeen, AgentPositions, KnownWall, Frontier, DiscoveredMap }
 
     public const int CoverageAgeHorizonSteps = 512;
 
@@ -23,13 +23,21 @@ public class InfluenceMap : MonoBehaviour
     private int[,] lastSeenSteps;
     private int[,] teamVisibilityMasks;
     private readonly List<Vector2Int> visibleBuffer = new();
+    private readonly List<Vector2Int> visibleWallBuffer = new();
     private readonly List<Vector2Int> teamVisibleUnion = new();
+    private readonly HashSet<Vector2Int> teamVisibleWalls = new();
     private readonly List<List<Vector2Int>> teamVisibleBuffers = new();
+    private readonly List<List<Vector2Int>> teamWallBuffers = new();
+    private readonly Queue<Vector2Int> frontierQueue = new();
+    private bool[,] frontierVisited;
+    private IReadOnlyList<SeekerAgent> episodeSeekers;
     private bool[] reachableComponents;
     private int componentCount;
     private int currentStep;
 
     public int CheckedCellCount { get; private set; }
+    public int KnownWallCount { get; private set; }
+    public int FrontierCount { get; private set; }
     public int ReachableCellCount { get; private set; }
 
     public void Initialise(ScenarioGrid gridRef)
@@ -40,10 +48,14 @@ public class InfluenceMap : MonoBehaviour
         {
             { LayerTag.WasSeen, new float[grid.Height, grid.Width] },
             { LayerTag.TimeSinceLastSeen, new float[grid.Height, grid.Width] },
-            { LayerTag.AgentPositions, new float[grid.Height, grid.Width] }
+            { LayerTag.AgentPositions, new float[grid.Height, grid.Width] },
+            { LayerTag.KnownWall, new float[grid.Height, grid.Width] },
+            { LayerTag.Frontier, new float[grid.Height, grid.Width] },
+            { LayerTag.DiscoveredMap, new float[grid.Height, grid.Width] }
         };
         lastSeenSteps = new int[grid.Width, grid.Height];
         teamVisibilityMasks = new int[grid.Width, grid.Height];
+        frontierVisited = new bool[grid.Width, grid.Height];
         BuildWalkableComponents();
         ResetEpisode();
     }
@@ -52,6 +64,7 @@ public class InfluenceMap : MonoBehaviour
     public void SetEpisodeSeekers(IReadOnlyList<SeekerAgent> seekers)
     {
         if (grid == null || reachableComponents == null) return;
+        episodeSeekers = seekers;
         System.Array.Clear(reachableComponents, 0, reachableComponents.Length);
         if (seekers != null)
             foreach (SeekerAgent seeker in seekers)
@@ -77,8 +90,9 @@ public class InfluenceMap : MonoBehaviour
     {
         if (grid == null || layers == null) return 0;
         visibleBuffer.Clear();
-        CollectVisibleFloorCells(observer, forward, viewDistance, viewAngle,
-            visibleBuffer);
+        visibleWallBuffer.Clear();
+        CollectVisibleCells(observer, forward, viewDistance, viewAngle,
+            visibleBuffer, visibleWallBuffer);
         currentStep = step;
         int newCells = 0;
         float[,] checkedLayer = layers[LayerTag.WasSeen];
@@ -90,6 +104,14 @@ public class InfluenceMap : MonoBehaviour
             CheckedCellCount++;
             newCells++;
         }
+        float[,] knownWalls = layers[LayerTag.KnownWall];
+        foreach (Vector2Int cell in visibleWallBuffer)
+            if (knownWalls[cell.y, cell.x] == 0f)
+            {
+                knownWalls[cell.y, cell.x] = 1f;
+                KnownWallCount++;
+            }
+        UpdateFrontiers();
         return newCells;
     }
 
@@ -98,27 +120,36 @@ public class InfluenceMap : MonoBehaviour
     /// Exclusive counts have no iteration-order bias; shared cells count once.
     /// </summary>
     public int MarkTeamVisibleCells(IReadOnlyList<SeekerAgent> seekers, int step,
-        int[] exclusiveNewCells, out int sharedNewCells)
+        int[] exclusiveNewCells, int[] eachSeekerNewCells, out int sharedNewCells)
     {
         sharedNewCells = 0;
-        if (seekers == null || exclusiveNewCells == null ||
-            exclusiveNewCells.Length < seekers.Count || seekers.Count > 30)
+        if (seekers == null || exclusiveNewCells == null || eachSeekerNewCells == null ||
+            exclusiveNewCells.Length < seekers.Count ||
+            eachSeekerNewCells.Length < seekers.Count || seekers.Count > 30)
             throw new System.ArgumentException("Provide one exclusive-cell slot per seeker (at most 30).");
         System.Array.Clear(exclusiveNewCells, 0, exclusiveNewCells.Length);
+        System.Array.Clear(eachSeekerNewCells, 0, eachSeekerNewCells.Length);
         if (grid == null || layers == null) return 0;
 
         currentStep = step;
         teamVisibleUnion.Clear();
+        teamVisibleWalls.Clear();
         while (teamVisibleBuffers.Count < seekers.Count)
             teamVisibleBuffers.Add(new List<Vector2Int>());
+        while (teamWallBuffers.Count < seekers.Count)
+            teamWallBuffers.Add(new List<Vector2Int>());
         for (int i = 0; i < seekers.Count; i++)
         {
             List<Vector2Int> cells = teamVisibleBuffers[i];
             cells.Clear();
+            List<Vector2Int> walls = teamWallBuffers[i];
+            walls.Clear();
             SeekerAgent seeker = seekers[i];
             if (seeker == null) continue;
-            CollectVisibleFloorCells(seeker.transform.position,
-                seeker.transform.forward, seeker.ViewDistance, seeker.ViewAngle, cells);
+            CollectVisibleCells(seeker.transform.position,
+                seeker.transform.forward, seeker.ViewDistance, seeker.ViewAngle,
+                cells, walls);
+            foreach (Vector2Int wall in walls) teamVisibleWalls.Add(wall);
             int bit = 1 << i;
             foreach (Vector2Int cell in cells)
             {
@@ -139,6 +170,8 @@ public class InfluenceMap : MonoBehaviour
             checkedLayer[cell.y, cell.x] = 1f;
             CheckedCellCount++;
             newCells++;
+            for (int i = 0; i < seekers.Count; i++)
+                if ((mask & (1 << i)) != 0) eachSeekerNewCells[i]++;
             if ((mask & (mask - 1)) != 0)
             {
                 sharedNewCells++;
@@ -147,11 +180,20 @@ public class InfluenceMap : MonoBehaviour
             for (int i = 0; i < seekers.Count; i++)
                 if ((mask & (1 << i)) != 0) { exclusiveNewCells[i]++; break; }
         }
+        float[,] knownWalls = layers[LayerTag.KnownWall];
+        foreach (Vector2Int cell in teamVisibleWalls)
+            if (knownWalls[cell.y, cell.x] == 0f)
+            {
+                knownWalls[cell.y, cell.x] = 1f;
+                KnownWallCount++;
+            }
+        UpdateFrontiers();
         return newCells;
     }
 
-    private void CollectVisibleFloorCells(Vector3 observer, Vector3 forward,
-        float viewDistance, float viewAngle, List<Vector2Int> output)
+    private void CollectVisibleCells(Vector3 observer, Vector3 forward,
+        float viewDistance, float viewAngle, List<Vector2Int> floorOutput,
+        List<Vector2Int> wallOutput)
     {
         if (grid == null || layers == null || viewDistance <= 0f) return;
         Vector2Int origin = grid.WorldToCell(observer);
@@ -168,7 +210,6 @@ public class InfluenceMap : MonoBehaviour
             for (int x = Mathf.Max(0, origin.x - radius);
                  x <= Mathf.Min(grid.Width - 1, origin.x + radius); x++)
             {
-                if (componentIds[x, y] != component) continue;
                 Vector2Int cell = new Vector2Int(x, y);
                 Vector3 target = grid.CellToWorld(cell);
                 Vector2 offset = new Vector2(target.x - observer.x, target.z - observer.z);
@@ -178,9 +219,69 @@ public class InfluenceMap : MonoBehaviour
                     Vector2.Dot(flatForward, offset) <
                     Mathf.Sqrt(distanceSquared) * halfAngleCos)) continue;
                 if (!occupiedCell && !HasClearGridLine(observer, cell)) continue;
-
-                output.Add(cell);
+                if (grid.GetCell(cell) == ScenarioGrid.WallCell)
+                    wallOutput.Add(cell);
+                else if (componentIds[x, y] == component)
+                    floorOutput.Add(cell);
             }
+    }
+
+    public bool IsKnownWall(Vector2Int cell) => grid != null && layers != null &&
+        grid.IsInsideGrid(cell) && layers[LayerTag.KnownWall][cell.y, cell.x] > 0f;
+
+    public bool IsKnownFloor(Vector2Int cell) => grid != null && layers != null &&
+        grid.IsInsideGrid(cell) && layers[LayerTag.WasSeen][cell.y, cell.x] > 0f;
+
+    public bool IsFrontier(Vector2Int cell) => grid != null && layers != null &&
+        grid.IsInsideGrid(cell) && layers[LayerTag.Frontier][cell.y, cell.x] > 0f;
+
+    public bool IsNearFrontier(Vector2Int cell)
+    {
+        if (!IsKnownFloor(cell)) return false;
+        if (IsFrontier(cell)) return true;
+        foreach (Vector2Int offset in Neighbours)
+            if (IsFrontier(cell + offset)) return true;
+        return false;
+    }
+
+    private void UpdateFrontiers()
+    {
+        if (grid == null || layers == null || frontierVisited == null) return;
+        float[,] frontier = layers[LayerTag.Frontier];
+        System.Array.Clear(frontier, 0, frontier.Length);
+        System.Array.Clear(frontierVisited, 0, frontierVisited.Length);
+        frontierQueue.Clear();
+        FrontierCount = 0;
+        if (episodeSeekers == null) return;
+        foreach (SeekerAgent seeker in episodeSeekers)
+        {
+            if (seeker == null) continue;
+            Vector2Int start = grid.WorldToCell(seeker.transform.position);
+            if (!IsKnownFloor(start) || frontierVisited[start.x, start.y]) continue;
+            frontierVisited[start.x, start.y] = true;
+            frontierQueue.Enqueue(start);
+        }
+        while (frontierQueue.Count > 0)
+        {
+            Vector2Int current = frontierQueue.Dequeue();
+            bool bordersUnknown = false;
+            foreach (Vector2Int offset in Neighbours)
+            {
+                Vector2Int next = current + offset;
+                if (!grid.IsInsideGrid(next)) continue;
+                if (!IsKnownFloor(next))
+                {
+                    if (!IsKnownWall(next)) bordersUnknown = true;
+                    continue;
+                }
+                if (frontierVisited[next.x, next.y]) continue;
+                frontierVisited[next.x, next.y] = true;
+                frontierQueue.Enqueue(next);
+            }
+            if (!bordersUnknown) continue;
+            frontier[current.y, current.x] = 1f;
+            FrontierCount++;
+        }
     }
 
     public void GetCoverage(Vector2Int cell, int step, out float checkedBefore,
@@ -210,6 +311,7 @@ public class InfluenceMap : MonoBehaviour
         data = null;
         if (layers == null || !layers.TryGetValue(layer, out data)) return false;
         if (layer == LayerTag.TimeSinceLastSeen) UpdateTimeLastSeen();
+        if (layer == LayerTag.DiscoveredMap) UpdateDiscoveredMapView();
         return true;
     }
 
@@ -235,6 +337,9 @@ public class InfluenceMap : MonoBehaviour
             for (int x = 0; x < grid.Width; x++)
                 lastSeenSteps[x, y] = -1;
         CheckedCellCount = 0;
+        KnownWallCount = 0;
+        FrontierCount = 0;
+        episodeSeekers = null;
         if (teamVisibilityMasks != null)
             System.Array.Clear(teamVisibilityMasks, 0, teamVisibilityMasks.Length);
         teamVisibleUnion.Clear();
@@ -252,6 +357,19 @@ public class InfluenceMap : MonoBehaviour
                 ages[y, x] = lastSeenSteps[x, y] < 0 ? 1f :
                     Mathf.Clamp01((float)Mathf.Max(0,
                         currentStep - lastSeenSteps[x, y]) / CoverageAgeHorizonSteps);
+    }
+
+    private void UpdateDiscoveredMapView()
+    {
+        float[,] view = layers[LayerTag.DiscoveredMap];
+        float[,] floor = layers[LayerTag.WasSeen];
+        float[,] walls = layers[LayerTag.KnownWall];
+        float[,] frontier = layers[LayerTag.Frontier];
+        for (int y = 0; y < grid.Height; y++)
+            for (int x = 0; x < grid.Width; x++)
+                view[y, x] = walls[y, x] > 0f ? 2f :
+                    frontier[y, x] > 0f ? 3f :
+                    floor[y, x] > 0f ? 1f : 0f;
     }
 
     private void BuildWalkableComponents()
@@ -327,7 +445,10 @@ public class InfluenceMap : MonoBehaviour
                 cell.y += stepZ;
                 tMaxZ += tDeltaZ;
             }
-            if (!grid.IsInsideGrid(cell) || IsWall(cell)) return false;
+            if (!grid.IsInsideGrid(cell)) return false;
+            // The target wall itself is visible; only a wall before it blocks sight.
+            if (cell == target) return true;
+            if (IsWall(cell)) return false;
         }
         return false;
     }

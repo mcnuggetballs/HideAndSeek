@@ -526,7 +526,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationController
   trainingEnvironmentPrefab: {fileID: 7066587739052165337, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
-  seekerPrefab: {fileID: 4382439110685233668, guid: 59799930b7016594399014949c3ff5c7, type: 3}
+  seekerPrefab: {fileID: 4382439110685233668, guid: 31e3afbf9da44e5baa796ac610b21807, type: 3}
   hiderPrefab: {fileID: 8698921351780613049, guid: d6cb008445346c34ab861c9ebd502ba1, type: 3}
   obstaclePrefab: {fileID: 9208619384302712137, guid: e15bfa8db912e7443b3f5dda1ed759fe, type: 3}
   scenarioSystem: {fileID: 2144339860}
@@ -535,7 +535,7 @@ MonoBehaviour:
   mapFile: {fileID: 4900000, guid: 91604c8b035e32b4db72c09978a7e9fa, type: 3}
   editorRoot: {fileID: 0}
   scenarioEditor: {fileID: 0}
-  debugLayer: 0
+  debugLayer: 5
   width: 33
   height: 20
   cellSize: 5
@@ -548,6 +548,11 @@ MonoBehaviour:
     searchPersonalCoverageRewardBudget: 0.5
     searchMinimumNovelCellsPerDecision: 4
     searchSharedViewRewardFraction: 0.25
+    emptyAreaFrontierDeadline: 1024
+    emptyAreaMinimumNewCells: 4
+    emptyAreaMinimumTravelCells: 2
+    emptyAreaMinimumExclusiveCellsPerSeeker: 4
+    searchFirstFrontierReward: 0.25
   useAdaptiveSpawnCurriculum: 0
   minimumHiderDistance: 2
   startingMaximumHiderDistance: 4
@@ -576,7 +581,7 @@ MonoBehaviour:
   baselineCase: 0
   baselineMapId: Cortex1
   baselineStage: 3
-  baselineSearchDistance: 10
+  baselineSearchDistance: 8
   baselineCompletedEpisodes: 100
   baselineModelLabel: v10 - 20M
   showCortexTrainingDashboard: 1
@@ -609,7 +614,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnvironmentSpawner
   environmentPrefab: {fileID: 7066587739052165337, guid: 0cf6d9a686b91944385804aac7ac67aa, type: 3}
-  environmentCount: 25
+  environmentCount: 16
   maxCount: 50
   environmentGap: 100
 --- !u!1660057539 &9223372036854775807

@@ -26,11 +26,18 @@ public sealed class EnvironmentEpisodeCoordinator
     private int[] seekerBlockedForwardDecisions = Array.Empty<int>();
     private int[] seekerCaptures = Array.Empty<int>();
     private int[] seekerExclusiveNewCells = Array.Empty<int>();
+    private int[] seekerNewVisibleCells = Array.Empty<int>();
+    private bool[] seekerWasFrontier = Array.Empty<bool>();
+    private Vector3[] seekerSpawnPositions = Array.Empty<Vector3>();
+    private readonly HashSet<Vector2Int> inspectedFrontierCells = new();
     private int[] seekerExclusiveCheckedCells = Array.Empty<int>();
+    private int[] seekerExclusiveByFrontierDeadline = Array.Empty<int>();
     private float[] seekerCoverageRewardGiven = Array.Empty<float>();
     private int sharedNewCheckedCells;
     private int rewardedNovelCells;
     private int seekerSpawnSeparationCells;
+    private int firstFrontierInspectionStep = -1;
+    private bool usesDiscoveredMap;
 
     private SimpleMultiAgentGroup group;
     private EpisodeRules rules = new();
@@ -110,12 +117,53 @@ public sealed class EnvironmentEpisodeCoordinator
         // an arbitrary personal credit.
         if (step % 4 == 0)
         {
+            for (int i = 0; i < environment.Seekers.Count; i++)
+            {
+                SeekerAgent seeker = environment.Seekers[i];
+                seekerWasFrontier[i] = seeker != null &&
+                    environment.InfluenceMap.IsNearFrontier(
+                        environment.Grid.WorldToCell(seeker.transform.position));
+            }
             int newlyChecked = environment.InfluenceMap.MarkTeamVisibleCells(
                 environment.Seekers, step, seekerExclusiveNewCells,
+                seekerNewVisibleCells,
                 out int sharedNewCells);
+            if (usesDiscoveredMap) ForgetRecheckedLastKnownPositions();
             sharedNewCheckedCells += sharedNewCells;
             for (int i = 0; i < seekerExclusiveNewCells.Length; i++)
+            {
                 seekerExclusiveCheckedCells[i] += seekerExclusiveNewCells[i];
+                if (step <= rules.emptyAreaFrontierDeadline)
+                    seekerExclusiveByFrontierDeadline[i] += seekerExclusiveNewCells[i];
+            }
+            if (environment.CurrentEpisode != null &&
+                environment.CurrentEpisode.SearchLesson != SearchLessonKind.None &&
+                step <= rules.emptyAreaFrontierDeadline)
+            {
+                bool targetKnown = false;
+                foreach (SeekerAgent seeker in environment.Seekers)
+                    if (seeker != null && seeker.HasKnownActiveHider())
+                    { targetKnown = true; break; }
+                if (!targetKnown)
+                for (int i = 0; i < environment.Seekers.Count; i++)
+                {
+                    SeekerAgent seeker = environment.Seekers[i];
+                    if (seeker == null || !seekerWasFrontier[i] ||
+                        seekerNewVisibleCells[i] < rules.emptyAreaMinimumNewCells ||
+                        Vector3.Distance(seeker.transform.position,
+                            seekerSpawnPositions[i]) <
+                        rules.emptyAreaMinimumTravelCells * environment.Grid.CellSize)
+                        continue;
+                    Vector2Int cell = environment.Grid.WorldToCell(seeker.transform.position);
+                    if (!inspectedFrontierCells.Add(cell)) continue;
+                    if (firstFrontierInspectionStep < 0)
+                    {
+                        firstFrontierInspectionStep = step;
+                        if (rules.searchFirstFrontierReward > 0f)
+                            AddGroupReward(rules.searchFirstFrontierReward);
+                    }
+                }
+            }
             if (newlyChecked >= Mathf.Max(1, rules.searchMinimumNovelCellsPerDecision) &&
                 (rules.searchCoverageRewardBudget > 0f ||
                  rules.searchPersonalCoverageRewardBudget > 0f) &&
@@ -242,6 +290,24 @@ public sealed class EnvironmentEpisodeCoordinator
             FinishEpisode(interrupted: false, reportToCurriculum: true);
     }
 
+    // A last-known position is no longer a useful chase lead once the team has
+    // looked at that cell again without reacquiring its hider.
+    private void ForgetRecheckedLastKnownPositions()
+    {
+        foreach (NavMeshAgent hider in environment.Hiders)
+        {
+            if (hider == null || !hider.gameObject.activeInHierarchy ||
+                !environment.TeamSightings.TryGet(hider,
+                    out TeamSightingMemory.Sighting sighting) ||
+                step - sighting.Step <= 4) continue;
+            Vector2Int cell = environment.Grid.WorldToCell(sighting.WorldPosition);
+            environment.InfluenceMap.GetCoverage(cell, step,
+                out float checkedBefore, out float age);
+            if (checkedBefore > 0f && age == 0f)
+                environment.TeamSightings.Forget(hider);
+        }
+    }
+
     public void RestartEpisode()
     {
         if (!isActive || transitionInProgress) return;
@@ -254,6 +320,10 @@ public sealed class EnvironmentEpisodeCoordinator
         try
         {
             bool success = caughtHiders.Count >= environment.Hiders.Count;
+            bool bothSeekersContributed = true;
+            for (int i = 0; i < seekerExclusiveByFrontierDeadline.Length; i++)
+                bothSeekersContributed &= seekerExclusiveByFrontierDeadline[i] >=
+                    rules.emptyAreaMinimumExclusiveCellsPerSeeker;
             EpisodeOutcome outcome = new(
                 environment.EnvironmentId,
                 EpisodeNumber,
@@ -264,7 +334,9 @@ public sealed class EnvironmentEpisodeCoordinator
                 environment.Hiders.Count,
                 step,
                 groupReward,
-                captureCells.ToArray());
+                captureCells.ToArray(),
+                environment.CurrentEpisode?.SearchLesson ?? SearchLessonKind.None,
+                firstFrontierInspectionStep >= 0 && bothSeekersContributed);
             EpisodeBaselineMetrics measurements = new(outcome,
                 environment.CurrentEpisode?.StepLimit > 0
                     ? Mathf.Min(rules.maxEnvironmentSteps, environment.CurrentEpisode.StepLimit)
@@ -280,7 +352,9 @@ public sealed class EnvironmentEpisodeCoordinator
                 (int[])seekerCaptures.Clone(),
                 (int[])seekerExclusiveCheckedCells.Clone(),
                 sharedNewCheckedCells, rewardedNovelCells,
-                seekerSpawnSeparationCells);
+                seekerSpawnSeparationCells,
+                environment.InfluenceMap.KnownWallCount,
+                inspectedFrontierCells.Count, firstFrontierInspectionStep);
 
             if (reportToCurriculum)
             {
@@ -308,6 +382,13 @@ public sealed class EnvironmentEpisodeCoordinator
                     Academy.Instance.StatsRecorder.Add(prefix + "VisitedCells", visitedCells.Count);
                     Academy.Instance.StatsRecorder.Add(prefix + "CheckedFloorFraction",
                         measurements.CheckedFraction);
+                    Academy.Instance.StatsRecorder.Add(prefix + "KnownWalls",
+                        measurements.KnownWalls);
+                    Academy.Instance.StatsRecorder.Add(prefix + "FrontiersInspected",
+                        measurements.FrontiersInspected);
+                    if (outcome.SearchLesson == SearchLessonKind.EmptyArea)
+                        Academy.Instance.StatsRecorder.Add(prefix + "EmptyAreaFrontierPass",
+                            outcome.FrontierInspectionPassed ? 1f : 0f);
                     Academy.Instance.StatsRecorder.Add(prefix + "SharedNewCheckedCells",
                         sharedNewCheckedCells);
                     Academy.Instance.StatsRecorder.Add(prefix + "RewardedNovelCells",
@@ -373,6 +454,11 @@ public sealed class EnvironmentEpisodeCoordinator
         lastSightingSteps.Clear();
         visitedCells.Clear();
         int seekerCount = environment.Seekers.Count;
+        usesDiscoveredMap = false;
+        foreach (SeekerAgent seeker in environment.Seekers)
+            if (seeker != null &&
+                seeker.GetComponent<LocalGridSensorComponent>()?.UseDiscoveredMap == true)
+            { usesDiscoveredMap = true; break; }
         previousSeekerPositions = new Vector3[seekerCount];
         previousSeekerRotations = new Quaternion[seekerCount];
         previousDecisionCounts = new int[seekerCount];
@@ -381,7 +467,13 @@ public sealed class EnvironmentEpisodeCoordinator
         seekerBlockedForwardDecisions = new int[seekerCount];
         seekerCaptures = new int[seekerCount];
         seekerExclusiveNewCells = new int[seekerCount];
+        seekerNewVisibleCells = new int[seekerCount];
+        seekerWasFrontier = new bool[seekerCount];
+        seekerSpawnPositions = new Vector3[seekerCount];
+        inspectedFrontierCells.Clear();
+        firstFrontierInspectionStep = -1;
         seekerExclusiveCheckedCells = new int[seekerCount];
+        seekerExclusiveByFrontierDeadline = new int[seekerCount];
         seekerCoverageRewardGiven = new float[seekerCount];
         sharedNewCheckedCells = 0;
         rewardedNovelCells = 0;
@@ -407,6 +499,7 @@ public sealed class EnvironmentEpisodeCoordinator
             SeekerAgent seeker = environment.Seekers[i];
             if (seeker == null) continue;
             previousSeekerPositions[i] = seeker.transform.position;
+            seekerSpawnPositions[i] = seeker.transform.position;
             previousSeekerRotations[i] = seeker.transform.rotation;
             Vector2Int cell = environment.Grid.WorldToCell(seeker.transform.position);
             visitedCells.Add(cell);
