@@ -84,6 +84,53 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 50, y: 2, z: 50}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!1 &5284269173830639575
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1481095358194149857}
+  - component: {fileID: 9021897793313811899}
+  m_Layer: 0
+  m_Name: GridRenderer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &1481095358194149857
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5284269173830639575}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1006135926191435751}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9021897793313811899
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5284269173830639575}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4208dba06e5975469805ef6546a8121, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GridRenderer
+  tilePrefab: {fileID: 2776681547395200417, guid: 80e426ddc8511df46824a66dcac6fabe, type: 3}
+  seenColor: {r: 0.5886327, g: 0.9150943, b: 0.56545925, a: 0}
+  unseenColor: {r: 0, g: 0, b: 0, a: 0}
 --- !u!1 &7066587739052165337
 GameObject:
   m_ObjectHideFlags: 0
@@ -118,6 +165,7 @@ Transform:
   - {fileID: 3047036096140032339}
   - {fileID: 4978278084163510711}
   - {fileID: 596920118829254408}
+  - {fileID: 1481095358194149857}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2493304485592230066

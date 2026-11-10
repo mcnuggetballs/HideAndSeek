@@ -3565,6 +3565,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6474338889623940484, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
+      propertyPath: seekerPrefab
+      value: 
+      objectReference: {fileID: 4382439110685233668, guid: 31e3afbf9da44e5baa796ac610b21807, type: 3}
+    - target: {fileID: 6474338889623940484, guid: 57dbf6bbe6fd7f94285885591f9e743b, type: 3}
       propertyPath: worldBuilder
       value: 
       objectReference: {fileID: 575776162}

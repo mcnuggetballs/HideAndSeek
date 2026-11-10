@@ -584,7 +584,7 @@ MonoBehaviour:
   baselineSearchDistance: 8
   baselineCompletedEpisodes: 100
   baselineModelLabel: v10 - 20M
-  showCortexTrainingDashboard: 1
+  showCortexTrainingDashboard: 0
 --- !u!114 &2144339860
 MonoBehaviour:
   m_ObjectHideFlags: 0
