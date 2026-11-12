@@ -4,6 +4,8 @@ Use Python 3.10 and ML-Agents 1.1.0 with this project's Unity ML-Agents 4.0.3. T
 
 ## Build and launch
 
+For a new GPU run, the shortest command in PowerShell from this project directory is `./start_gpu.ps1 -RunId cortex_gpu_new_01`. The training terminal stays active; press **Ctrl+C once** there for a graceful checkpoint and ONNX export. To continue that exact run later, use `./start_gpu.ps1 -RunId cortex_gpu_new_01 -Resume` with the same arena and worker settings. Give each new experiment a new run ID.
+
 In Unity, build the chosen scene:
 
 | Scene | Unity menu | Player |
