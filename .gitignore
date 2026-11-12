@@ -76,13 +76,20 @@ crashlytics-build.properties
 
 # ML-Agents Python environment
 /mlagents_env/
+/mlagents_gpu_env/
 
 # ML-Agents training results
 /[Aa]ssets/results/
 /results/
+/Assets/ML-Agents/
+/Assets/_Recovery/
+/Archive/
+*_progress_*.json
+curriculum_progress*.json
 
 *.pt
 *.onnx
+!/Assets/AI Models/TeamSearch_8553536.onnx
 
 /tensorboard/
 /summaries/

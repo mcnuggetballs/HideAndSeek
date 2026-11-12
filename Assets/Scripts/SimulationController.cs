@@ -118,6 +118,7 @@ public class SimulationController : MonoBehaviour
     private EnvironmentManager environmentManager;
     private EnvironmentInstance environment;
     private bool isStarted;
+    private bool renderDebugGrid;
 
     public bool IsStarted => isStarted;
     public bool IsTrainingMode => simulationMode == SimulationMode.Training;
@@ -131,9 +132,14 @@ public class SimulationController : MonoBehaviour
 
     private void Start()
     {
+        renderDebugGrid = SystemInfo.graphicsDeviceType !=
+            UnityEngine.Rendering.GraphicsDeviceType.Null;
         if (runCortexBaseline && useCortexPoliceCurriculum)
             Time.timeScale = 1f;
         EnvironmentSpawner spawner = GetComponent<EnvironmentSpawner>();
+        int arenaOverride = TrainingCommandLine.GetInt("--training-arenas", 0);
+        if (IsTrainingMode && spawner != null && arenaOverride > 0)
+            spawner.environmentCount = arenaOverride;
         bool useSpawner = IsTrainingMode && spawner != null && spawner.enabled;
         if (scenarioSystem == null || seekerPrefab == null || hiderPrefab == null || obstaclePrefab == null ||
             (IsTrainingMode && trainingEnvironmentPrefab == null &&
@@ -219,15 +225,33 @@ public class SimulationController : MonoBehaviour
         if (IsTrainingMode && (useCortexPoliceCurriculum ||
             useOrderedPoliceCurriculum || useAdaptiveSpawnCurriculum))
         {
-            string progressPath = Path.Combine(Application.dataPath, "..", curriculumProgressFile);
-            if (!resumeCurriculumProgress)
+            int workerPort = TrainingCommandLine.GetInt("--mlagents-port", 0);
+            string runId = TrainingCommandLine.GetSafeId("--curriculum-run-id", "local");
+            bool resumeProgress = resumeCurriculumProgress ||
+                TrainingCommandLine.HasFlag("--curriculum-resume");
+            string progressPath;
+            if (runId == "local" && workerPort == 0)
             {
-                string directory = Path.GetDirectoryName(progressPath);
-                string stem = Path.GetFileNameWithoutExtension(progressPath);
-                progressPath = Path.Combine(directory,
-                    $"{stem}_{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N").Substring(0, 8)}.json");
+                // Keep existing Editor runs and their old progress location resumable.
+                progressPath = Path.Combine(Application.dataPath, "..", curriculumProgressFile);
+                if (!resumeProgress)
+                {
+                    string directory = Path.GetDirectoryName(progressPath);
+                    string stem = Path.GetFileNameWithoutExtension(progressPath);
+                    progressPath = Path.Combine(directory,
+                        $"{stem}_{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N").Substring(0, 8)}.json");
+                }
             }
-            Debug.Log($"[Curriculum] {(resumeCurriculumProgress ? "Resuming" : "Fresh")} progress: {progressPath}", this);
+            else
+            {
+                string progressName = Path.GetFileNameWithoutExtension(curriculumProgressFile);
+                string progressDirectory = Path.Combine(Application.persistentDataPath, "TrainingProgress");
+                Directory.CreateDirectory(progressDirectory);
+                progressPath = Path.Combine(progressDirectory,
+                    $"{runId}_{progressName}_worker{workerPort}.json");
+            }
+            Debug.Log($"[Curriculum] {(resumeProgress ? "Resuming" : "Fresh")} progress: {progressPath}", this);
+            int workerSeed = unchecked(curriculumRandomSeed + workerPort);
             int minimumDistance = Mathf.Max(1, minimumHiderDistance);
             var requiredMaps = new List<string>();
             if (useCortexPoliceCurriculum)
@@ -243,12 +267,12 @@ public class SimulationController : MonoBehaviour
                     cortexFinalSearchDistance, cortexSearchDistanceIncrement,
                     new[] { cortexCaptureDeadline, cortexChaseDeadline,
                         cortexDetectDeadline, episodeRules.maxEnvironmentSteps },
-                    progressPath, curriculumRandomSeed, resumeCurriculumProgress,
+                    progressPath, workerSeed, resumeProgress,
                     runCortexBaseline, evaluationStage, evaluationSearchDistance,
                     requiredMaps.ToArray(), cortexMaximumSeekerSpawnDistance)
                 : useOrderedPoliceCurriculum
                     ? new OrderedPoliceCurriculum(orderedWindowSize, orderedSuccessThreshold,
-                        progressPath, curriculumRandomSeed, resumeCurriculumProgress)
+                        progressPath, workerSeed, resumeProgress)
                     : new AdaptiveSpawnCurriculum(
                     minimumDistance,
                     Mathf.Max(minimumDistance, startingMaximumHiderDistance),
@@ -256,8 +280,8 @@ public class SimulationController : MonoBehaviour
                     curriculumWindowSize,
                     curriculumSuccessThreshold,
                     progressPath,
-                    curriculumRandomSeed,
-                    resumeCurriculumProgress,
+                    workerSeed,
+                    resumeProgress,
                     faceTargetsInFirstLesson,
                     curriculumMaximumCaptureSteps);
         }
@@ -495,7 +519,7 @@ public class SimulationController : MonoBehaviour
 
     private void Update()
     {
-        if (environmentManager == null) return;
+        if (environmentManager == null || !renderDebugGrid) return;
         foreach (EnvironmentInstance instance in environmentManager.Environments)
         {
             // The camera follows the primary arena. Updating every hidden grid
