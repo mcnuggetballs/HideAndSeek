@@ -17,6 +17,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
     private int requestedEpisodes;
     private int completedEpisodes;
     private int displayedDifficulty = -1;
+    private SearchLessonKind displayedLesson;
     private string runLabel;
     private string mapLabel;
     private string csvPath;
@@ -34,6 +35,7 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
         mapLabel = environments.Count > 0 ? environments[0].Grid.LayoutId : "unknown";
         completedEpisodes = 0;
         displayedDifficulty = (int)curriculum.CurrentStage * 1000 + curriculum.CurrentDistance;
+        displayedLesson = curriculum.CurrentSearchLesson;
         recent.Clear();
         foreach (EnvironmentInstance environment in environments)
         {
@@ -80,10 +82,12 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             (baselineMode && completedEpisodes >= requestedEpisodes)) return;
         // An arena may finish an older lesson after the shared stage changes.
         int currentDifficulty = (int)curriculum.CurrentStage * 1000 + curriculum.CurrentDistance;
-        if (measurement.Outcome.Difficulty != currentDifficulty) return;
-        if (displayedDifficulty != currentDifficulty)
+        if (measurement.Outcome.Difficulty != currentDifficulty ||
+            measurement.Outcome.SearchLesson != curriculum.CurrentSearchLesson) return;
+        if (displayedDifficulty != currentDifficulty || displayedLesson != curriculum.CurrentSearchLesson)
         {
             displayedDifficulty = currentDifficulty;
+            displayedLesson = curriculum.CurrentSearchLesson;
             recent.Clear();
         }
 
@@ -156,9 +160,10 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
     {
         if (curriculum == null) return;
         int currentDifficulty = (int)curriculum.CurrentStage * 1000 + curriculum.CurrentDistance;
-        if (displayedDifficulty != currentDifficulty)
+        if (displayedDifficulty != currentDifficulty || displayedLesson != curriculum.CurrentSearchLesson)
         {
             displayedDifficulty = currentDifficulty;
+            displayedLesson = curriculum.CurrentSearchLesson;
             recent.Clear();
         }
         const float width = 480f;
@@ -167,6 +172,8 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
         GUI.Box(panel, "Cortex police training");
         float y = 42f;
         DrawLine($"Stage: {curriculum.CurrentStage}    Distance: {curriculum.CurrentDistance} cells", ref y);
+        if (curriculum.CurrentStage == CortexPoliceCurriculum.Stage.Search)
+            DrawLine($"Search lesson: {curriculum.CurrentSearchLesson}", ref y);
         DrawLine(baselineMode
             ? $"Fixed-stage baseline: {completedEpisodes}/{requestedEpisodes} episodes"
             : $"Advancement: {curriculum.WindowCount}/{curriculum.WindowSize} " +
@@ -191,6 +198,8 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
         int shared = 0;
         int emptyCases = 0;
         int emptyPasses = 0;
+        int frontierCases = 0;
+        int frontierPasses = 0;
         int occupiedCases = 0;
         int occupiedPasses = 0;
         foreach (EpisodeBaselineMetrics result in recent)
@@ -214,7 +223,9 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
             if (result.SeekerExclusiveCheckedCells.Length > 1)
                 exclusive1 += result.SeekerExclusiveCheckedCells[1];
             shared += result.SharedNewCheckedCells;
-            if (result.Outcome.SearchLesson == SearchLessonKind.EmptyArea)
+            if (result.Outcome.SearchLesson == SearchLessonKind.Frontier)
+            { frontierCases++; if (result.Outcome.FrontierInspectionPassed) frontierPasses++; }
+            else if (result.Outcome.SearchLesson == SearchLessonKind.EmptyArea)
             { emptyCases++; if (result.Outcome.FrontierInspectionPassed) emptyPasses++; }
             else if (result.Outcome.SearchLesson == SearchLessonKind.OccupiedArea)
             { occupiedCases++; if (result.Outcome.WasSuccessful) occupiedPasses++; }
@@ -233,7 +244,8 @@ public sealed class TrainingBaselineDashboard : MonoBehaviour
         DrawLine($"New cells/episode: S0 {exclusive0 / Mathf.Max(1, count)}, " +
                  $"S1 {exclusive1 / Mathf.Max(1, count)}, shared {shared / Mathf.Max(1, count)}", ref y);
         if (curriculum.CurrentStage == CortexPoliceCurriculum.Stage.Search)
-            DrawLine($"Search pass: empty {emptyPasses}/{emptyCases}, " +
+            DrawLine($"Search pass: frontier {frontierPasses}/{frontierCases}, " +
+                     $"team {emptyPasses}/{emptyCases}, " +
                      $"occupied {occupiedPasses}/{occupiedCases}", ref y);
         if (baselineMode)
             DrawLine(completedEpisodes >= requestedEpisodes ? "Complete: simulation paused" :

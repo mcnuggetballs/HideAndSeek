@@ -136,8 +136,7 @@ public sealed class EnvironmentEpisodeCoordinator
                 if (step <= rules.emptyAreaFrontierDeadline)
                     seekerExclusiveByFrontierDeadline[i] += seekerExclusiveNewCells[i];
             }
-            if (environment.CurrentEpisode != null &&
-                environment.CurrentEpisode.SearchLesson != SearchLessonKind.None &&
+            if (IsExplorationLesson &&
                 step <= rules.emptyAreaFrontierDeadline)
             {
                 bool targetKnown = false;
@@ -185,7 +184,9 @@ public sealed class EnvironmentEpisodeCoordinator
                     float weightedCells = newlyChecked - sharedNewCells +
                         rules.searchSharedViewRewardFraction * sharedNewCells;
                     if (rules.searchCoverageRewardBudget > 0f)
-                        AddGroupReward(rules.searchCoverageRewardBudget * weightedCells / reachable);
+                        AddGroupReward(rules.searchCoverageRewardBudget *
+                            (IsExplorationLesson ? rules.explorationCoverageRewardMultiplier : 1f) *
+                            weightedCells / reachable);
                     float fairShare = (float)reachable /
                         Mathf.Max(1, environment.Seekers.Count);
                     for (int i = 0; i < seekerExclusiveNewCells.Length; i++)
@@ -251,6 +252,18 @@ public sealed class EnvironmentEpisodeCoordinator
         float timeReward = -rules.totalTimePenalty / rules.maxEnvironmentSteps;
         AddGroupReward(timeReward);
 
+        // Give exploration episodes their own terminal objective. Capturing nearby
+        // hiders must not end an episode before the seekers practice moving on.
+        if (IsExplorationLesson && step <= rules.emptyAreaFrontierDeadline &&
+            firstFrontierInspectionStep >= 0 &&
+            (environment.CurrentEpisode.SearchLesson == SearchLessonKind.Frontier ||
+             BothSeekersCoveredNewFloor()))
+        {
+            AddGroupReward(rules.explorationLessonSuccessReward);
+            FinishEpisode(interrupted: false, reportToCurriculum: true);
+            return;
+        }
+
         // Reaching the deadline completes a failed attempt. Reserve interruption for
         // manual restarts, which must not be scored as policy failures.
         int episodeLimit = environment.CurrentEpisode?.StepLimit > 0
@@ -282,11 +295,14 @@ public sealed class EnvironmentEpisodeCoordinator
             capturesAfterSighting++;
             sightingToCaptureStepSum += Mathf.Max(0, step - seenAt);
         }
-        AddGroupReward(rules.hiderCaughtGroupReward);
-        capturingAgent.AddReward(
-            rules.hiderCaughtGroupReward * rules.individualCatchRewardFraction);
+        if (!IsExplorationLesson)
+        {
+            AddGroupReward(rules.hiderCaughtGroupReward);
+            capturingAgent.AddReward(
+                rules.hiderCaughtGroupReward * rules.individualCatchRewardFraction);
+        }
 
-        if (caughtHiders.Count >= environment.Hiders.Count)
+        if (!IsExplorationLesson && caughtHiders.Count >= environment.Hiders.Count)
             FinishEpisode(interrupted: false, reportToCurriculum: true);
     }
 
@@ -320,10 +336,7 @@ public sealed class EnvironmentEpisodeCoordinator
         try
         {
             bool success = caughtHiders.Count >= environment.Hiders.Count;
-            bool bothSeekersContributed = true;
-            for (int i = 0; i < seekerExclusiveByFrontierDeadline.Length; i++)
-                bothSeekersContributed &= seekerExclusiveByFrontierDeadline[i] >=
-                    rules.emptyAreaMinimumExclusiveCellsPerSeeker;
+            bool bothSeekersContributed = BothSeekersCoveredNewFloor();
             EpisodeOutcome outcome = new(
                 environment.EnvironmentId,
                 EpisodeNumber,
@@ -336,7 +349,9 @@ public sealed class EnvironmentEpisodeCoordinator
                 groupReward,
                 captureCells.ToArray(),
                 environment.CurrentEpisode?.SearchLesson ?? SearchLessonKind.None,
-                firstFrontierInspectionStep >= 0 && bothSeekersContributed);
+                firstFrontierInspectionStep >= 0 &&
+                (environment.CurrentEpisode?.SearchLesson == SearchLessonKind.Frontier ||
+                 bothSeekersContributed));
             EpisodeBaselineMetrics measurements = new(outcome,
                 environment.CurrentEpisode?.StepLimit > 0
                     ? Mathf.Min(rules.maxEnvironmentSteps, environment.CurrentEpisode.StepLimit)
@@ -389,6 +404,11 @@ public sealed class EnvironmentEpisodeCoordinator
                     if (outcome.SearchLesson == SearchLessonKind.EmptyArea)
                         Academy.Instance.StatsRecorder.Add(prefix + "EmptyAreaFrontierPass",
                             outcome.FrontierInspectionPassed ? 1f : 0f);
+                    if (outcome.SearchLesson == SearchLessonKind.Frontier)
+                        Academy.Instance.StatsRecorder.Add(prefix + "FrontierLessonPass",
+                            outcome.FrontierInspectionPassed ? 1f : 0f);
+                    Academy.Instance.StatsRecorder.Add(prefix + "BothSeekersCoveredNewFloor",
+                        bothSeekersContributed ? 1f : 0f);
                     Academy.Instance.StatsRecorder.Add(prefix + "SharedNewCheckedCells",
                         sharedNewCheckedCells);
                     Academy.Instance.StatsRecorder.Add(prefix + "RewardedNovelCells",
@@ -409,6 +429,8 @@ public sealed class EnvironmentEpisodeCoordinator
                         (float)cortex.CurrentStage);
                     Academy.Instance.StatsRecorder.Add("Evaluation/CurriculumDistance",
                         cortex.CurrentDistance);
+                    Academy.Instance.StatsRecorder.Add("Evaluation/CurriculumSearchLesson",
+                        (float)cortex.CurrentSearchLesson);
                     Academy.Instance.StatsRecorder.Add("Evaluation/StageWindowSuccessRate",
                         cortex.WindowSuccessRate);
                     Academy.Instance.StatsRecorder.Add("Evaluation/StageWindowCount",
@@ -527,6 +549,18 @@ public sealed class EnvironmentEpisodeCoordinator
     {
         group?.AddGroupReward(reward);
         groupReward += reward;
+    }
+
+    private bool IsExplorationLesson => environment.CurrentEpisode != null &&
+        (environment.CurrentEpisode.SearchLesson == SearchLessonKind.Frontier ||
+         environment.CurrentEpisode.SearchLesson == SearchLessonKind.EmptyArea);
+
+    private bool BothSeekersCoveredNewFloor()
+    {
+        if (seekerExclusiveByFrontierDeadline.Length != 2) return false;
+        foreach (int count in seekerExclusiveByFrontierDeadline)
+            if (count < rules.emptyAreaMinimumExclusiveCellsPerSeeker) return false;
+        return true;
     }
 
     private bool Contains(SeekerAgent agent)

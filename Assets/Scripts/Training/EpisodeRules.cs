@@ -12,14 +12,17 @@ public sealed class EpisodeRules
     public float searchCoverageRewardBudget = 1f;
     // Personal maximum per seeker for cells that only this seeker reveals.
     public float searchPersonalCoverageRewardBudget = 0.5f;
+    // Exploration-only episodes need a visible learning signal before a frontier is reached.
+    public float explorationCoverageRewardMultiplier = 3f;
+    public float explorationLessonSuccessReward = 5f;
     // Small one-off glimpses do not produce a coverage reward.
     public int searchMinimumNovelCellsPerDecision = 4;
     // Cells seen by both seekers are still useful, but encourage divided views.
     public float searchSharedViewRewardFraction = 0.25f;
     // An empty-area Search lesson must move to a frontier and reveal new floor.
     public int emptyAreaFrontierDeadline = 1024;
-    public int emptyAreaMinimumNewCells = 4;
-    public int emptyAreaMinimumTravelCells = 2;
+    public int emptyAreaMinimumNewCells = 2;
+    public int emptyAreaMinimumTravelCells = 1;
     public int emptyAreaMinimumExclusiveCellsPerSeeker = 4;
     // Paid once for a real frontier inspection without a known hider.
     public float searchFirstFrontierReward = 0.25f;
@@ -38,6 +41,8 @@ public sealed class EpisodeRules
             throw new ArgumentOutOfRangeException(nameof(searchCoverageRewardBudget));
         if (searchPersonalCoverageRewardBudget < 0f)
             throw new ArgumentOutOfRangeException(nameof(searchPersonalCoverageRewardBudget));
+        if (explorationCoverageRewardMultiplier < 0f || explorationLessonSuccessReward < 0f)
+            throw new ArgumentOutOfRangeException(nameof(explorationCoverageRewardMultiplier));
         if (searchMinimumNovelCellsPerDecision < 0)
             throw new ArgumentOutOfRangeException(nameof(searchMinimumNovelCellsPerDecision));
         if (searchSharedViewRewardFraction < 0f || searchSharedViewRewardFraction > 1f)

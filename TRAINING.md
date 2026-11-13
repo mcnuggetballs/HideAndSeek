@@ -2,6 +2,8 @@
 
 Use Python 3.10 and ML-Agents 1.1.0 with this project's Unity ML-Agents 4.0.3. The live CPU environment reports Python 3.10.11 and PyTorch 2.1.1+cpu. For the RTX 5090, use a separate Blackwell-capable CUDA PyTorch environment, then verify an actual GPU calculation before training. An earlier `torch 2.2.2+cu121` installation could not execute on that card.
 
+For the revised Search lessons, read [Documentation/SEARCH_CURRICULUM_V2.md](Documentation/SEARCH_CURRICULUM_V2.md). After building the Cortex player, start a new run from the completed 20-million-step policy with `./start_gpu.ps1 -RunId cortex_search_v2_01 -InitializeFrom cortex_gpu_20261112_01`. Use `-Resume` with `cortex_search_v2_01` only after that new run has started. Initialization needs the source `.pt` checkpoint under the same project's `results` directory; it does not use an ONNX export.
+
 ## Build and launch
 
 For a new GPU run, the shortest command in PowerShell from this project directory is `./start_gpu.ps1 -RunId cortex_gpu_new_01`. The training terminal stays active; press **Ctrl+C once** there for a graceful checkpoint and ONNX export. To continue that exact run later, use `./start_gpu.ps1 -RunId cortex_gpu_new_01 -Resume` with the same arena and worker settings. Give each new experiment a new run ID.

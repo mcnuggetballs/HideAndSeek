@@ -6,10 +6,14 @@ param(
     [int]$NumEnvs = 1,
     [ValidateRange(1, 50)]
     [int]$Arenas = 16,
-    [switch]$Resume
+    [switch]$Resume,
+    [ValidatePattern('^[A-Za-z0-9_-]+$')]
+    [string]$InitializeFrom
 )
 
 $ErrorActionPreference = 'Stop'
+if ($Resume -and $InitializeFrom) { throw '-Resume and -InitializeFrom cannot be used together.' }
+if ($InitializeFrom -eq $RunId) { throw 'Use a new RunId when initializing from an existing run.' }
 $project = Split-Path -Parent $MyInvocation.MyCommand.Path
 $python = Join-Path $project 'mlagents_gpu_env/Scripts/python.exe'
 $launcher = Join-Path $project 'train.py'
@@ -24,6 +28,7 @@ try {
     $arguments = @($launcher, '--scene', 'cortex', '--device', 'gpu',
         '--run-id', $RunId, '--num-envs', $NumEnvs, '--arenas', $Arenas)
     if ($Resume) { $arguments += '--resume' }
+    if ($InitializeFrom) { $arguments += @('--initialize-from', $InitializeFrom) }
     & $python @arguments
     if ($LASTEXITCODE -ne 0) { throw "Training exited with code $LASTEXITCODE." }
 }

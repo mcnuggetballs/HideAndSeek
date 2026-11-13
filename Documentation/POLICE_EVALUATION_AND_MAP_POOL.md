@@ -1,5 +1,11 @@
 # Police evaluation and map pool
 
+The fixed inference cases below remain the full 2v2 capture evaluation. The
+training Search curriculum now teaches Frontier, team coverage, then occupied
+capture at each distance; see [SEARCH_CURRICULUM_V2.md](SEARCH_CURRICULUM_V2.md).
+The older description below of a shared Search advancement window refers to
+the pre-v2 curriculum and should not be used to resume its saved progress.
+
 ## What changed
 
 `TrainingCortexPoliceScene` still runs the Capture → Chase → Detect → Search curriculum with two seekers and two hiders in each arena. Its fixed Cortex1 map now shares the training batch with `CortexNorthRooms` and `CortexWestRooms`. The maps have the same 33 × 20 cells and 5 world units per cell, so the policy's observation and action sizes stay unchanged. Each arena keeps one layout for its lifetime; the arena's spawn positions and headings change on each episode. This avoids rebuilding the NavMesh every episode.

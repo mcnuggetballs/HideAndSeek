@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-public enum SearchLessonKind { None, EmptyArea, OccupiedArea }
+public enum SearchLessonKind { None, EmptyArea, OccupiedArea, Frontier }
 
 /// <summary>
 /// Immutable data describing where the already-built participants should start an episode.

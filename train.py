@@ -27,11 +27,19 @@ def main() -> int:
     parser.add_argument("--time-scale", type=float, default=20.0)
     parser.add_argument("--base-port", type=int, default=5005)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--initialize-from",
+                        help="Previous run ID whose .pt checkpoint initializes a fresh run")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
     if not re.fullmatch(r"[A-Za-z0-9_-]+", args.run_id):
         parser.error("--run-id must use letters, digits, - or _")
+    if args.initialize_from and not re.fullmatch(r"[A-Za-z0-9_-]+", args.initialize_from):
+        parser.error("--initialize-from must be a run ID")
+    if args.initialize_from and args.resume:
+        parser.error("--initialize-from and --resume are mutually exclusive")
+    if args.initialize_from == args.run_id:
+        parser.error("Use a new --run-id when initializing from an existing run")
     if args.num_envs < 1 or not 1 <= args.arenas <= 50:
         parser.error("--num-envs must be positive and --arenas must be 1 to 50")
     if args.time_scale <= 0 or args.base_port < 1024 or args.base_port + args.num_envs > 65535:
@@ -57,6 +65,8 @@ def main() -> int:
                f"--time-scale={args.time_scale}", "--no-graphics"]
     if args.resume:
         command.append("--resume")
+    if args.initialize_from:
+        command.extend(("--initialize-from", args.initialize_from))
     command.extend(("--env-args", "--training-arenas", str(args.arenas),
                     "--curriculum-run-id", args.run_id))
     if args.resume:

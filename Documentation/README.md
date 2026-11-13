@@ -3,6 +3,7 @@
 Start with the repository root `README.md`, then `TRAINING.md` for build and benchmark commands.
 
 - `POLICE_EVALUATION_AND_MAP_POOL.md` describes the active Cortex training maps and fixed evaluation cases.
+- `SEARCH_CURRICULUM_V2.md` explains the staged Search lessons, 20-million-step baseline diagnosis, warm start, and evaluation decisions.
 - `PAIRED_SEARCH_LESSON.md` describes the active team coverage reward and nearby seeker spawns.
 - `ORDERED_POLICE_CURRICULUM.md` describes the separate one-seeker lesson.
 

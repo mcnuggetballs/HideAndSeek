@@ -16,9 +16,10 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
     [Serializable]
     private sealed class Progress
     {
-        public int version = 4;
+        public int version = 5;
         public int stage;
         public int searchDistance = 3;
+        public int searchLesson;
         public int sequence;
         public bool finalLessonMastered;
         public List<MapResult> recentResults = new();
@@ -73,6 +74,13 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         }
     }
     public bool FinalLessonMastered => progress.finalLessonMastered;
+    public SearchLessonKind CurrentSearchLesson => CurrentStage != Stage.Search
+        ? SearchLessonKind.None : progress.searchLesson switch
+        {
+            0 => SearchLessonKind.Frontier,
+            1 => SearchLessonKind.EmptyArea,
+            _ => SearchLessonKind.OccupiedArea
+        };
     public float SuccessThreshold => threshold;
     public int WindowSize => windowSize;
     public bool IsBaseline => baselineMode;
@@ -101,7 +109,12 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
                     else if (result.lesson == (int)SearchLessonKind.OccupiedArea)
                     { occupiedCount++; occupiedWins += result.passed; }
                 }
-                parts.Add($"{mapId} empty {emptyWins}/{emptyCount}, occupied {occupiedWins}/{occupiedCount}");
+                int frontierCount = 0, frontierWins = 0;
+                foreach (MapResult result in progress.recentResults)
+                    if (result.mapId == mapId && result.lesson == (int)SearchLessonKind.Frontier)
+                    { frontierCount++; frontierWins += result.passed; }
+                parts.Add($"{mapId} frontier {frontierWins}/{frontierCount}, " +
+                    $"team {emptyWins}/{emptyCount}, occupied {occupiedWins}/{occupiedCount}");
             }
             return string.Join("  ", parts);
         }
@@ -133,7 +146,8 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
             progress = new Progress
             {
                 stage = (int)baselineStage,
-                searchDistance = Mathf.Clamp(baselineSearchDistance, 3, this.finalSearchDistance)
+                searchDistance = Mathf.Clamp(baselineSearchDistance, 3, this.finalSearchDistance),
+                searchLesson = 2 // Fixed Search evaluations remain full 2v2 capture.
             };
         else
             Load(resumeProgress);
@@ -149,13 +163,15 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         // Difficulty encodes both stage and distance. Results from arenas that are
         // finishing the previous lesson cannot advance the new lesson.
         if (Academy.Instance.IsCommunicatorOn && !outcome.WasInterrupted &&
-            outcome.Difficulty == Difficulty && !progress.finalLessonMastered)
+            outcome.Difficulty == Difficulty &&
+            outcome.SearchLesson == CurrentSearchLesson && !progress.finalLessonMastered)
         {
             bool passed = outcome.Steps <= stageDeadlines[progress.stage] &&
-                (CurrentStage == Stage.Search &&
-                 outcome.SearchLesson == SearchLessonKind.EmptyArea
+                (outcome.SearchLesson == SearchLessonKind.Frontier
                     ? outcome.FrontierInspectionPassed
-                    : outcome.WasSuccessful);
+                    : outcome.SearchLesson == SearchLessonKind.EmptyArea
+                        ? outcome.FrontierInspectionPassed
+                        : outcome.WasSuccessful);
             progress.recentResults.Add(new MapResult
             {
                 mapId = environment.Grid.LayoutId,
@@ -170,14 +186,19 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
             {
                 if (CurrentStage != Stage.Search)
                     progress.stage++;
+                else if (progress.searchLesson < 2)
+                    progress.searchLesson++;
                 else if (progress.searchDistance < finalSearchDistance)
+                {
                     progress.searchDistance = Mathf.Min(finalSearchDistance,
                         progress.searchDistance + distanceIncrement);
+                    progress.searchLesson = 0;
+                }
                 else
                     progress.finalLessonMastered = true;
 
                 progress.recentResults.Clear();
-                Debug.Log($"[Cortex Curriculum] {CurrentStage}, distance {CurrentDistance}" +
+                Debug.Log($"[Cortex Curriculum] {CurrentStage}, distance {CurrentDistance}, lesson {CurrentSearchLesson}" +
                     (progress.finalLessonMastered ? " (final lesson mastered)." : "."));
             }
             Save();
@@ -195,10 +216,7 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
                 "CortexPoliceCurriculum requires exactly two seekers and two hiders.");
 
         ScenarioGrid grid = environment.Grid;
-        SearchLessonKind lesson = CurrentStage != Stage.Search
-            ? SearchLessonKind.None
-            : (progress.sequence & 1) == 0
-                ? SearchLessonKind.EmptyArea : SearchLessonKind.OccupiedArea;
+        SearchLessonKind lesson = CurrentSearchLesson;
         float viewDistance = Mathf.Min(environment.Seekers[0].ViewDistance,
             environment.Seekers[1].ViewDistance);
         string layoutKey = LayoutKey(grid);
@@ -225,7 +243,9 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
                 new[] { first.Seeker, second.Seeker },
                 new[] { first.Hider, second.Hider },
                 faceHider, faceAway, CurrentStage >= Stage.Chase,
-                stageDeadlines[progress.stage], lesson);
+                lesson == SearchLessonKind.Frontier || lesson == SearchLessonKind.EmptyArea
+                    ? Mathf.Min(stageDeadlines[progress.stage], 1024)
+                    : stageDeadlines[progress.stage], lesson);
         }
 
         throw new InvalidOperationException(
@@ -262,12 +282,10 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         int minimumPerCase = Mathf.Max(1,
             Mathf.Min(8, windowSize / Mathf.Max(1, requiredMapIds.Length * 4)));
         foreach (string mapId in requiredMapIds)
-            foreach (SearchLessonKind lesson in new[]
-                     { SearchLessonKind.EmptyArea, SearchLessonKind.OccupiedArea })
             {
                 int count = 0, wins = 0;
                 foreach (MapResult result in progress.recentResults)
-                    if (result.mapId == mapId && result.lesson == (int)lesson)
+                    if (result.mapId == mapId && result.lesson == (int)CurrentSearchLesson)
                     { count++; wins += result.passed; }
                 if (count < minimumPerCase || (float)wins / count < threshold)
                     return false;
@@ -337,7 +355,7 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         if (separation < 2 || separation > maximumSeekerSpawnDistance ||
             !HasClearGridLine(grid, first.Seeker, second.Seeker)) return false;
         // The first few steps around either seeker are empty in the empty-area lesson.
-        if (lesson == SearchLessonKind.EmptyArea &&
+        if ((lesson == SearchLessonKind.Frontier || lesson == SearchLessonKind.EmptyArea) &&
             (seekerDistances[first.Hider.x, first.Hider.y] < 3 ||
              seekerDistances[second.Hider.x, second.Hider.y] < 3 ||
              pathCache[layoutKey][second.Seeker][first.Hider.x, first.Hider.y] < 3 ||
@@ -406,15 +424,16 @@ public sealed class CortexPoliceCurriculum : ITrainingCurriculum
         {
             Debug.LogWarning($"[Cortex Curriculum] Could not load progress: {exception.Message}");
         }
-        if (progress != null && progress.version != 4)
+        if (progress != null && progress.version != 5)
         {
-            Debug.LogWarning("[Cortex Curriculum] Saved progress predates the two Search lessons; starting a fresh curriculum.");
+            Debug.LogWarning("[Cortex Curriculum] Saved progress predates the staged Search lessons; starting a fresh curriculum.");
             progress = null;
         }
         progress ??= new Progress();
         progress.stage = Mathf.Clamp(progress.stage, 0, (int)Stage.Search);
         progress.searchDistance = Mathf.Clamp(progress.searchDistance, 3,
             finalSearchDistance);
+        progress.searchLesson = Mathf.Clamp(progress.searchLesson, 0, 2);
         progress.recentResults ??= new List<MapResult>();
     }
 
